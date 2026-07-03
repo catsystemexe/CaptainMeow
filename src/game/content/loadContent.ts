@@ -5,7 +5,7 @@ import fsmPresetsJson from "./fsmPresets.json";
 import attackProfilesJson from "./attackProfiles.json";
 
 import type { BehaviorPreset } from "../enemies/EnemyBehaviorTypes";
-import { buildBuiltinFsmPresetRegistryFromPresets } from "../enemies/fsm";
+import { buildBuiltinFsmPresetRegistryFromPresets, createUserFsmPresetStore } from "../enemies/fsm";
 import { isEnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import type { EnemyContentBundle, EnemyTypeContentDef, EnemyWaveContentDef } from "../defs/EnemyContentTypes";
 
@@ -89,6 +89,9 @@ export function loadContent(): EnemyContentBundle {
   const presetIds = new Set(behaviorPresets.map(b => b.id));
   const attackProfileIds = new Set(Object.keys(attackProfilesJson as Record<string, unknown>));
   const builtinFsmPresets = buildBuiltinFsmPresetRegistryFromPresets(fsmPresetSource, { knownMovementPresetIds: presetIds, knownAttackProfileIds: attackProfileIds }, { errorPolicy: (import.meta as any).env?.PROD === true ? "omit-invalid" : "throw" });
+  const userFsmPresets = createUserFsmPresetStore({ builtinRegistry: builtinFsmPresets, knownMovementPresetIds: presetIds, knownAttackProfileIds: attackProfileIds });
+  userFsmPresets.load();
+  const fsmPresets = userFsmPresets.registry();
   const graphIds = new Set(builtinFsmPresets.list().map((preset) => preset.id));
 
   for (const e of enemyTypes) {
@@ -117,5 +120,5 @@ export function loadContent(): EnemyContentBundle {
     }
   }
 
-  return { enemyTypes, behaviorPresets, builtinFsmPresets, waves };
+  return { enemyTypes, behaviorPresets, builtinFsmPresets, userFsmPresets, fsmPresets, waves };
 }

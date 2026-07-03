@@ -24,3 +24,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 
 - [S7 — Canonical built-in FSM content conversion](./S7.md)
 - [S7.1 — Transition movement correctness and retained Dev UI FSM inspection](./S7.1.md)
+- [S8 — User preset registry, persistence, import/export, and recovery](./S8.md)
