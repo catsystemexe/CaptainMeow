@@ -28,6 +28,8 @@ const SMOKES = [
   "../game/enemies/FsmDeterminism.smoke",
   "../game/enemies/FsmStateEntry.smoke",
   "../game/enemies/FsmCombatModes.smoke",
+  "../game/enemies/FsmMovementComposition.smoke",
+  "../game/enemies/FsmGroupMovement.smoke",
   "../game/systems/BombExplosionChain.smoke",
   "../game/systems/WeaponVFXEmit.smoke",
   "../render/webgl/bg/FlowDisturbanceKick.smoke",

@@ -6,3 +6,4 @@ export * from "./migrate";
 export * from "./resolve";
 export * from "./FsmPresetRegistry";
 export * from "./FsmRuntime";
+export * from "./MovementResolver";
