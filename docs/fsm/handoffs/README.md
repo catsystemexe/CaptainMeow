@@ -23,3 +23,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [S6.1 — Dev UI runtime state compatibility](./S6.1.md)
 
 - [S7 — Canonical built-in FSM content conversion](./S7.md)
+- [S7.1 — Transition movement correctness and retained Dev UI FSM inspection](./S7.1.md)
