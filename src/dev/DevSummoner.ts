@@ -1130,7 +1130,7 @@ export class DevSummoner {
 Initial: ${d.initialState} | Validation: ${d.validationStatus}
 ${d.states.join(", ")}` : "No preset selected";
       diagBox.textContent = presetModel.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.presetId ? x.presetId + ": " : ""}${x.message}`).join("\n");
-      refreshFsmSpawnSelect(fsmSpawnSelect.value); if (CONTENT.fsmPresets.get(presetModel.selectedId)) fsmSpawnSelect.value = presetModel.selectedId;
+      refreshFsmSpawnSelect(CONTENT.fsmPresets.get(presetModel.selectedId) ? presetModel.selectedId : fsmSpawnSelect.value);
     };
     presetList.addEventListener("change", () => { presetModel.select(presetList.value); renderPresetEditor(); });
     idInput.addEventListener("input", () => { presetModel.setDraftId(idInput.value); renderPresetEditor(); });
