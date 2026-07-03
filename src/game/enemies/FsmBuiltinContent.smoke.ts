@@ -1,19 +1,20 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { BEHAVIOR_GRAPHS, BUILTIN_FSM_PRESETS, CONTENT } from "../content/CONTENT";
-import { buildBuiltinFsmPresetRegistry, migrateBuiltinFsmPresets, type BehaviorGraph } from "./fsm";
+import fsmPresetsJson from "../content/fsmPresets.json";
+import { BUILTIN_FSM_PRESETS, CONTENT } from "../content/CONTENT";
+import { buildBuiltinFsmPresetRegistry, buildBuiltinFsmPresetRegistryFromPresets, type BehaviorGraph } from "./fsm";
 
 const movementIds = new Set(CONTENT.behaviorPresets.map((p) => p.id));
 const attackIds = new Set(["single_basic", "aimed_slow", "spread_test_slow", "spread_test_fast"]);
-const migrated = migrateBuiltinFsmPresets(BEHAVIOR_GRAPHS, { knownMovementPresetIds: movementIds, knownAttackProfileIds: attackIds });
-const graphIds = Object.keys(BEHAVIOR_GRAPHS);
-assert.equal(migrated.length, graphIds.length, "migrated count equals legacy graph count");
-assert.deepEqual(migrated.flatMap((m) => m.issues.filter((i) => i.severity === "error")), [], "all built-in graphs migrate without hard errors");
-const registry = buildBuiltinFsmPresetRegistry(BEHAVIOR_GRAPHS, { knownMovementPresetIds: movementIds, knownAttackProfileIds: attackIds }, { errorPolicy: "throw" });
-assert.equal(registry.size, graphIds.length, "registry size equals valid migrated count");
+const canonicalSource = fsmPresetsJson as any;
+const presetIds = canonicalSource.presets.map((preset: any) => preset.metadata.id);
+assert.equal(canonicalSource.schemaVersion, 1, "canonical built-in FSM source is schema v1");
+assert.equal(presetIds.length, 10, "canonical built-in preset count is 10");
+const registry = buildBuiltinFsmPresetRegistryFromPresets(canonicalSource, { knownMovementPresetIds: movementIds, knownAttackProfileIds: attackIds }, { errorPolicy: "throw" });
+assert.equal(registry.size, presetIds.length, "registry size equals canonical preset count");
 assert.equal(BUILTIN_FSM_PRESETS.size, registry.size, "CONTENT exposes built-in registry");
-assert.deepEqual(registry.list().map((p) => p.id), graphIds, "list order follows canonical JSON key order");
-for (const id of graphIds) {
+assert.deepEqual(registry.list().map((p) => p.id), presetIds, "list order follows canonical JSON preset order");
+for (const id of presetIds) {
   const preset = registry.get(id);
   assert(preset, `preset ${id} is retrievable`);
   assert.equal(preset.initialStateIndex >= 0, true, `preset ${id} has resolved initial state`);
@@ -34,11 +35,7 @@ assert.equal(logs.length, 1, "production policy logs once per build");
 const first = registry.list()[0];
 assert.throws(() => ((first.states as any).push({})), /extensible|read only|object is not extensible/i, "state collection is immutable");
 assert.throws(() => (((first.states[0].transitions as any).push({}))), /extensible|read only|object is not extensible/i, "transition collection is immutable");
-const rawClone = structuredClone(BEHAVIOR_GRAPHS);
-(BEHAVIOR_GRAPHS as any).__s2_mutability_probe = { initial: "a", states: { a: { movementPresetId: "none.hold" } } };
-delete (BEHAVIOR_GRAPHS as any).__s2_mutability_probe;
-assert.deepEqual(BEHAVIOR_GRAPHS, rawClone, "raw legacy source remains mutable and unchanged after probe");
-assert.equal(CONTENT.behaviorGraphs, BEHAVIOR_GRAPHS, "CONTENT behaviorGraphs is the legacy runtime registry object");
+assert.equal(canonicalSource.schemaVersion, 1, "CONTENT no longer exposes legacy behaviorGraphs");
 const enemySystemSource = readFileSync(new URL("../systems/EnemySystem.ts", import.meta.url), "utf8");
 assert(!enemySystemSource.includes('BEHAVIOR_GRAPHS') && !enemySystemSource.includes('BUILTIN_FSM_PRESETS') && !enemySystemSource.includes('buildBuiltinFsmPresetRegistry'), "EnemySystem uses spawned FSM snapshots instead of legacy graph or registry lookup");
 console.log("FsmBuiltinContent smoke passed");

@@ -21,3 +21,5 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [S5 — Movement composition MVP](./S5.md)
 - [S6 — Lifecycle entry actions and explicit despawn](./S6.md)
 - [S6.1 — Dev UI runtime state compatibility](./S6.1.md)
+
+- [S7 — Canonical built-in FSM content conversion](./S7.md)
