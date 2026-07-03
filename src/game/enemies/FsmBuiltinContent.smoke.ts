@@ -40,5 +40,5 @@ delete (BEHAVIOR_GRAPHS as any).__s2_mutability_probe;
 assert.deepEqual(BEHAVIOR_GRAPHS, rawClone, "raw legacy source remains mutable and unchanged after probe");
 assert.equal(CONTENT.behaviorGraphs, BEHAVIOR_GRAPHS, "CONTENT behaviorGraphs is the legacy runtime registry object");
 const enemySystemSource = readFileSync(new URL("../systems/EnemySystem.ts", import.meta.url), "utf8");
-assert(enemySystemSource.includes('BEHAVIOR_GRAPHS') && !enemySystemSource.includes('BUILTIN_FSM_PRESETS') && !enemySystemSource.includes('buildBuiltinFsmPresetRegistry'), "EnemySystem remains on legacy graph path");
+assert(!enemySystemSource.includes('BEHAVIOR_GRAPHS') && !enemySystemSource.includes('BUILTIN_FSM_PRESETS') && !enemySystemSource.includes('buildBuiltinFsmPresetRegistry'), "EnemySystem uses spawned FSM snapshots instead of legacy graph or registry lookup");
 console.log("FsmBuiltinContent smoke passed");

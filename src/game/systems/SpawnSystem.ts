@@ -10,6 +10,8 @@ import type { EnemyBehaviorId, EnemyBehaviorParams, EnemyBehaviorRuntime } from 
 import { EnemyBehaviorDB } from "../enemies/EnemyBehaviorDB";
 import { COLORS } from "../../rendering/ColorPalette";
 import { EnemyBehaviorPresets, type EnemyBehaviorPresetId } from "../enemies/EnemyBehaviorPresets";
+import { BUILTIN_FSM_PRESETS } from "../content/CONTENT";
+import { createFsmRuntimeSnapshot } from "../enemies/fsm";
 
 import { ENEMY_DEFS, type EnemyTypeId } from "../defs/EnemyDefs";
 import { materializeEnemyAppearance } from "../defs/EnemyAppearanceTypes";
@@ -381,6 +383,11 @@ const r = (typeof def.radius === "number" && Number.isFinite(def.radius) && def.
             ent.behaviorId = (EnemyBehaviorDB[behaviorId] ? behaviorId : "none") as EnemyBehaviorId;
             ent.behavior = { ...(preset.params ?? {}) };
             ent.bState = { t: spawnAgeSec };
+            const graphId = typeof def.behaviorGraphId === "string" ? def.behaviorGraphId : "";
+            const fsmPreset = graphId ? BUILTIN_FSM_PRESETS.get(graphId) : undefined;
+            if (fsmPreset) ent.fsm = createFsmRuntimeSnapshot(fsmPreset);
+            else delete ent.fsm;
+            delete ent.fsmAppliedMovementPresetId;
             beh?.init?.(ent);
             ent.posPrev.x = ent.pos.x;
             ent.posPrev.y = ent.pos.y;
