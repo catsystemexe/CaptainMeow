@@ -16,3 +16,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 
 - [S1 — Target schema, descriptors and validation](./S1.md)
 - [S2 — Built-in migration and resolved preset registry](./S2.md)
+- [S3 — Runtime snapshot and graph resolution](./S3.md)

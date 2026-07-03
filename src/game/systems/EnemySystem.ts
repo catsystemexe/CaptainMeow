@@ -3,12 +3,11 @@ import type { EntityStore } from "../../engine/ecs/EntityStore";
 import type { TickContext } from "../../engine/core/Loop";
 import { EnemyBehaviorDB } from "../enemies/EnemyBehaviorDB";
 import { EnemyBehaviorPresets } from "../enemies/EnemyBehaviorPresets";
-import { updateFsm } from "../enemies/fsm";
+import { getFsmRuntimeStateLabel, getLegacyAttackProfileId, getLegacyMovementPresetId, updateResolvedFsmLegacySemantics } from "../enemies/fsm";
 import { isEnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import type { EnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import { ENEMY_DEFS, getAttackProfile } from "../defs/EnemyDefs";
 import { updateAttack } from "../enemies/AttackController";
-import { BEHAVIOR_GRAPHS } from "../content/CONTENT";
 import type { EnemyGroupRegistry } from "../enemies/EnemyGroups";
 import { resolveMovementCullReferenceX } from "../enemies/EnemyCullReference";
 
@@ -125,50 +124,34 @@ export class EnemySystem {
 
       const def = ENEMY_DEFS[e.typeId];
       let fsmAttackProfile: any | undefined;
-      const graphId = typeof def?.behaviorGraphId === "string" ? def.behaviorGraphId : "";
-      const graph = graphId ? BEHAVIOR_GRAPHS[graphId] : undefined;
-      if (graph) {
-        const fsmResult = updateFsm({
-          ent: e,
-          graph,
+      const fsmRuntime = e.fsm;
+      if (fsmRuntime?.preset) {
+        const fsmResult = updateResolvedFsmLegacySemantics(e, fsmRuntime, {
           scrollX,
           logicW: W,
           dt,
         });
+        const movementPresetId = getLegacyMovementPresetId(fsmResult.state);
+        const attackProfileId = getLegacyAttackProfileId(fsmResult.state);
 
         if (e.typeId === "turret_fsm_test") {
           console.log("[FSM]", {
             type: e.typeId,
-            state: fsmResult.current,
+            state: getFsmRuntimeStateLabel(fsmRuntime),
             switched: fsmResult.switched,
-            age: e.fsm?.age,
+            age: fsmRuntime.age,
             x: e.pos?.x,
             velX: e.vel?.x,
-            movement: fsmResult.state.movementPresetId,
-            attack: fsmResult.state.attackProfileId,
+            movement: movementPresetId,
+            attack: attackProfileId,
             applied: e.fsmAppliedMovementPresetId,
-            graphId,
+            graphId: fsmRuntime.preset.id,
           });
         }
 
-
-        
-        if (e.typeId === "turret_fsm_test") {
-          console.log("[FSM]", {
-            state: fsmResult.current,
-            switched: fsmResult.switched,
-            x: e.pos?.x,
-            vel: e.vel,
-            movement: fsmResult.state.movementPresetId,
-            attack: fsmResult.state.attackProfileId,
-          });
-        }
-
-
-        
-        applyStateBehavior(e, fsmResult.state.movementPresetId);
-        fsmAttackProfile = fsmResult.state.attackProfileId
-          ? getAttackProfile(fsmResult.state.attackProfileId)
+        applyStateBehavior(e, movementPresetId);
+        fsmAttackProfile = attackProfileId
+          ? getAttackProfile(attackProfileId)
           : undefined;
       }
 
