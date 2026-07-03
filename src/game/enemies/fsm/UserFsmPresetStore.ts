@@ -166,7 +166,23 @@ export class UserFsmPresetStore {
     return this.commit(next, accepted.diagnostics);
   }
 
+  rename(oldId: string, newId: string, newLabel?: string): UserFsmPresetMutationResult {
+    if (this.builtinRegistry.has(oldId)) return this.remember({ ok: false, diagnostics: [diag("error", "E_BUILTIN_READONLY", `FSM preset ID ${oldId} is built-in and cannot be renamed.`, { presetId: oldId })] });
+    const existing = this.userPresets.get(oldId);
+    if (!existing) return this.remember({ ok: false, diagnostics: [diag("error", "E_RENAME_UNKNOWN_ID", `FSM user preset ID ${oldId} does not exist.`, { presetId: oldId })] });
+    if (newId !== oldId && (this.builtinRegistry.has(newId) || this.userPresets.has(newId))) return this.remember({ ok: false, diagnostics: [diag("error", "E_RENAME_ID_COLLISION", `FSM preset ID ${newId} already exists.`, { presetId: newId })] });
+    const next = new Map(this.userPresets);
+    next.delete(oldId);
+    const candidate = clonePlain(existing);
+    candidate.metadata = { ...candidate.metadata, id: newId, name: newLabel ?? candidate.metadata.name, source: "user", schemaVersion: FSM_SCHEMA_VERSION };
+    const accepted = this.acceptPreset(candidate, next, "reject");
+    if (!accepted.ok || !accepted.preset) return this.remember({ ok: false, diagnostics: accepted.diagnostics });
+    next.set(accepted.preset.metadata.id, accepted.preset);
+    return this.commit(next, accepted.diagnostics);
+  }
+
   delete(id: string): UserFsmPresetMutationResult {
+    if (this.builtinRegistry.has(id)) return this.remember({ ok: false, diagnostics: [diag("error", "E_BUILTIN_READONLY", `FSM preset ID ${id} is built-in and cannot be deleted.`, { presetId: id })] });
     const next = new Map(this.userPresets);
     next.delete(id);
     return this.commit(next, []);
