@@ -3,7 +3,7 @@ import type { EntityStore } from "../../engine/ecs/EntityStore";
 import type { TickContext } from "../../engine/core/Loop";
 import { EnemyBehaviorDB } from "../enemies/EnemyBehaviorDB";
 import { EnemyBehaviorPresets } from "../enemies/EnemyBehaviorPresets";
-import { getFsmRuntimeStateLabel, getLegacyAttackProfileId, getLegacyMovementPresetId, updateResolvedFsmLegacySemantics } from "../enemies/fsm";
+import { getFsmRuntimeStateLabel, getLegacyMovementPresetId, updateResolvedFsm } from "../enemies/fsm";
 import { isEnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import type { EnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import { ENEMY_DEFS, getAttackProfile } from "../defs/EnemyDefs";
@@ -126,13 +126,14 @@ export class EnemySystem {
       let fsmAttackProfile: any | undefined;
       const fsmRuntime = e.fsm;
       if (fsmRuntime?.preset) {
-        const fsmResult = updateResolvedFsmLegacySemantics(e, fsmRuntime, {
+        const fsmResult = updateResolvedFsm(e, fsmRuntime, {
           scrollX,
           logicW: W,
           dt,
+          inheritedAttackProfileId: def?.attackProfile?.id ?? null,
         });
         const movementPresetId = getLegacyMovementPresetId(fsmResult.state);
-        const attackProfileId = getLegacyAttackProfileId(fsmResult.state);
+        const attackProfileId = fsmRuntime.activeCombat.profileId;
 
         if (e.typeId === "turret_fsm_test") {
           console.log("[FSM]", {
@@ -216,7 +217,7 @@ export class EnemySystem {
       e.pos.y += e.vel.y * dt;
 
       // attack controller (data-driven enemy shooting)
-      const attackProfile = fsmAttackProfile ?? def?.attackProfile;
+      const attackProfile = fsmRuntime?.preset ? fsmAttackProfile : def?.attackProfile;
       if (attackProfile) {
         updateAttack({
           ent: e,

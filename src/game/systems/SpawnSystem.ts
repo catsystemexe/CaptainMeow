@@ -385,9 +385,8 @@ const r = (typeof def.radius === "number" && Number.isFinite(def.radius) && def.
             ent.bState = { t: spawnAgeSec };
             const graphId = typeof def.behaviorGraphId === "string" ? def.behaviorGraphId : "";
             const fsmPreset = graphId ? BUILTIN_FSM_PRESETS.get(graphId) : undefined;
-            if (fsmPreset) ent.fsm = createFsmRuntimeSnapshot(fsmPreset);
+            if (fsmPreset) ent.fsm = createFsmRuntimeSnapshot(fsmPreset, {}, ent, { inheritedAttackProfileId: def.attackProfile?.id ?? null });
             else delete ent.fsm;
-            delete ent.fsmAppliedMovementPresetId;
             beh?.init?.(ent);
             ent.posPrev.x = ent.pos.x;
             ent.posPrev.y = ent.pos.y;
