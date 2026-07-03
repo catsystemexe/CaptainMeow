@@ -27,3 +27,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [S8 — User preset registry, persistence, import/export, and recovery](./S8.md)
 
 - [S9 — Enemy Lab preset management editor MVP](./S9.md)
+- [S9.1 — Restore Enemy Lab visibility and mount path](./S9.1.md)

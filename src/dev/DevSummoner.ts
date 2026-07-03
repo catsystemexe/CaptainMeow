@@ -9,6 +9,9 @@ import { getFsmDebugSnapshot, type FsmDebugSnapshot } from "../game/enemies/fsm"
 import { ENEMY_GROUP_COHESION_IDS, ENEMY_GROUP_FORMATION_IDS, ENEMY_GROUP_PARAM_LIMITS, normalizeEnemyGroupParams, normalizeGroupFormationStartAngle } from "../game/enemies/EnemyGroups";
 import type { CohesionId, FormationId } from "../game/enemies/EnemyGroups";
 
+export const DEV_SUMMONER_PANEL_ID = "dev-summoner";
+export const FSM_PRESET_EDITOR_ID = "ds-fsm-preset-editor";
+export const ENEMY_LAB_DEBUG_PANEL_ID = "ds-enemy-lab-debug";
 const EMPTY_ENEMY_LAB = "No FSM enemy selected/spawned.";
 type MovementClassId = "dumb" | "smart";
 type SpawnMode = "enemy" | "group";
@@ -28,6 +31,22 @@ export interface RetainedFsmInspection {
 }
 
 type CompactSelectOption = { value: string; label: string; disabled?: boolean };
+
+export function createDevSummonerPanelStyle(): string {
+  return [
+    "position:fixed", "top:8px", "right:8px", "z-index:9999",
+    "background:rgba(0,0,0,0.75)", "border:1px solid #444",
+    "color:#eee", "font:12px monospace", "padding:3px",
+    "border-radius:2px", "display:flex", "flex-direction:column", "gap:5px",
+    "width:220px",
+    "min-width:220px",
+    "max-width:220px",
+    "max-height:calc(100vh - 16px)",
+    "box-sizing:border-box",
+    "overflow-x:hidden",
+    "overflow-y:auto",
+  ].join(";");
+}
 
 export function groupFormationSelectOptions(): Array<{ value: FormationId; label: string }> {
   const formationLabel = (id: FormationId) => id === "line.horizontal" ? "Line"
@@ -592,18 +611,8 @@ export class DevSummoner {
   init(): void {
     if (this.panel) return;
     const panel = document.createElement("div");
-    panel.id = "dev-summoner";
-    panel.style.cssText = [
-      "position:fixed","top:8px","right:8px","z-index:9999",
-      "background:rgba(0,0,0,0.75)","border:1px solid #444",
-      "color:#eee","font:12px monospace","padding:3px",
-      "border-radius:2px","display:flex","flex-direction:column","gap:5px",
-      "width:220px",
-      "min-width:220px",
-      "max-width:220px",
-      "box-sizing:border-box",
-      "overflow:hidden",
-    ].join(";");
+    panel.id = DEV_SUMMONER_PANEL_ID;
+    panel.style.cssText = createDevSummonerPanelStyle();
 
     const title = document.createElement("pre");
     title.textContent = "Enemy Lab\n────────────";
@@ -1098,7 +1107,7 @@ export class DevSummoner {
 
     const presetModel = new FsmPresetEditorModel(CONTENT.userFsmPresets);
     const presetPanel = document.createElement("div");
-    presetPanel.id = "ds-fsm-preset-editor";
+    presetPanel.id = FSM_PRESET_EDITOR_ID;
     presetPanel.style.cssText = "display:flex;flex-direction:column;gap:4px;padding:4px;background:rgba(255,255,255,0.05);font:12px monospace;";
     const presetList = document.createElement("select");
     applyNativeSelectStyle(presetList);
@@ -1141,7 +1150,7 @@ ${d.states.join(", ")}` : "No preset selected";
     panel.appendChild(createSectionGap());
 
     const labPanel = document.createElement("div");
-    labPanel.id = "ds-enemy-lab-debug";
+    labPanel.id = ENEMY_LAB_DEBUG_PANEL_ID;
     labPanel.style.cssText = [
       "margin:0",
       "padding:4px",
@@ -1162,7 +1171,7 @@ ${d.states.join(", ")}` : "No preset selected";
   }
 
   private refreshEnemyLab(): void {
-    const out = this.panel?.querySelector("#ds-enemy-lab-debug") as HTMLElement | null;
+    const out = this.panel?.querySelector(`#${ENEMY_LAB_DEBUG_PANEL_ID}`) as HTMLElement | null;
     if (!out) return;
 
     const selected = this.findSelectedFsmEnemy();
