@@ -166,13 +166,14 @@ async function main() {
   window.__CM.game = game;
 
 
-  // Dev Summoner
+  // Dev Summoner / Enemy Lab
   try {
-    const { DevSummoner } = await import("./dev/DevSummoner");
-    const summoner = new DevSummoner(game.bus, game.world, LOGIC_W, LOGIC_H);
-    summoner.init();
+    const { mountEnemyLabRuntime } = await import("./dev/EnemyLabBootstrap");
+    const enemyLab = mountEnemyLabRuntime(game, LOGIC_W, LOGIC_H);
+    window.__CM.enemyLab = enemyLab;
+    if (!enemyLab.mounted) console.warn("[EnemyLab] mount failed", enemyLab.error);
   } catch (e) {
-    console.warn("[DevSummoner] init failed", e);
+    console.warn("[EnemyLab] bootstrap failed", e);
   }
 
 
