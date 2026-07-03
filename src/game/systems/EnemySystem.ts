@@ -112,6 +112,10 @@ export class EnemySystem {
         });
         if (fsmResult.entityKilled) return;
         const attackProfileId = fsmRuntime.activeCombat.profileId;
+        // updateResolvedFsm may perform a formal entry and replace
+        // fsmRuntime.movement. Always execute the currently assigned runtime so
+        // transition ticks use the target state's movement immediately.
+        const activeMovement = fsmRuntime.movement;
         const groupControlled = isFsmIndividualMovementSuppressed(e, (groupId) => !!this.groups?.get(Number(groupId) as any));
 
         if (e.typeId === "turret_fsm_test") {
@@ -122,7 +126,7 @@ export class EnemySystem {
             age: fsmRuntime.age,
             x: e.pos?.x,
             velX: e.vel?.x,
-            movement: fsmRuntime.movement.base.presetId,
+            movement: activeMovement.base.presetId,
             attack: attackProfileId,
             suppressed: groupControlled,
             graphId: fsmRuntime.preset.id,
@@ -132,11 +136,12 @@ export class EnemySystem {
         if (groupControlled) {
           fsmRuntime.movement.movementSuspended = true;
         } else {
-          if (fsmRuntime.movement.movementSuspended) {
+          if (activeMovement.movementSuspended) {
             fsmRuntime.movement = createFsmMovementRuntime(fsmResult.state, e);
           }
-          fsmRuntime.movement.movementSuspended = false;
-          const target = executeFsmMovement(fsmRuntime.movement, e, { dt, playerPos, logicW: W, logicH: H });
+          const movement = fsmRuntime.movement;
+          movement.movementSuspended = false;
+          const target = executeFsmMovement(movement, e, { dt, playerPos, logicW: W, logicH: H });
           if (target) {
             e.vel.x = (target.x - safeNum(e.pos?.x, 0)) / dt;
             e.vel.y = (target.y - safeNum(e.pos?.y, 0)) / dt;

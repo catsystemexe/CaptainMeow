@@ -12,6 +12,18 @@ type MovementClassId = "dumb" | "smart";
 type SpawnMode = "enemy" | "group";
 
 type MovementGroups = Record<MovementClassId, Record<string, string[]>>;
+type RetainedFsmInspectionStatus = "live" | "ended";
+type RetainedFsmInspectionEndReason = "despawned" | "removed";
+
+export interface RetainedFsmInspection {
+  readonly graph: readonly unknown[];
+  readonly runtime: FsmDebugSnapshot;
+  readonly status: RetainedFsmInspectionStatus;
+  readonly endReason?: RetainedFsmInspectionEndReason;
+  readonly typeId?: string;
+  readonly hpLabel?: string;
+  readonly position?: ReturnType<typeof getEnemyPositionDebug>;
+}
 
 type CompactSelectOption = { value: string; label: string; disabled?: boolean };
 
@@ -180,6 +192,65 @@ function getEnemyPositionDebug(enemy: any, scrollX: number) {
 
 function getFsmRuntimeDebug(enemy: any): FsmDebugSnapshot | null {
   return getFsmDebugSnapshot(enemy);
+}
+
+function cloneFsmRuntimeDebug(runtime: FsmDebugSnapshot): FsmDebugSnapshot {
+  return Object.freeze({
+    ...runtime,
+    modifierTypes: Object.freeze([...runtime.modifierTypes]),
+  });
+}
+
+function cloneFsmGraphViewStates(states: readonly unknown[]): readonly unknown[] {
+  return Object.freeze(states.map((state: any) => Object.freeze({
+    id: state?.id,
+    label: state?.label,
+    movement: state?.movement ? Object.freeze({
+      base: state.movement.base ? Object.freeze({
+        type: state.movement.base.type,
+        params: Object.freeze({ ...(state.movement.base.params ?? {}) }),
+      }) : undefined,
+      modifiers: Object.freeze([...(state.movement.modifiers ?? [])].map((modifier: any) => Object.freeze({
+        type: modifier?.type,
+        params: Object.freeze({ ...(modifier?.params ?? {}) }),
+      }))),
+    }) : undefined,
+    combat: state?.combat ? Object.freeze({ ...state.combat }) : undefined,
+    transitions: Object.freeze([...(state?.transitions ?? [])].map((transition: any) => Object.freeze({
+      condition: transition?.condition ? Object.freeze({
+        type: transition.condition.type,
+        params: Object.freeze({ ...(transition.condition.params ?? {}) }),
+      }) : undefined,
+      targetStateIndex: transition?.targetStateIndex,
+      targetStateId: transition?.targetStateId,
+    }))),
+  })));
+}
+
+export function createLiveFsmInspection(enemy: any, scrollX = 0): RetainedFsmInspection | null {
+  const runtime = getFsmRuntimeDebug(enemy);
+  const states = enemy?.fsm?.preset?.states;
+  if (!runtime || !Array.isArray(states)) return null;
+  return Object.freeze({
+    graph: cloneFsmGraphViewStates(states),
+    runtime: cloneFsmRuntimeDebug(runtime),
+    status: "live" as const,
+    typeId: typeof enemy?.typeId === "string" ? enemy.typeId : undefined,
+    hpLabel: getEnemyHpLabel(enemy),
+    position: Object.freeze(getEnemyPositionDebug(enemy, scrollX)),
+  });
+}
+
+export function endFsmInspection(previous: RetainedFsmInspection | null, endReason: RetainedFsmInspectionEndReason = "removed"): RetainedFsmInspection | null {
+  if (!previous) return null;
+  return Object.freeze({
+    ...previous,
+    status: "ended" as const,
+    endReason,
+    runtime: cloneFsmRuntimeDebug(previous.runtime),
+    graph: cloneFsmGraphViewStates(previous.graph),
+    position: previous.position ? Object.freeze({ ...previous.position }) : undefined,
+  });
 }
 
 function createSelectLabel(text: string, prominence: "primary" | "secondary" = "primary"): HTMLLabelElement {
@@ -506,6 +577,7 @@ export class DevSummoner {
   private panel: HTMLElement | null = null;
   private latestManualSpawnId = 0;
   private refreshTimer: number | null = null;
+  private retainedFsmInspection: RetainedFsmInspection | null = null;
   private readonly cleanupHandlers: Array<() => void> = [];
 
   constructor(
@@ -1039,36 +1111,41 @@ export class DevSummoner {
     if (!out) return;
 
     const selected = this.findSelectedFsmEnemy();
-    if (!selected) {
+    if (selected) {
+      this.retainedFsmInspection = createLiveFsmInspection(selected, Number((this.world as any)?.scrollX ?? 0));
+    } else if (this.retainedFsmInspection?.status === "live") {
+      this.retainedFsmInspection = endFsmInspection(this.retainedFsmInspection, "removed");
+    }
+
+    const retained = this.retainedFsmInspection;
+    if (!retained) {
       out.textContent = EMPTY_ENEMY_LAB;
       return;
     }
 
-    const runtime = getFsmRuntimeDebug(selected);
-    if (!runtime) {
-      out.textContent = EMPTY_ENEMY_LAB;
-      return;
-    }
-
-    const position = getEnemyPositionDebug(selected, Number((this.world as any)?.scrollX ?? 0));
-    const graphView = renderFsmGraphView(runtime, selected.fsm.preset.states);
+    const runtime = retained.runtime;
+    const position = retained.position;
+    const graphView = renderFsmGraphView(runtime, retained.graph);
+    const statusLine = retained.status === "ended"
+      ? `<br><b>Status:</b> ${esc(retained.endReason === "despawned" ? "DESPAWNED" : "ENTITY REMOVED")}`
+      : "";
 
     out.innerHTML = `<div style="display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:2px;align-items:start;">
 <div style="white-space:nowrap;">
-<b>Type:</b> ${esc(String(selected.typeId ?? "?"))}<br>
+<b>Type:</b> ${esc(String(retained.typeId ?? "?"))}<br>
 <b>Beh:</b> ${esc(runtime.movementPresetId ?? "none")}<br>
 <b>Atk:</b> ${esc(runtime.activeAttackProfileId ?? runtime.combatMode)}<br>
-<b>HP:</b> ${esc(getEnemyHpLabel(selected))}<br>
+<b>HP:</b> ${esc(retained.hpLabel ?? "?")}<br>
 <b>State:</b> ${esc(runtime.stateLabel || runtime.stateId)}<br>
 <b>Index:</b> ${esc(runtime.stateIndex)}<br>
 <b>Age:</b> ${esc(formatNum(runtime.stateAge, 2))} s<br>
-<b>Entries:</b> ${esc(runtime.entryCount)}
+<b>Entries:</b> ${esc(runtime.entryCount)}${statusLine}
 </div>
 <div style="white-space:nowrap;">
-<b>scrX:</b> ${esc(formatNum(position.screenX))}<br>
-<b>scrY:</b> ${esc(formatNum(position.screenY))}<br>
-<b>wX:</b> ${esc(formatNum(position.worldX))}<br>
-<b>wY:</b> ${esc(formatNum(position.worldY))}
+<b>scrX:</b> ${esc(formatNum(position?.screenX))}<br>
+<b>scrY:</b> ${esc(formatNum(position?.screenY))}<br>
+<b>wX:</b> ${esc(formatNum(position?.worldX))}<br>
+<b>wY:</b> ${esc(formatNum(position?.worldY))}
 </div>
 </div>
 <div style="margin-top:6px;">${graphView}</div>`;
