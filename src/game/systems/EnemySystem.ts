@@ -2,8 +2,7 @@
 import type { EntityStore } from "../../engine/ecs/EntityStore";
 import type { TickContext } from "../../engine/core/Loop";
 import { EnemyBehaviorDB } from "../enemies/EnemyBehaviorDB";
-import { EnemyBehaviorPresets } from "../enemies/EnemyBehaviorPresets";
-import { getFsmRuntimeStateLabel, getLegacyMovementPresetId, updateResolvedFsm } from "../enemies/fsm";
+import { createFsmMovementRuntime, executeFsmMovement, getFsmMovementCullReferenceX, getFsmRuntimeStateLabel, isFsmIndividualMovementSuppressed, updateResolvedFsm } from "../enemies/fsm";
 import { isEnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import type { EnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import { ENEMY_DEFS, getAttackProfile } from "../defs/EnemyDefs";
@@ -23,31 +22,6 @@ function smoothTo(cur: number, target: number, easeSec: number, dt: number): num
   const c = Number.isFinite(cur) ? cur : 0;
   const t = Number.isFinite(target) ? target : c;
   return c + (t - c) * a;
-}
-
-function applyStateBehavior(e: any, movementPresetId?: string): void {
-  if (!movementPresetId) return;
-  if (e.fsmAppliedMovementPresetId === movementPresetId) return;
-
-  const preset = EnemyBehaviorPresets[movementPresetId] ?? EnemyBehaviorPresets["none.hold"];
-  if (!preset) return;
-
-  const nextBehaviorId = preset.behaviorId;
-  const behavior = EnemyBehaviorDB[nextBehaviorId] ?? EnemyBehaviorDB.none;
-  const attack = e.bState?.attack;
-
-  e.behaviorId = nextBehaviorId;
-  e.behavior = preset.params ?? {};
-  e.bState = { t: 0 };
-  if (attack) e.bState.attack = attack;
-  if (nextBehaviorId === "none" && e.vel) {
-    e.vel.x = 0;
-    e.vel.y = 0;
-  }
-
-  e.fsmAppliedMovementPresetId = movementPresetId;
-
-  behavior?.init?.(e);
 }
 
 export class EnemySystem {
@@ -132,8 +106,8 @@ export class EnemySystem {
           dt,
           inheritedAttackProfileId: def?.attackProfile?.id ?? null,
         });
-        const movementPresetId = getLegacyMovementPresetId(fsmResult.state);
         const attackProfileId = fsmRuntime.activeCombat.profileId;
+        const groupControlled = isFsmIndividualMovementSuppressed(e, (groupId) => !!this.groups?.get(Number(groupId) as any));
 
         if (e.typeId === "turret_fsm_test") {
           console.log("[FSM]", {
@@ -143,14 +117,26 @@ export class EnemySystem {
             age: fsmRuntime.age,
             x: e.pos?.x,
             velX: e.vel?.x,
-            movement: movementPresetId,
+            movement: fsmRuntime.movement.base.presetId,
             attack: attackProfileId,
-            applied: e.fsmAppliedMovementPresetId,
+            suppressed: groupControlled,
             graphId: fsmRuntime.preset.id,
           });
         }
 
-        applyStateBehavior(e, movementPresetId);
+        if (groupControlled) {
+          fsmRuntime.movement.movementSuspended = true;
+        } else {
+          if (fsmRuntime.movement.movementSuspended) {
+            fsmRuntime.movement = createFsmMovementRuntime(fsmResult.state, e);
+          }
+          fsmRuntime.movement.movementSuspended = false;
+          const target = executeFsmMovement(fsmRuntime.movement, e, { dt, playerPos, logicW: W, logicH: H });
+          if (target) {
+            e.vel.x = (target.x - safeNum(e.pos?.x, 0)) / dt;
+            e.vel.y = (target.y - safeNum(e.pos?.y, 0)) / dt;
+          }
+        }
         fsmAttackProfile = attackProfileId
           ? getAttackProfile(attackProfileId)
           : undefined;
@@ -174,10 +160,10 @@ export class EnemySystem {
           logicW: W,
           logicH: H,
         };
-        behavior?.update?.(e, behaviorCtx as any);
+        if (!fsmRuntime?.preset) behavior?.update?.(e, behaviorCtx as any);
 
         // 2) V1: if behavior provides target, derive velocity here (single authority)
-        if (behavior?.getTarget) {
+        if (!fsmRuntime?.preset && behavior?.getTarget) {
           const t = behavior.getTarget(e, behaviorCtx as any);
           if (t && Number.isFinite(t.x) && Number.isFinite(t.y)) {
             const px = safeNum(e.pos?.x, 0);
@@ -238,7 +224,9 @@ export class EnemySystem {
       const xBand = 160; // px tolerance left/right (allows offscreen spawns)
       const cullRefX = e.group
         ? this.groups?.resolveCullReferenceX(e.group.groupId, e.pos.x) ?? safeNum(e.pos.x, 0)
-        : resolveMovementCullReferenceX(e.behaviorId, e.bState, e.pos.x);
+        : fsmRuntime?.preset
+          ? getFsmMovementCullReferenceX(fsmRuntime.movement, e)
+          : resolveMovementCullReferenceX(e.behaviorId, e.bState, e.pos.x);
 
       if (cullRefX < camX - r - xBand) {
         if (e.group) this.groups?.markMembersForKill(e.group.groupId, this.store);

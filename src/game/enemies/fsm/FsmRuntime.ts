@@ -1,5 +1,6 @@
 import { getCombatRuntimePolicy, type CombatConfig, type ConditionConfig } from "./schema";
 import type { ResolvedFsmPreset, ResolvedFsmState } from "./resolve";
+import { createFsmMovementRuntime, type FsmMovementRuntime } from "./MovementResolver";
 
 export type CombatRuntimePolicy = "reset" | "preserveIfSameProfile";
 
@@ -15,6 +16,7 @@ export interface FsmRuntimeSnapshot {
   age: number;
   activeCombat: ResolvedCombatSelection;
   entryCount: number;
+  movement: FsmMovementRuntime;
 }
 
 export interface FsmRuntimeInitHooks {
@@ -117,6 +119,7 @@ export function createFsmRuntimeSnapshot(preset: ResolvedFsmPreset, hooks: FsmRu
     age: 0,
     activeCombat: { mode: "disabled", profileId: null, runtimePolicy: "reset" },
     entryCount: 0,
+    movement: undefined as unknown as FsmMovementRuntime,
   };
   enterResolvedFsmState(ent, runtime, preset.initialStateIndex, { ...ctx, onEnter: hooks.onEnter ?? ctx.onEnter });
   return runtime;
@@ -151,6 +154,7 @@ export function enterResolvedFsmState(ent: any, runtime: FsmRuntimeSnapshot, nex
   runtime.stateIndex = runtime.preset.states[nextStateIndex] ? nextStateIndex : runtime.preset.initialStateIndex;
   runtime.age = 0;
   runtime.activeCombat = nextCombat;
+  runtime.movement = createFsmMovementRuntime(nextState, ent);
   runtime.entryCount += 1;
 
   // S4 internal entry cleanup: movement preset application compatibility and

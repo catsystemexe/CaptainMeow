@@ -18,3 +18,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [S2 — Built-in migration and resolved preset registry](./S2.md)
 - [S3 — Runtime snapshot and graph resolution](./S3.md)
 - [S4 — State entry, runtime reset, combat modes, and timing semantics](./S4.md)
+- [S5 — Movement composition MVP](./S5.md)
