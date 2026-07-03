@@ -85,7 +85,7 @@ assert.equal(despawnTrace[1].state, "despawn", "legacy migrated despawn state is
 assert.equal(despawnTrace[1].age, 0, "S6 despawn action skips same-tick age increment after kill");
 assert(!fs.readFileSync("src/game/systems/EnemySystem.ts", "utf8").includes("BEHAVIOR_GRAPHS["), "EnemySystem must not perform per-tick raw graph lookup");
 assert.deepEqual(runResolved("non-fsm-a", { initial: "only", states: { only: { movementPresetId: "none.hold" } } }, 1)[0].movement, "none.hold", "movement preset bridge remains active");
-assert.deepEqual(JSON.parse(fs.readFileSync("src/game/content/behaviorGraphs.json", "utf8"))["fsm.turret"].initial, "enter", "canonical JSON remains readable and unchanged by runtime test");
-
-assert(!fs.readFileSync("src/game/content/behaviorGraphs.json", "utf8").includes("sineOffset"), "canonical JSON still has no movement modifiers");
+const canonical = JSON.parse(fs.readFileSync("src/game/content/fsmPresets.json", "utf8"));
+assert.equal(canonical.schemaVersion, 1, "canonical FSM preset JSON is readable as schema v1");
+assert.equal(canonical.presets.length, 10, "canonical FSM preset JSON contains all built-ins");
 console.log("FsmRuntimeParity smoke passed");

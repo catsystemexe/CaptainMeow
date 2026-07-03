@@ -33,6 +33,8 @@ const SMOKES = [
   "../game/enemies/FsmLifecycle.smoke",
   "../game/enemies/FsmDespawn.smoke",
   "../game/enemies/FsmDebugSnapshot.smoke",
+  "../game/enemies/FsmCanonicalContent.smoke",
+  "../game/enemies/FsmCanonicalRuntimeParity.smoke",
   "../game/systems/BombExplosionChain.smoke",
   "../game/systems/WeaponVFXEmit.smoke",
   "../render/webgl/bg/FlowDisturbanceKick.smoke",

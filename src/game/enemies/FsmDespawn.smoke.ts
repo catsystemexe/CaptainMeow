@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { EntityStore } from "../../engine/ecs/EntityStore";
-import { asFsmStateId, buildBuiltinFsmPresetRegistry, createFsmRuntimeSnapshot, enterResolvedFsmState, executeEnterActions, resolveFsmPreset, updateResolvedFsm, type BehaviorGraph, type FsmPresetSchemaV1 } from "./fsm";
-import { BEHAVIOR_GRAPHS } from "../content/CONTENT";
+import { asFsmStateId, createFsmRuntimeSnapshot, enterResolvedFsmState, executeEnterActions, resolveFsmPreset, updateResolvedFsm, type FsmPresetSchemaV1 } from "./fsm";
+import { BUILTIN_FSM_PRESETS } from "../content/CONTENT";
 
 const dt = 1 / 60;
 const baseMovement = { base: { type: "movementPreset" as const, params: { presetId: "straight.basic" } }, modifiers: [] };
@@ -75,9 +75,7 @@ function makeHarness() {
 }
 
 {
-  const graph = BEHAVIOR_GRAPHS["fsm.turret"] as BehaviorGraph;
-  const registry = buildBuiltinFsmPresetRegistry({ test: graph }, { knownMovementPresetIds: new Set(["straight.basic", "straight.charge", "none.hold"]), knownAttackProfileIds: new Set(["single_basic", "aimed_slow", "spread_test_slow", "spread_test_fast"]) }, { errorPolicy: "throw" });
-  const resolved = registry.get("test")!;
+  const resolved = BUILTIN_FSM_PRESETS.get("fsm.turret")!;
   const despawnIndex = resolved.getStateIndex("despawn")!;
   const h = makeHarness();
   const rt = createFsmRuntimeSnapshot(resolved, {}, h.ent, { lifecycle: h.lifecycle });
@@ -100,8 +98,8 @@ function makeHarness() {
 }
 
 {
-  const source = readFileSync("src/game/content/behaviorGraphs.json", "utf8");
-  assert(source.includes('"despawn": {}'), "canonical JSON remains legacy and unchanged in S6");
+  const source = readFileSync("src/game/content/fsmPresets.json", "utf8");
+  assert(source.includes('"schemaVersion": 1'), "canonical JSON is schema v1 in S7");
   const fsmRuntimeSource = readFileSync("src/game/enemies/fsm/FsmRuntime.ts", "utf8");
   const lifecycleSource = readFileSync("src/game/enemies/fsm/LifecycleExecutor.ts", "utf8");
   assert(!/splice\(|\.cleanup\(|\.remove\(/.test(lifecycleSource), "lifecycle executor does not directly remove or cleanup");

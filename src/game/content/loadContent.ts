@@ -1,11 +1,11 @@
 import enemyTypesJson from "./enemyTypes.json";
 import behaviorPresetsJson from "./behaviorPresets.json";
 import directorWavesJson from "./directorWaves.json";
-import behaviorGraphsRaw from "./behaviorGraphs.json";
+import fsmPresetsJson from "./fsmPresets.json";
 import attackProfilesJson from "./attackProfiles.json";
 
 import type { BehaviorPreset } from "../enemies/EnemyBehaviorTypes";
-import { buildBuiltinFsmPresetRegistry, type BehaviorGraph } from "../enemies/fsm";
+import { buildBuiltinFsmPresetRegistryFromPresets } from "../enemies/fsm";
 import { isEnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import type { EnemyContentBundle, EnemyTypeContentDef, EnemyWaveContentDef } from "../defs/EnemyContentTypes";
 
@@ -83,13 +83,13 @@ export function loadContent(): EnemyContentBundle {
   const enemyTypes = validateEnemyTypes((enemyTypesJson as any).enemyTypes);
   const behaviorPresets = validateBehaviorPresets((behaviorPresetsJson as any).behaviorPresets);
   const waves = validateWaves((directorWavesJson as any).waves);
-  const behaviorGraphs = behaviorGraphsRaw as Record<string, BehaviorGraph>;
+  const fsmPresetSource = fsmPresetsJson as unknown as Parameters<typeof buildBuiltinFsmPresetRegistryFromPresets>[0];
 
   // cross-ref checks
   const presetIds = new Set(behaviorPresets.map(b => b.id));
-  const graphIds = new Set(Object.keys(behaviorGraphs));
   const attackProfileIds = new Set(Object.keys(attackProfilesJson as Record<string, unknown>));
-  const builtinFsmPresets = buildBuiltinFsmPresetRegistry(behaviorGraphs, { knownMovementPresetIds: presetIds, knownAttackProfileIds: attackProfileIds }, { errorPolicy: (import.meta as any).env?.PROD === true ? "omit-invalid" : "throw" });
+  const builtinFsmPresets = buildBuiltinFsmPresetRegistryFromPresets(fsmPresetSource, { knownMovementPresetIds: presetIds, knownAttackProfileIds: attackProfileIds }, { errorPolicy: (import.meta as any).env?.PROD === true ? "omit-invalid" : "throw" });
+  const graphIds = new Set(builtinFsmPresets.list().map((preset) => preset.id));
 
   for (const e of enemyTypes) {
     assert(
@@ -117,5 +117,5 @@ export function loadContent(): EnemyContentBundle {
     }
   }
 
-  return { enemyTypes, behaviorPresets, behaviorGraphs, builtinFsmPresets, waves };
+  return { enemyTypes, behaviorPresets, builtinFsmPresets, waves };
 }
