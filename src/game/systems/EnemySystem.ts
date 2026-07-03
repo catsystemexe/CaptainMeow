@@ -105,7 +105,12 @@ export class EnemySystem {
           logicW: W,
           dt,
           inheritedAttackProfileId: def?.attackProfile?.id ?? null,
+          lifecycle: {
+            markKill: () => this.store.markKill(ref),
+            isKilled: () => e.pendingKill === true,
+          },
         });
+        if (fsmResult.entityKilled) return;
         const attackProfileId = fsmRuntime.activeCombat.profileId;
         const groupControlled = isFsmIndividualMovementSuppressed(e, (groupId) => !!this.groups?.get(Number(groupId) as any));
 

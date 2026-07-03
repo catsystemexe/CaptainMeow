@@ -97,4 +97,29 @@ const moduleWithoutAnchor: MovementBaseModule<{ speed: number }, { t: number }> 
 assert.throws(() => defineMovementBase({ descriptor: moduleAnchorDescriptor, module: moduleWithoutAnchor }), /getCullAnchorX/, "defineMovementBase rejects moduleAnchor without getCullAnchorX");
 assert(defineMovementBase({ descriptor: moduleAnchorDescriptor, module: { ...moduleWithoutAnchor, getCullAnchorX: () => 0 } }), "defineMovementBase accepts a valid anchor-capable module");
 
+
+{
+  const p = clone();
+  p.graph.states[0].lifecycle = { enterActions: [{ type: "despawn" }, { type: "despawn" }] };
+  assert(codes(p).includes("W_DUPLICATE_DESPAWN_ACTION"), "duplicate despawn action produces a warning");
+}
+
+{
+  const p = clone();
+  p.graph.initialStateId = p.graph.states[0].id;
+  p.graph.states[0].lifecycle = { enterActions: [{ type: "despawn" }] };
+  p.graph.states[0].transitions = [];
+  assert(!codes(p).some((c) => c.startsWith("E_")), "initial despawn is allowed");
+}
+
+{
+  const p = clone();
+  p.graph.states = [
+    { ...p.graph.states[0], id: "a" as any, label: "a", lifecycle: { enterActions: [{ type: "despawn" }] }, transitions: [{ condition: { type: "timeInState", params: { seconds: 0 } }, targetStateId: "b" as any }] },
+    { ...p.graph.states[0], id: "b" as any, label: "b", transitions: [{ condition: { type: "timeInState", params: { seconds: 0 } }, targetStateId: "a" as any }] },
+  ];
+  p.graph.initialStateId = "a" as any;
+  assert(codes(p).includes("E_IMMEDIATE_ACTION_CYCLE"), "immediate cycle containing enter actions is a hard error");
+}
+
 console.log("FsmValidate smoke passed");
