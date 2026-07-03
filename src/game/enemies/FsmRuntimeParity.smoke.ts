@@ -43,10 +43,12 @@ function runLegacy(graph: BehaviorGraph, ticks: number, startX = 820): FsmTraceF
 
 function runResolved(graphId: string, graph: BehaviorGraph, ticks: number, startX = 820): FsmTraceFrame[] {
   const preset = buildBuiltinFsmPresetRegistry({ [graphId]: graph }, { knownMovementPresetIds, knownAttackProfileIds }, { errorPolicy: "throw" }).get(graphId)!;
-  const ent: any = { pos: { x: startX, y: 120 }, vel: { x: 0, y: 0 }, hp: 10, maxHp: 10, bState: { t: 0 }, fsm: createFsmRuntimeSnapshot(preset) };
+  const ent: any = { pos: { x: startX, y: 120 }, vel: { x: 0, y: 0 }, hp: 10, maxHp: 10, bState: { t: 0 }, pendingKill: false };
+  const lifecycle = { markKill: () => { ent.pendingKill = true; }, isKilled: () => ent.pendingKill === true };
+  ent.fsm = createFsmRuntimeSnapshot(preset, {}, ent, { lifecycle });
   const out: FsmTraceFrame[] = [];
   for (let tick = 0; tick < ticks; tick++) {
-    const r = updateResolvedFsm(ent, ent.fsm, { scrollX: 0, logicW: 800, dt });
+    const r = updateResolvedFsm(ent, ent.fsm, { scrollX: 0, logicW: 800, dt, lifecycle });
     const movement = getLegacyMovementPresetId(r.state);
     const attack = ent.fsm.activeCombat.profileId;
     applyStateBehavior(ent, movement);
@@ -78,7 +80,9 @@ assert.equal(resolvedTime[2].age, dt, "S4 semantic delta: transition target age 
 const positionTrace = runResolved("position-priority", posGraph, 3, 817);
 assert.equal(positionTrace[1].state, "hold", "first matching transition wins and at most one transition occurs under S4 timing");
 assert(!positionTrace.some((f) => f.state === "late"), "second same-tick transition is not evaluated after first match");
-assert.equal(runResolved("despawn-data", despawnGraph, 2)[1].state, "despawn", "legacy despawn action remains a state only and is not executed");
+const despawnTrace = runResolved("despawn-active", despawnGraph, 2);
+assert.equal(despawnTrace[1].state, "despawn", "legacy migrated despawn state is still entered explicitly");
+assert.equal(despawnTrace[1].age, 0, "S6 despawn action skips same-tick age increment after kill");
 assert(!fs.readFileSync("src/game/systems/EnemySystem.ts", "utf8").includes("BEHAVIOR_GRAPHS["), "EnemySystem must not perform per-tick raw graph lookup");
 assert.deepEqual(runResolved("non-fsm-a", { initial: "only", states: { only: { movementPresetId: "none.hold" } } }, 1)[0].movement, "none.hold", "movement preset bridge remains active");
 assert.deepEqual(JSON.parse(fs.readFileSync("src/game/content/behaviorGraphs.json", "utf8"))["fsm.turret"].initial, "enter", "canonical JSON remains readable and unchanged by runtime test");

@@ -1,6 +1,7 @@
 import { getCombatRuntimePolicy, type CombatConfig, type ConditionConfig } from "./schema";
 import type { ResolvedFsmPreset, ResolvedFsmState } from "./resolve";
 import { createFsmMovementRuntime, type FsmMovementRuntime } from "./MovementResolver";
+import { executeEnterActions, type LifecycleExecutionContext } from "./LifecycleExecutor";
 
 export type CombatRuntimePolicy = "reset" | "preserveIfSameProfile";
 
@@ -22,6 +23,7 @@ export interface FsmRuntimeSnapshot {
 export interface FsmRuntimeInitHooks {
   onInit?: () => void;
   onEnter?: (result: FsmEnterResult) => void;
+  lifecycle?: LifecycleExecutionContext;
 }
 
 export interface FsmRuntimeUpdateContext {
@@ -30,11 +32,13 @@ export interface FsmRuntimeUpdateContext {
   dt: number;
   inheritedAttackProfileId?: string | null;
   onEnter?: (result: FsmEnterResult) => void;
+  lifecycle?: LifecycleExecutionContext;
 }
 
 export interface FsmEnterContext {
   inheritedAttackProfileId?: string | null;
   onEnter?: (result: FsmEnterResult) => void;
+  lifecycle?: LifecycleExecutionContext;
 }
 
 export interface FsmEnterResult {
@@ -44,6 +48,8 @@ export interface FsmEnterResult {
   combat: ResolvedCombatSelection;
   combatRuntimeReset: boolean;
   combatRuntimeCleared: boolean;
+  lifecycleActionsExecuted: number;
+  entityKilled: boolean;
 }
 
 export interface FsmRuntimeStepResult {
@@ -52,6 +58,7 @@ export interface FsmRuntimeStepResult {
   current: string;
   state: ResolvedFsmState;
   entry?: FsmEnterResult;
+  entityKilled: boolean;
 }
 
 function getHpRatio(ent: any): number {
@@ -165,6 +172,8 @@ export function enterResolvedFsmState(ent: any, runtime: FsmRuntimeSnapshot, nex
     if (!preserveCombat) resetAttackRuntime(ent);
   }
 
+  const lifecycle = executeEnterActions(nextState, ent, ctx.lifecycle);
+
   const result: FsmEnterResult = {
     previousStateIndex,
     nextStateIndex: runtime.stateIndex,
@@ -172,6 +181,8 @@ export function enterResolvedFsmState(ent: any, runtime: FsmRuntimeSnapshot, nex
     combat: nextCombat,
     combatRuntimeReset: !preserveCombat && nextCombat.profileId !== null,
     combatRuntimeCleared: !preserveCombat && nextCombat.profileId === null,
+    lifecycleActionsExecuted: lifecycle.actionsExecuted,
+    entityKilled: lifecycle.killed,
   };
   ctx.onEnter?.(result);
   return result;
@@ -194,8 +205,9 @@ export function updateResolvedFsm(ent: any, runtime: FsmRuntimeSnapshot, ctx: Fs
   }
 
   const executedState = getFsmRuntimeState(runtime);
-  runtime.age += ctx.dt;
-  return { switched: !!entry, previous, current: executedState.label, state: executedState, ...(entry ? { entry } : {}) };
+  const entityKilled = entry?.entityKilled === true || ctx.lifecycle?.isKilled?.() === true || ent?.pendingKill === true;
+  if (!entityKilled) runtime.age += ctx.dt;
+  return { switched: !!entry, previous, current: executedState.label, state: executedState, entityKilled, ...(entry ? { entry } : {}) };
 }
 
 export const updateResolvedFsmLegacySemantics = updateResolvedFsm;

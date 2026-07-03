@@ -131,9 +131,15 @@ function validateState(state: unknown, path: string, issues: ValidationIssue[], 
     if (!isObj(state.lifecycle)) issues.push(issue("error", "E_LIFECYCLE_SHAPE", `${path}.lifecycle`, "Lifecycle must be an object."));
     else if (state.lifecycle.enterActions !== undefined) {
       if (!Array.isArray(state.lifecycle.enterActions)) issues.push(issue("error", "E_ENTER_ACTIONS_SHAPE", `${path}.lifecycle.enterActions`, "enterActions must be an array."));
-      else state.lifecycle.enterActions.forEach((action, i) => {
-        if (!isObj(action) || typeof action.type !== "string" || !getEnterActionDescriptor(action.type)) issues.push(issue("error", "E_UNKNOWN_ENTER_ACTION", `${path}.lifecycle.enterActions[${i}].type`, "Unknown enter action."));
-      });
+      else {
+        const enterActions = state.lifecycle.enterActions;
+        enterActions.forEach((action, i) => {
+          if (!isObj(action) || typeof action.type !== "string" || !getEnterActionDescriptor(action.type)) issues.push(issue("error", "E_UNKNOWN_ENTER_ACTION", `${path}.lifecycle.enterActions[${i}].type`, "Unknown enter action."));
+          if (isObj(action) && action.type === "despawn" && enterActions.slice(0, i).some((previous: unknown) => isObj(previous) && previous.type === "despawn")) {
+            issues.push(issue("warning", "W_DUPLICATE_DESPAWN_ACTION", `${path}.lifecycle.enterActions[${i}]`, "Duplicate despawn enter action is idempotent but redundant."));
+          }
+        });
+      }
     }
   }
   if (!Array.isArray(state.transitions)) issues.push(issue("error", "E_TRANSITIONS_SHAPE", `${path}.transitions`, "Transitions must be an array."));
@@ -144,6 +150,34 @@ function validateState(state: unknown, path: string, issues: ValidationIssue[], 
     if (typeof transition.targetStateId !== "string" || transition.targetStateId.length === 0) issues.push(issue("error", "E_TRANSITION_TARGET", `${tPath}.targetStateId`, "Transition target must be a non-empty state ID."));
   });
   return true;
+}
+
+function stateHasEnterActions(state: FsmStateDefinition): boolean {
+  return (state.lifecycle?.enterActions ?? []).length > 0;
+}
+
+function collectCycleNodes(edges: Map<string, string[]>): Set<string> {
+  const cycleNodes = new Set<string>();
+  const stack: string[] = [];
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const dfs = (id: string): void => {
+    if (visiting.has(id)) {
+      const start = stack.indexOf(id);
+      for (const node of stack.slice(Math.max(0, start))) cycleNodes.add(node);
+      cycleNodes.add(id);
+      return;
+    }
+    if (visited.has(id)) return;
+    visiting.add(id);
+    stack.push(id);
+    for (const next of edges.get(id) ?? []) dfs(next);
+    stack.pop();
+    visiting.delete(id);
+    visited.add(id);
+  };
+  for (const id of edges.keys()) dfs(id);
+  return cycleNodes;
 }
 
 function classifyCycles(states: FsmStateDefinition[], issues: ValidationIssue[]): void {
@@ -161,7 +195,13 @@ function classifyCycles(states: FsmStateDefinition[], issues: ValidationIssue[])
       if (!positive) timeless.get(s.id)?.push(t.targetStateId);
     }
   }
-  if (hasCycle(immediate)) issues.push(issue("error", "E_IMMEDIATE_CYCLE", "graph", "FSM contains a cycle composed only of guaranteed-immediate transitions."));
+  const immediateCycleNodes = collectCycleNodes(immediate);
+  if (immediateCycleNodes.size > 0) {
+    issues.push(issue("error", "E_IMMEDIATE_CYCLE", "graph", "FSM contains a cycle composed only of guaranteed-immediate transitions."));
+    if (states.some((state) => immediateCycleNodes.has(state.id) && stateHasEnterActions(state))) {
+      issues.push(issue("error", "E_IMMEDIATE_ACTION_CYCLE", "graph", "Immediate transition cycles must not contain side-effecting entry actions."));
+    }
+  }
   if (hasCycle(timeless) && !issues.some((i) => i.code === "E_IMMEDIATE_CYCLE")) issues.push(issue("warning", "W_TIMELESS_CYCLE", "graph", "FSM contains a cycle with no positive time boundary."));
 }
 

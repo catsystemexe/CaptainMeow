@@ -19,3 +19,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [S3 — Runtime snapshot and graph resolution](./S3.md)
 - [S4 — State entry, runtime reset, combat modes, and timing semantics](./S4.md)
 - [S5 — Movement composition MVP](./S5.md)
+- [S6 — Lifecycle entry actions and explicit despawn](./S6.md)

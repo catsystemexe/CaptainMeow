@@ -383,18 +383,28 @@ const r = (typeof def.radius === "number" && Number.isFinite(def.radius) && def.
             ent.behaviorId = (EnemyBehaviorDB[behaviorId] ? behaviorId : "none") as EnemyBehaviorId;
             ent.behavior = { ...(preset.params ?? {}) };
             ent.bState = { t: spawnAgeSec };
-            const graphId = typeof def.behaviorGraphId === "string" ? def.behaviorGraphId : "";
-            const fsmPreset = graphId ? BUILTIN_FSM_PRESETS.get(graphId) : undefined;
-            if (fsmPreset) ent.fsm = createFsmRuntimeSnapshot(fsmPreset, {}, ent, { inheritedAttackProfileId: def.attackProfile?.id ?? null });
-            else delete ent.fsm;
+            delete ent.fsm;
             beh?.init?.(ent);
             ent.posPrev.x = ent.pos.x;
             ent.posPrev.y = ent.pos.y;
             ent.pendingKill = false;
           });
+          const ent = this.store.get(spawned) as any;
+          if (ent) {
+            const graphId = typeof def.behaviorGraphId === "string" ? def.behaviorGraphId : "";
+            const fsmPreset = graphId ? BUILTIN_FSM_PRESETS.get(graphId) : undefined;
+            if (fsmPreset) {
+              ent.fsm = createFsmRuntimeSnapshot(fsmPreset, {}, ent, {
+                inheritedAttackProfileId: def.attackProfile?.id ?? null,
+                lifecycle: {
+                  markKill: () => this.store.markKill(spawned),
+                  isKilled: () => this.store.get(spawned)?.pendingKill === true,
+                },
+              });
+            }
+          }
           if (p.group && this.groups) {
             const membership = this.groups.addMember(p.group.groupId, spawned, p.group.slotIndex);
-            const ent = this.store.get(spawned) as any;
             if (ent && membership) ent.group = membership;
           }
           return spawned;
