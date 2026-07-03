@@ -2,6 +2,8 @@ import type { EventBus } from "../engine/core/EventBus";
 import { EventType, type CMEventMap } from "../engine/core/events";
 import type { WorldState } from "../game/data/WorldState";
 import { ENEMY_DEFS } from "../game/defs/EnemyDefs";
+import { CONTENT } from "../game/content/CONTENT";
+import { FsmPresetEditorModel } from "./FsmPresetEditorModel";
 import { EnemyBehaviorPresets } from "../game/enemies/EnemyBehaviorPresets";
 import { getFsmDebugSnapshot, type FsmDebugSnapshot } from "../game/enemies/fsm";
 import { ENEMY_GROUP_COHESION_IDS, ENEMY_GROUP_FORMATION_IDS, ENEMY_GROUP_PARAM_LIMITS, normalizeEnemyGroupParams, normalizeGroupFormationStartAngle } from "../game/enemies/EnemyGroups";
@@ -965,6 +967,15 @@ export class DevSummoner {
     const enemyMovement = makeMovementControls("ds", "Movement");
     enemyControls.appendChild(enemyMovement.movementClassRow);
     enemyControls.appendChild(enemyMovement.movementPresetRow);
+    const fsmSpawnWrap = createSelectLabel("FSM", "secondary");
+    const fsmSpawnSelect = createCompactSelect("ds-fsm-preset");
+    this.cleanupHandlers.push(() => fsmSpawnSelect.destroy());
+    const refreshFsmSpawnSelect = (preferred?: string) => {
+      fsmSpawnSelect.setOptions([{ value: "", label: "(movement preset)" }, ...CONTENT.fsmPresets.list().map((preset) => ({ value: preset.id, label: `${CONTENT.fsmPresets.sourceOf(preset.id) === "user" ? "USER" : "BUILT-IN"} ${preset.id}` }))], preferred ?? fsmSpawnSelect.value);
+    };
+    refreshFsmSpawnSelect();
+    fsmSpawnWrap.appendChild(fsmSpawnSelect.root);
+    enemyControls.appendChild(fsmSpawnWrap);
     enemyControls.appendChild(createSectionGap());
     const groupMovement = makeMovementControls("ds-group", "Move", "Prim");
     groupControls.appendChild(groupMovement.movementClassRow);
@@ -1078,11 +1089,55 @@ export class DevSummoner {
         typeId: enemySelect.value,
         spawnX: this.logicW - 40,
         spawnY: screenYControl.value,
-        behaviorPresetId: enemyMovement.presetSelect.value,
+        behaviorPresetId: fsmSpawnSelect.value || enemyMovement.presetSelect.value,
         devManualSpawnId: this.latestManualSpawnId,
       }) as any);
     });
     spawnSection.appendChild(btn);
+    panel.appendChild(createSectionGap());
+
+    const presetModel = new FsmPresetEditorModel(CONTENT.userFsmPresets);
+    const presetPanel = document.createElement("div");
+    presetPanel.id = "ds-fsm-preset-editor";
+    presetPanel.style.cssText = "display:flex;flex-direction:column;gap:4px;padding:4px;background:rgba(255,255,255,0.05);font:12px monospace;";
+    const presetList = document.createElement("select");
+    applyNativeSelectStyle(presetList);
+    const idInput = document.createElement("input"); idInput.placeholder = "preset id"; applyControlBaseStyle(idInput); idInput.style.width = "100%";
+    const labelInput = document.createElement("input"); labelInput.placeholder = "label"; applyControlBaseStyle(labelInput); labelInput.style.width = "100%";
+    const details = document.createElement("div"); details.style.cssText = "color:#ccc;line-height:1.35;white-space:pre-wrap;";
+    const diagBox = document.createElement("div"); diagBox.style.cssText = "color:#ffd27a;line-height:1.35;white-space:pre-wrap;";
+    const importText = document.createElement("textarea"); importText.placeholder = "Paste FSM preset JSON"; importText.rows = 3; applyControlBaseStyle(importText); importText.style.width = "100%";
+    const exportText = document.createElement("textarea"); exportText.placeholder = "Export output / raw storage"; exportText.rows = 3; exportText.readOnly = true; applyControlBaseStyle(exportText); exportText.style.width = "100%";
+    const collisionSelect = document.createElement("select"); applyNativeSelectStyle(collisionSelect); for (const [value, label] of [["reject", "Reject"], ["replace-user", "Replace user"], ["rename", "Rename"]] as const) appendOption(collisionSelect, value, label);
+    const buttons = document.createElement("div"); buttons.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:3px;";
+    const makeBtn = (text: string) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.style.cssText = "font:12px monospace;min-height:24px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; buttons.appendChild(b); return b; };
+    const newBtn = makeBtn("New"); const dupBtn = makeBtn("Duplicate"); const saveBtn = makeBtn("Save"); const cancelBtn = makeBtn("Cancel"); const delBtn = makeBtn("Delete"); const importBtn = makeBtn("Import"); const exportBtn = makeBtn("Export selected"); const exportAllBtn = makeBtn("Export users"); const rawBtn = makeBtn("Copy raw"); const clearBtn = makeBtn("Clear users");
+    presetPanel.appendChild(Object.assign(document.createElement("div"), { textContent: "FSM Presets" }));
+    presetPanel.appendChild(presetList); presetPanel.appendChild(idInput); presetPanel.appendChild(labelInput); presetPanel.appendChild(details); presetPanel.appendChild(collisionSelect); presetPanel.appendChild(importText); presetPanel.appendChild(buttons); presetPanel.appendChild(exportText); presetPanel.appendChild(diagBox);
+    const renderPresetEditor = () => {
+      const items = presetModel.list(); presetList.textContent = ""; for (const item of items) appendOption(presetList, item.id, `${item.source === "user" ? "USER" : "BUILT-IN"} ${item.id}`); presetList.value = presetModel.selectedId;
+      const draft = presetModel.draft; idInput.value = draft?.id ?? ""; labelInput.value = draft?.label ?? ""; const readOnly = !draft || draft.source === "builtin"; idInput.disabled = readOnly; labelInput.disabled = readOnly; saveBtn.disabled = readOnly || !draft.dirty; delBtn.disabled = readOnly;
+      const d = presetModel.details(); details.textContent = d ? `Source: ${d.source.toUpperCase()} | Schema: ${d.schemaVersion} | States: ${d.stateCount}
+Initial: ${d.initialState} | Validation: ${d.validationStatus}
+${d.states.join(", ")}` : "No preset selected";
+      diagBox.textContent = presetModel.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.presetId ? x.presetId + ": " : ""}${x.message}`).join("\n");
+      refreshFsmSpawnSelect(fsmSpawnSelect.value); if (CONTENT.fsmPresets.get(presetModel.selectedId)) fsmSpawnSelect.value = presetModel.selectedId;
+    };
+    presetList.addEventListener("change", () => { presetModel.select(presetList.value); renderPresetEditor(); });
+    idInput.addEventListener("input", () => { presetModel.setDraftId(idInput.value); renderPresetEditor(); });
+    labelInput.addEventListener("input", () => { presetModel.setDraftLabel(labelInput.value); renderPresetEditor(); });
+    newBtn.addEventListener("click", () => { presetModel.create(); renderPresetEditor(); });
+    dupBtn.addEventListener("click", () => { presetModel.duplicate(); renderPresetEditor(); });
+    saveBtn.addEventListener("click", () => { presetModel.save(); renderPresetEditor(); });
+    cancelBtn.addEventListener("click", () => { presetModel.cancel(); renderPresetEditor(); });
+    delBtn.addEventListener("click", () => { if (window.confirm("Delete selected user FSM preset?")) presetModel.delete(presetModel.selectedId, true); renderPresetEditor(); });
+    importBtn.addEventListener("click", () => { presetModel.importJson(importText.value, collisionSelect.value as any); renderPresetEditor(); });
+    exportBtn.addEventListener("click", () => { exportText.value = presetModel.exportSelected().exportedText ?? ""; renderPresetEditor(); });
+    exportAllBtn.addEventListener("click", () => { exportText.value = presetModel.exportAllUsers().exportedText ?? ""; renderPresetEditor(); });
+    rawBtn.addEventListener("click", () => { exportText.value = presetModel.inspectRawStorage().rawStorage ?? ""; renderPresetEditor(); });
+    clearBtn.addEventListener("click", () => { if (window.confirm("Clear all user FSM presets?")) presetModel.clearUserPresets(true); renderPresetEditor(); });
+    renderPresetEditor();
+    panel.appendChild(presetPanel);
     panel.appendChild(createSectionGap());
 
     const labPanel = document.createElement("div");
