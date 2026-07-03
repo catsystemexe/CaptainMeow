@@ -9,3 +9,4 @@ export * from "./FsmRuntime";
 export * from "./MovementResolver";
 
 export * from "./LifecycleExecutor";
+export * from "./FsmDebugSnapshot";

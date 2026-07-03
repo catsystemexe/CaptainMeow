@@ -3,7 +3,7 @@ import { EventType, type CMEventMap } from "../engine/core/events";
 import type { WorldState } from "../game/data/WorldState";
 import { ENEMY_DEFS } from "../game/defs/EnemyDefs";
 import { EnemyBehaviorPresets } from "../game/enemies/EnemyBehaviorPresets";
-import { BEHAVIOR_GRAPHS } from "../game/content/CONTENT";
+import { getFsmDebugSnapshot, type FsmDebugSnapshot } from "../game/enemies/fsm";
 import { ENEMY_GROUP_COHESION_IDS, ENEMY_GROUP_FORMATION_IDS, ENEMY_GROUP_PARAM_LIMITS, normalizeEnemyGroupParams, normalizeGroupFormationStartAngle } from "../game/enemies/EnemyGroups";
 import type { CohesionId, FormationId } from "../game/enemies/EnemyGroups";
 
@@ -111,49 +111,52 @@ function esc(v: unknown): string {
 }
 
 
-function describeTrigger(trigger: any): string {
-  if (!trigger) return "none";
-  if (trigger.kind === "xLessThan") return `screenX < ${formatNum(trigger.x)}`;
-  if (trigger.kind === "timeInState") return `timeInState > ${formatNum(trigger.seconds)}s`;
-  if (trigger.kind === "hpBelow") return `hp < ${formatNum(Number(trigger.ratio) * 100)}%`;
-  if (trigger.kind === "offscreen") return `offscreen ${String(trigger.side ?? "?")}`;
-  return String(trigger.kind ?? "unknown");
+
+function describeResolvedCondition(condition: any): string {
+  if (!condition) return "none";
+  if (condition.type === "screenXBelow") return `screenX < ${formatNum(condition.params?.x)}`;
+  if (condition.type === "timeInState") return `timeInState ≥ ${formatNum(condition.params?.seconds)}s`;
+  if (condition.type === "hpBelow") return `hp < ${formatNum(Number(condition.params?.ratio) * 100)}%`;
+  if (condition.type === "offscreen") return `offscreen ${String(condition.params?.side ?? "?")}`;
+  if (condition.type === "distanceToPlayer") return `distance ${String(condition.params?.op ?? "?")} ${formatNum(condition.params?.px)}`;
+  return String(condition.type ?? "unknown");
 }
 
 function describeNextTransition(state: any): string {
-  return describeTrigger(state?.transitions?.[0]?.when);
+  const transitions = state?.transitions;
+  if (!Array.isArray(transitions) || transitions.length === 0) return "none";
+  return transitions.map((t: any) => describeResolvedCondition(t?.condition)).join(" | ");
 }
 
 function describeStateMovement(state: any): string {
-  return String(state?.movementPresetId ?? "none");
+  const base = state?.movement?.base;
+  if (base?.type === "movementPreset") return String(base.params?.presetId ?? "none");
+  return String(base?.type ?? "none");
 }
 
 function describeStateAttack(state: any): string {
-  return String(state?.attackProfileId ?? "none");
+  const combat = state?.combat;
+  if (combat?.mode === "profile") return String(combat.profileId ?? "none");
+  return String(combat?.mode ?? "disabled");
 }
 
-function renderFsmGraphView(graphId: string, currentStateId: string): string {
-  const graph = graphId ? BEHAVIOR_GRAPHS[graphId] : undefined;
-  if (!graph?.states) return `<div><b>FSM Graph</b><br>none</div>`;
+function renderFsmGraphView(runtime: FsmDebugSnapshot, states: readonly any[]): string {
+  if (!states.length) return `<div><b>FSM Graph</b><br>none</div>`;
 
-  const blocks: string[] = [`<div style="margin-top:6px;font-weight:bold;font-size:12px;">FSM Graph</div>`];
+  const blocks: string[] = [`<div style="margin-top:6px;font-weight:bold;font-size:12px;">FSM Preset ${esc(runtime.presetId)}</div>`];
 
-  for (const [stateId, state] of Object.entries(graph.states)) {
-    const active = stateId === currentStateId;
-    const title = `${active ? "▶ " : ""}${esc(stateId)}`;
-
-    const transitions = (state as any)?.transitions;
-    const next = Array.isArray(transitions) && transitions.length > 0
-    ? transitions.map((t: any) => describeTrigger(t?.when)).join(" | ")
-    : "none";
+  states.forEach((state, index) => {
+    const active = index === runtime.stateIndex;
+    const title = `${active ? "▶ " : ""}${esc(state?.label || state?.id || index)}`;
 
     blocks.push(`<div style="margin-top:3px;padding:3px 5px;background:rgba(255,255,255,0.08);border-radius:3px;font-size:11px;line-height:1.15;">
 <div style="font-weight:bold;background:rgba(255,255,255,0.10);padding:1px 3px;margin:-1px -3px 2px -3px;border-radius:2px;">${title}</div>
+<div><b>id:</b> ${esc(state?.id ?? index)}</div>
 <div><b>mov:</b> ${esc(describeStateMovement(state))}</div>
 <div><b>atk:</b> ${esc(describeStateAttack(state))}</div>
-<div><b>next:</b> ${esc(next)}</div>
+<div><b>next:</b> ${esc(describeNextTransition(state))}</div>
 </div>`);
-  }
+  });
 
   return blocks.join("");
 }
@@ -175,20 +178,8 @@ function getEnemyPositionDebug(enemy: any, scrollX: number) {
   };
 }
 
-function getFsmRuntimeDebug(enemy: any) {
-  const def = ENEMY_DEFS[String(enemy?.typeId)];
-  const graphId = def?.behaviorGraphId ?? "";
-  const graph = graphId ? BEHAVIOR_GRAPHS[graphId] : undefined;
-  const stateId = String(enemy?.fsm?.current ?? graph?.initial ?? "?");
-  const state = graph?.states?.[stateId];
-  return {
-    graphId,
-    stateId,
-    age: Number(enemy?.fsm?.age ?? 0),
-    next: describeNextTransition(state),
-    movement: String(state?.movementPresetId ?? "none"),
-    attack: String(state?.attackProfileId ?? "none"),
-  };
+function getFsmRuntimeDebug(enemy: any): FsmDebugSnapshot | null {
+  return getFsmDebugSnapshot(enemy);
 }
 
 function createSelectLabel(text: string, prominence: "primary" | "secondary" = "primary"): HTMLLabelElement {
@@ -1054,17 +1045,24 @@ export class DevSummoner {
     }
 
     const runtime = getFsmRuntimeDebug(selected);
+    if (!runtime) {
+      out.textContent = EMPTY_ENEMY_LAB;
+      return;
+    }
+
     const position = getEnemyPositionDebug(selected, Number((this.world as any)?.scrollX ?? 0));
-    const graphView = renderFsmGraphView(runtime.graphId, runtime.stateId);
+    const graphView = renderFsmGraphView(runtime, selected.fsm.preset.states);
 
     out.innerHTML = `<div style="display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:2px;align-items:start;">
 <div style="white-space:nowrap;">
 <b>Type:</b> ${esc(String(selected.typeId ?? "?"))}<br>
-<b>Beh:</b> ${esc(runtime.movement)}<br>
-<b>Atk:</b> ${esc(runtime.attack)}<br>
+<b>Beh:</b> ${esc(runtime.movementPresetId ?? "none")}<br>
+<b>Atk:</b> ${esc(runtime.activeAttackProfileId ?? runtime.combatMode)}<br>
 <b>HP:</b> ${esc(getEnemyHpLabel(selected))}<br>
-<b>State:</b> ${esc(runtime.stateId)}<br>
-<b>Age:</b> ${esc(formatNum(runtime.age, 2))} s
+<b>State:</b> ${esc(runtime.stateLabel || runtime.stateId)}<br>
+<b>Index:</b> ${esc(runtime.stateIndex)}<br>
+<b>Age:</b> ${esc(formatNum(runtime.stateAge, 2))} s<br>
+<b>Entries:</b> ${esc(runtime.entryCount)}
 </div>
 <div style="white-space:nowrap;">
 <b>scrX:</b> ${esc(formatNum(position.screenX))}<br>
