@@ -10,3 +10,4 @@ export * from "./MovementResolver";
 
 export * from "./LifecycleExecutor";
 export * from "./FsmDebugSnapshot";
+export * from "./UserFsmPresetStore";
