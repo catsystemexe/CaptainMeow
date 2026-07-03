@@ -1,5 +1,5 @@
 import type { BehaviorPreset } from "../enemies/EnemyBehaviorTypes";
-import type { BehaviorGraph } from "../enemies/fsm";
+import type { BehaviorGraph, BuiltinFsmPresetRegistry } from "../enemies/fsm";
 import type { EnemyAppearanceDef } from "./EnemyAppearanceTypes";
 
 export interface EnemyTypeContentDef {
@@ -42,5 +42,6 @@ export interface EnemyContentBundle {
   enemyTypes: EnemyTypeContentDef[];
   behaviorPresets: BehaviorPreset[];
   behaviorGraphs: Record<string, BehaviorGraph>;
+  builtinFsmPresets: BuiltinFsmPresetRegistry;
   waves: EnemyWaveContentDef[];
 }
