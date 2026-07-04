@@ -62,8 +62,11 @@ export type CMEventMap = {
     typeId: string;
     waveId?: string;
     spawn?: { x: number; y: number };
+    /** Movement behavior preset id for Simple/Smart movement. Not an FSM controller id. */
     behaviorPresetId?: string;
-    /** Dev-only FSM preview override. Normal gameplay resolves behaviorPresetId from persisted registries. */
+    /** Explicit FSM controller preset id for normal persisted Enemy Lab spawns. */
+    fsmPresetId?: string;
+    /** Dev-only FSM preview override. Normal gameplay resolves fsmPresetId/default graph ids from persisted registries. */
     resolvedFsmPresetOverride?: unknown;
     spawnOrdinal?: number; // ✅ BE V1: deterministic index within wave
     spawnAgeSec?: number;  // ✅ director backlog catch-up (seconds since scheduled spawn)
@@ -78,6 +81,8 @@ export type CMEventMap = {
     formationId: string;
     movementPresetId: string;
     cohesionId: string;
+    /** Explicit FSM controller preset id propagated to every group member. */
+    fsmPresetId?: string;
     spacing?: number;
     params?: {
       formation?: { spacing?: number; depth?: number; radius?: number; angle?: number; facing?: string; startAngle?: number };

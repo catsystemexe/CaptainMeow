@@ -32,3 +32,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [S10 — State and transition authoring](./S10.md)
 
 - [S11 — FSM preview workflow, runtime diagnostics, and integration closeout](./S11.md)
+- [U0 — Appearance/FSM spawn contract decoupling](./U0.md)

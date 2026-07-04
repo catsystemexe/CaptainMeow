@@ -10,7 +10,7 @@ import type { EnemyBehaviorId, EnemyBehaviorParams, EnemyBehaviorRuntime } from 
 import { EnemyBehaviorDB } from "../enemies/EnemyBehaviorDB";
 import { COLORS } from "../../rendering/ColorPalette";
 import { EnemyBehaviorPresets, type EnemyBehaviorPresetId } from "../enemies/EnemyBehaviorPresets";
-import { BUILTIN_FSM_PRESETS } from "../content/CONTENT";
+import { CONTENT } from "../content/CONTENT";
 import { createFsmRuntimeSnapshot } from "../enemies/fsm";
 import type { ResolvedFsmPreset } from "../enemies/fsm/resolve";
 
@@ -273,6 +273,7 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
                   typeId: enemyTypeId,
                   spawn: { x: anchor.x + offset.x, y: anchor.y + offset.y },
                   behaviorPresetId: "none.hold",
+                  fsmPresetId: typeof p.fsmPresetId === "string" && p.fsmPresetId.length ? p.fsmPresetId : undefined,
                   spawnOrdinal: slotIndex,
                   group: { groupId, slotIndex },
                 });
@@ -345,6 +346,20 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
 const def = ENEMY_DEFS[p.typeId as EnemyTypeId];
 if (!def) throw new Error(`[SpawnSystem] Unknown enemy typeId: ${String(p.typeId)}`);
 
+          const previewOverride = (p as any).resolvedFsmPresetOverride as ResolvedFsmPreset | undefined;
+          const explicitFsmPresetId = typeof p.fsmPresetId === "string" && p.fsmPresetId.length ? p.fsmPresetId : "";
+          const graphId = typeof def.behaviorGraphId === "string" ? def.behaviorGraphId : "";
+          let fsmPreset: ResolvedFsmPreset | undefined = previewOverride;
+          if (!fsmPreset && explicitFsmPresetId) {
+            fsmPreset = CONTENT.fsmPresets.get(explicitFsmPresetId);
+            if (!fsmPreset) {
+              throw new Error(`[SpawnSystem] Unknown explicit fsmPresetId: ${explicitFsmPresetId}`);
+            }
+          }
+          if (!fsmPreset && graphId) {
+            fsmPreset = CONTENT.fsmPresets.get(graphId);
+          }
+
 const r = (typeof def.radius === "number" && Number.isFinite(def.radius) && def.radius > 0) ? def.radius : 4;
 
               const spawnPos =
@@ -396,8 +411,6 @@ const r = (typeof def.radius === "number" && Number.isFinite(def.radius) && def.
           });
           const ent = this.store.get(spawned) as any;
           if (ent) {
-            const graphId = typeof def.behaviorGraphId === "string" ? def.behaviorGraphId : "";
-            const fsmPreset: ResolvedFsmPreset | undefined = (p as any).resolvedFsmPresetOverride ?? (graphId ? BUILTIN_FSM_PRESETS.get(graphId) : undefined);
             if (fsmPreset) {
               ent.fsm = createFsmRuntimeSnapshot(fsmPreset, {}, ent, {
                 inheritedAttackProfileId: def.attackProfile?.id ?? null,
