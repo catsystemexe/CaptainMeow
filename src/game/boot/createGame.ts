@@ -563,7 +563,8 @@ export async function createGame(
       },
     },
 
-    impact: {
+  spawn,
+}
       update: (ctx, events) => {
         if (session.gameOver) return;
         (impact as any).update(ctx, events as any);

@@ -1,0 +1,34 @@
+import assert from "node:assert/strict";
+import { EntityStore } from "../engine/ecs/EntityStore";
+import { SpawnSystem } from "../game/systems/SpawnSystem";
+import { WEAPONS_MVP } from "../game/defs/Weapons";
+import { CONTENT } from "../game/content/CONTENT";
+import { FsmPreviewSession, resolveEphemeralFsmPreset } from "./FsmPreviewSession";
+const clone = <T>(v:T):T => structuredClone(v);
+const persisted = CONTENT.fsmPresets.list()[0];
+const draft = clone(persisted.definition as any);
+draft.metadata.id = "preview-unsaved";
+draft.graph.states[0].label = "Unsaved Preview Label";
+const beforeList = CONTENT.fsmPresets.list().map((p) => p.id).join(",");
+const beforeStorage = CONTENT.userFsmPresets.inspectRawStorage().raw;
+const r = resolveEphemeralFsmPreset(draft);
+assert.equal(r.ok, true);
+if (r.ok) {
+  assert(Object.isFrozen(r.preset.definition));
+  draft.graph.states[0].label = "Caller Mutation";
+  assert.notEqual(r.preset.definition.graph.states[0].label, "Caller Mutation", "active preview snapshot is isolated from caller mutation");
+}
+const store = new EntityStore<any>(16); const spawn = new SpawnSystem(store, { rng01: () => 0.5, logicSize: { w: 896, h: 504 }, weaponDb: WEAPONS_MVP as any }, { scrollX: 0, scrollY: 0 } as any);
+const session = new FsmPreviewSession({ store, spawnPreviewEnemy: (p) => spawn.spawnPreviewEnemy(p as any) });
+let s = session.startDraftPreview(draft, true);
+assert.equal(s.status, "running");
+assert.equal(CONTENT.fsmPresets.list().map((p) => p.id).join(","), beforeList, "combined registry unchanged");
+assert.equal(CONTENT.userFsmPresets.inspectRawStorage().raw, beforeStorage, "storage unchanged");
+assert.equal(CONTENT.fsmPresets.get("preview-unsaved"), undefined, "preview preset does not leak into registry");
+const invalid = clone(draft); invalid.graph.initialStateId = "missing";
+s = session.startDraftPreview(invalid, true);
+assert.equal(s.status, "invalid", "validation errors block preview");
+s = session.startDraftPreview(draft, false);
+assert.equal(s.status, "invalid", "built-in/read-only path cannot use draft preview");
+assert.equal(CONTENT.fsmPresets.get(persisted.id)?.definition.graph.states[0].label, persisted.definition.graph.states[0].label, "normal saved preset remains unchanged");
+console.log("FsmDraftPreview smoke passed");

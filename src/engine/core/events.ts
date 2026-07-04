@@ -63,6 +63,8 @@ export type CMEventMap = {
     waveId?: string;
     spawn?: { x: number; y: number };
     behaviorPresetId?: string;
+    /** Dev-only FSM preview override. Normal gameplay resolves behaviorPresetId from persisted registries. */
+    resolvedFsmPresetOverride?: unknown;
     spawnOrdinal?: number; // ✅ BE V1: deterministic index within wave
     spawnAgeSec?: number;  // ✅ director backlog catch-up (seconds since scheduled spawn)
   };
