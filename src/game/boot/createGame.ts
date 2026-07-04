@@ -556,32 +556,31 @@ export async function createGame(
       },
     },
 
-    collision: {
-      update: (_ctx, _events) => {
-        if (session.gameOver) return;
-        collision.update(_ctx.dt);
-      },
+  collision: {
+    update: (_ctx, _events) => {
+      if (session.gameOver) return;
+      collision.update(_ctx.dt);
     },
+  },
 
-  spawn,
-}
-      update: (ctx, events) => {
-        if (session.gameOver) return;
-        (impact as any).update(ctx, events as any);
-      },
+  impact: {
+    update: (ctx, events) => {
+      if (session.gameOver) return;
+      (impact as any).update(ctx, events as any);
     },
+  },
 
-    flow: {
-      update: (ctx, events) => {
-        flow.update(ctx, events as any);
-      },
+  flow: {
+    update: (ctx, events) => {
+      flow.update(ctx, events as any);
     },
+  },
 
-    cleanup: {
-      update: (_ctx, _events) => {
-        store.cleanup();
-      },
+  cleanup: {
+    update: (_ctx, _events) => {
+      store.cleanup();
     },
+  },
   });
 
 return {
@@ -597,6 +596,7 @@ return {
   playerRef,
   inputMgr,
   playerEnt,
+  spawn,
   world,
 };
 }
