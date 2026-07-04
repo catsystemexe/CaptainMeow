@@ -35,3 +35,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [U0 — Appearance/FSM spawn contract decoupling](./U0.md)
 - [U0.1 — Group FSM spawn propagation fix](./U0.1.md)
 - [U0.2 — Browser group FSM selection fix](./U0.2.md)
+- [U1.1 — SIMPLE / SMART / FSM mode split](./U1.1.md)

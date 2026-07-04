@@ -97,8 +97,9 @@ function mountAndSpawnGroup(input: { enemyTypeId: string; fsmPresetId?: string }
   const panel = documentStub.getElementById(DEV_SUMMONER_PANEL_ID)! as FakeElement;
   assert(panel, "DevSummoner panel mounted");
 
+  clickButtonByText(panel, "FSM");
   clickButtonByText(panel, "Group");
-  assert.notEqual(panel.findById("ds-fsm-preset")?.parentNode?.style.display, "none", "FSM selector remains visible in group mode");
+  assert.notEqual(panel.findById("ds-fsm-preset")?.parentNode?.style.display, "none", "FSM selector remains visible in FSM group mode");
   const groupType = panel.findById("ds-group-enemy")!;
   groupType.value = input.enemyTypeId;
   chooseCompact(panel, "ds-group-movement-primitive", "straight");
