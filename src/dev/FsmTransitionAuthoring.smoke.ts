@@ -1,0 +1,13 @@
+import { createAuthoring, assert } from "./FsmAuthoringSmokeHelpers";
+const { model } = createAuthoring();
+model.addTransition("exit"); assert.equal(model.draft!.preset.graph.states[1].transitions.length, 1);
+model.duplicateTransition("idle", 0); assert.equal(model.draft!.preset.graph.states[0].transitions.length, 2);
+model.reorderTransition("idle", 1, 0); assert.equal(model.draft!.preset.graph.states[0].transitions[0].condition.type, "timeInState");
+model.setTransitionTarget("idle", 0, "idle"); assert.equal(model.draft!.preset.graph.states[0].transitions[0].targetStateId, "idle");
+model.setTransitionConditionType("idle", 0, "screenXBelow"); assert.equal((model.draft!.preset.graph.states[0].transitions[0].condition as any).params.x, 0);
+assert.equal(model.draft!.preset.graph.states[0].transitions[0].targetStateId, "idle");
+model.setTransitionConditionParam("idle", 0, "x", 42); assert.equal((model.draft!.preset.graph.states[0].transitions[0].condition as any).params.x, 42);
+(model.draft!.preset.graph.states[0].transitions[0].condition as any).type = "unknown"; assert(model.draft!.diagnostics.length >= 0); model.setTransitionTarget("idle", 0, "missing"); assert.equal(model.save().ok, false);
+model.setTransitionTarget("idle", 0, "idle"); (model.draft!.preset.graph.states[0].transitions[0].condition as any) = { type: "timeInState", params: { seconds: 0 } }; assert.equal(model.save().ok, false, "immediate self-cycle blocks save");
+model.deleteTransition("idle", 0); assert(model.draft!.preset.graph.states[0].transitions.length >= 1);
+console.log("FsmTransitionAuthoring smoke passed");

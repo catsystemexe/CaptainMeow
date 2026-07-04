@@ -29,3 +29,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [S9 — Enemy Lab preset management editor MVP](./S9.md)
 - [S9.1 — Restore Enemy Lab visibility and mount path](./S9.1.md)
 - [S9.2 — Prove and restore actual Enemy Lab runtime mounting](./S9.2.md)
+- [S10 — State and transition authoring](./S10.md)
