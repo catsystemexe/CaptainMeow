@@ -1,0 +1,14 @@
+import { createAuthoring, assert } from "./FsmAuthoringSmokeHelpers";
+const { model } = createAuthoring();
+assert.equal(model.hasErrors(), false);
+model.setMovementPreset("idle", ""); assert(model.draft!.diagnostics.some((d) => d.code === "E_MOVEMENT_PRESET_ID"));
+model.cancel(); model.addModifier("idle", "sineOffset"); model.setModifierParam("idle", 0, "freqHz", 99); assert(model.draft!.diagnostics.some((d) => d.code === "E_PARAM_RANGE"));
+model.cancel(); (model.draft!.preset.graph.states[0].targeting as any).type = "bad"; model.setPresetLabel("touch"); assert(model.draft!.diagnostics.some((d) => d.code === "E_UNKNOWN_TARGETING"));
+model.cancel(); model.setCombat("idle", { mode: "profile", profileId: "" }); assert(model.draft!.diagnostics.some((d) => d.code === "E_ATTACK_PROFILE_ID"));
+model.cancel(); model.addDespawnAction("idle"); assert(model.draft!.diagnostics.some((d) => d.code === "W_TERMINAL_STATE_TRANSITIONS"));
+model.cancel(); model.draft!.preset.graph.states.push({ ...model.draft!.preset.graph.states[0] }); model.setPresetLabel("dup"); assert(model.draft!.diagnostics.some((d) => d.code === "E_DUPLICATE_STATE_ID"));
+model.cancel(); model.setInitialState("missing"); assert(model.draft!.diagnostics.some((d) => d.code === "E_MISSING_INITIAL_STATE"));
+model.cancel(); model.setTransitionTarget("idle", 0, "idle"); model.setTransitionConditionParam("idle", 0, "seconds", 0); assert(model.draft!.diagnostics.some((d) => d.code === "E_IMMEDIATE_CYCLE"));
+assert(model.draft!.diagnostics.every((d) => typeof d.path === "string" && d.code));
+assert.equal(model.save().ok, false);
+console.log("FsmAuthoringValidation smoke passed");

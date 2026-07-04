@@ -1,0 +1,15 @@
+import { createAuthoring, assert } from "./FsmAuthoringSmokeHelpers";
+const { model } = createAuthoring();
+model.addState(); assert.equal(model.draft!.preset.graph.states.at(-1)!.id, "state");
+model.duplicateState("state"); assert.equal(model.draft!.preset.graph.states.at(-1)!.id, "state-2");
+model.renameState("exit", "done"); assert.equal(model.draft!.preset.graph.states[0].transitions[0].targetStateId, "done");
+model.renameState("idle", "start"); assert.equal(model.draft!.preset.graph.initialStateId, "start");
+assert.equal(model.renameState("done", "start").ok, false);
+const plan = model.planDeleteState("done"); assert.equal(plan.requiresConfirmation, true);
+assert.equal(model.deleteState("done").ok, false);
+model.deleteState("done", true); assert(!model.draft!.preset.graph.states.some((s) => s.id === "done"));
+assert(!model.draft!.preset.graph.states.some((s) => s.transitions.some((t) => t.targetStateId === "done")));
+model.setStateLabel("start", "Start"); assert.equal(model.draft!.preset.graph.states[0].label, "Start");
+model.reorderState("state-2", 0); assert.equal(model.draft!.preset.graph.states[0].id, "state-2");
+model.deleteState("start", true); assert.notEqual(model.draft!.preset.graph.initialStateId, "start");
+console.log("FsmStateAuthoring smoke passed");
