@@ -478,13 +478,15 @@ export function createDevSummonerSpawnPayload(input: {
   typeId: string;
   spawnX: number;
   spawnY: number;
-  behaviorPresetId: string;
+  behaviorPresetId?: string;
+  fsmPresetId?: string;
   devManualSpawnId: number;
 }) {
   return {
     typeId: input.typeId,
     spawn: { x: input.spawnX, y: input.spawnY },
-    behaviorPresetId: input.behaviorPresetId,
+    ...(input.behaviorPresetId ? { behaviorPresetId: input.behaviorPresetId } : {}),
+    ...(input.fsmPresetId ? { fsmPresetId: input.fsmPresetId } : {}),
     devManualSpawnId: input.devManualSpawnId,
   };
 }
@@ -560,6 +562,7 @@ export function createDevSummonerGroupSpawnPayload(input: {
   formationId: string;
   movementPresetId: string;
   cohesionId: string;
+  fsmPresetId?: string;
   params?: CMEventMap[typeof EventType.SPAWN_ENEMY_GROUP]["params"];
 }): CMEventMap[typeof EventType.SPAWN_ENEMY_GROUP] | null {
   if (!isValidEnemyTypeId(input.enemyTypeId)) return null;
@@ -575,6 +578,7 @@ export function createDevSummonerGroupSpawnPayload(input: {
     formationId: input.formationId,
     movementPresetId: input.movementPresetId,
     cohesionId: input.cohesionId,
+    ...(input.fsmPresetId ? { fsmPresetId: input.fsmPresetId } : {}),
     params,
   };
 }
@@ -1071,6 +1075,7 @@ export class DevSummoner {
           formationId: formationChoice.value,
           movementPresetId: groupMovement.presetSelect.value,
           cohesionId: cohesionChoice.value,
+          fsmPresetId: fsmSpawnSelect.value || undefined,
           params: {
             formation: {
               spacing: spacingStepper.value,
@@ -1100,7 +1105,8 @@ export class DevSummoner {
         typeId: enemySelect.value,
         spawnX: this.logicW - 40,
         spawnY: screenYControl.value,
-        behaviorPresetId: fsmSpawnSelect.value || enemyMovement.presetSelect.value,
+        behaviorPresetId: enemyMovement.presetSelect.value,
+        fsmPresetId: fsmSpawnSelect.value || undefined,
         devManualSpawnId: this.latestManualSpawnId,
       }) as any);
     });
