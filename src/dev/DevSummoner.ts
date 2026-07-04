@@ -986,12 +986,12 @@ export class DevSummoner {
     const fsmSpawnSelect = createCompactSelect("ds-fsm-preset");
     this.cleanupHandlers.push(() => fsmSpawnSelect.destroy());
     const refreshFsmSpawnSelect = (preferred?: string) => {
-      fsmSpawnSelect.setOptions([{ value: "", label: "(movement preset)" }, ...CONTENT.fsmPresets.list().map((preset) => ({ value: preset.id, label: `${CONTENT.fsmPresets.sourceOf(preset.id) === "user" ? "USER" : "BUILT-IN"} ${preset.id}` }))], preferred ?? fsmSpawnSelect.value);
+      fsmSpawnSelect.setOptions([{ value: "", label: "(movement preset)" }, ...CONTENT.userFsmPresets.registry().list().map((preset) => ({ value: preset.id, label: `${CONTENT.userFsmPresets.registry().sourceOf(preset.id) === "user" ? "USER" : "BUILT-IN"} ${preset.id}` }))], preferred ?? fsmSpawnSelect.value);
     };
     refreshFsmSpawnSelect();
     fsmSpawnWrap.appendChild(fsmSpawnSelect.root);
-    enemyControls.appendChild(fsmSpawnWrap);
-    enemyControls.appendChild(createSectionGap());
+    spawnSection.appendChild(fsmSpawnWrap);
+    spawnSection.appendChild(createSectionGap());
     const groupMovement = makeMovementControls("ds-group", "Move", "Prim");
     groupControls.appendChild(groupMovement.movementClassRow);
     groupControls.appendChild(groupMovement.movementPresetRow);
