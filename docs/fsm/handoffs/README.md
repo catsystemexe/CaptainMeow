@@ -30,3 +30,5 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [S9.1 — Restore Enemy Lab visibility and mount path](./S9.1.md)
 - [S9.2 — Prove and restore actual Enemy Lab runtime mounting](./S9.2.md)
 - [S10 — State and transition authoring](./S10.md)
+
+- [S11 — FSM preview workflow, runtime diagnostics, and integration closeout](./S11.md)

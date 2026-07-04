@@ -12,6 +12,7 @@ import { COLORS } from "../../rendering/ColorPalette";
 import { EnemyBehaviorPresets, type EnemyBehaviorPresetId } from "../enemies/EnemyBehaviorPresets";
 import { BUILTIN_FSM_PRESETS } from "../content/CONTENT";
 import { createFsmRuntimeSnapshot } from "../enemies/fsm";
+import type { ResolvedFsmPreset } from "../enemies/fsm/resolve";
 
 import { ENEMY_DEFS, type EnemyTypeId } from "../defs/EnemyDefs";
 import { materializeEnemyAppearance } from "../defs/EnemyAppearanceTypes";
@@ -321,6 +322,10 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
     }
   }
 
+      /** Dev/test-only preview entry point; ordinary gameplay uses SPAWN_ENEMY events with persisted preset ids. */
+      spawnPreviewEnemy(p: CMEventMap[typeof EventType.SPAWN_ENEMY] & { resolvedFsmPresetOverride: ResolvedFsmPreset }): EntityRef {
+        return this.spawnEnemy(p);
+      }
 
       private spawnEnemy(p: CMEventMap[typeof EventType.SPAWN_ENEMY] & { group?: EnemyGroupMembership }): EntityRef {
             if ((globalThis as any).__DEV__ && Math.random() < 0.03) {
@@ -392,7 +397,7 @@ const r = (typeof def.radius === "number" && Number.isFinite(def.radius) && def.
           const ent = this.store.get(spawned) as any;
           if (ent) {
             const graphId = typeof def.behaviorGraphId === "string" ? def.behaviorGraphId : "";
-            const fsmPreset = graphId ? BUILTIN_FSM_PRESETS.get(graphId) : undefined;
+            const fsmPreset: ResolvedFsmPreset | undefined = (p as any).resolvedFsmPresetOverride ?? (graphId ? BUILTIN_FSM_PRESETS.get(graphId) : undefined);
             if (fsmPreset) {
               ent.fsm = createFsmRuntimeSnapshot(fsmPreset, {}, ent, {
                 inheritedAttackProfileId: def.attackProfile?.id ?? null,

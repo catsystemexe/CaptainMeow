@@ -5,6 +5,7 @@ import { ENEMY_DEFS } from "../game/defs/EnemyDefs";
 import { CONTENT } from "../game/content/CONTENT";
 import { FsmPresetEditorModel } from "./FsmPresetEditorModel";
 import { FsmPresetAuthoringModel } from "./FsmPresetAuthoringModel";
+import { FsmPreviewSession } from "./FsmPreviewSession";
 import { EnemyBehaviorPresets } from "../game/enemies/EnemyBehaviorPresets";
 import { getFsmDebugSnapshot, type FsmDebugSnapshot } from "../game/enemies/fsm";
 import { ENEMY_GROUP_COHESION_IDS, ENEMY_GROUP_FORMATION_IDS, ENEMY_GROUP_PARAM_LIMITS, normalizeEnemyGroupParams, normalizeGroupFormationStartAngle } from "../game/enemies/EnemyGroups";
@@ -1146,8 +1147,24 @@ export class DevSummoner {
     const lifecycleSection = addAuthoringSection("Lifecycle"); const despawnBtn = stateBtn("Add despawn"); lifecycleSection.appendChild(despawnBtn);
     const transitionSection = addAuthoringSection("Transitions"); const transitionList = document.createElement("div"); transitionSection.appendChild(transitionList); const addTransitionBtn = stateBtn("Add transition"); transitionSection.appendChild(addTransitionBtn);
     const diagnosticsSection = addAuthoringSection("Diagnostics"); const authoringDiagnostics = document.createElement("div"); authoringDiagnostics.style.cssText = "white-space:pre-wrap;color:#ffd27a;"; diagnosticsSection.appendChild(authoringDiagnostics);
+    const previewSection = addAuthoringSection("Preview");
+    previewSection.id = "ds-fsm-preview-section";
+    const previewButtons = document.createElement("div"); previewButtons.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:3px;"; previewSection.appendChild(previewButtons);
+    const previewBtn = (text: string) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.style.cssText = "font:12px monospace;min-height:24px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; previewButtons.appendChild(b); return b; };
+    const previewDraftBtn = previewBtn("Preview Draft"); const previewSavedBtn = previewBtn("Preview Saved"); const previewRestartBtn = previewBtn("Restart"); const previewStopBtn = previewBtn("Stop");
+    const previewStatus = document.createElement("div"); previewStatus.id = "ds-fsm-preview-status"; previewStatus.style.cssText = "white-space:pre-wrap;color:#bfe3ff;"; previewSection.appendChild(previewStatus);
+    const previewDiagnostics = document.createElement("div"); previewDiagnostics.id = "ds-fsm-preview-diagnostics"; previewDiagnostics.style.cssText = "white-space:pre-wrap;color:#eee;"; previewSection.appendChild(previewDiagnostics);
+    const previewTrace = document.createElement("div"); previewTrace.id = "ds-fsm-preview-trace"; previewTrace.style.cssText = "white-space:pre-wrap;color:#ccc;"; previewSection.appendChild(previewTrace);
     const saveCancelSection = addAuthoringSection("Save / Cancel"); const dirtyBadge = document.createElement("div"); saveCancelSection.appendChild(dirtyBadge);
     presetPanel.appendChild(authoringSections);
+    const cm = (window as any).__CM;
+    const previewSession = new FsmPreviewSession({
+      store: cm?.store,
+      spawnPreviewEnemy: (input) => cm?.game?.spawn?.spawnPreviewEnemy(input),
+      getTick: () => Number(cm?.game?.loop?.tick ?? 0),
+      previewX: this.logicW - 140,
+      previewY: Math.round(this.logicH * 0.5),
+    });
 
     const renderPresetEditor = () => {
       const items = presetModel.list(); presetList.textContent = ""; for (const item of items) appendOption(presetList, item.id, `${item.source === "user" ? "USER" : "BUILT-IN"} ${item.id}`); presetList.value = presetModel.selectedId;
@@ -1168,6 +1185,28 @@ ${d.states.join(", ")}` : "No preset selected";
       transitionList.textContent = (selected?.transitions ?? []).map((t, i) => `${i + 1}. ${t.condition.type} -> ${t.targetStateId}`).join("\n"); transitionList.style.whiteSpace = "pre-wrap";
       authoringDiagnostics.textContent = ad?.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code} ${x.path}: ${x.message}`).join("\n") ?? "";
       dirtyBadge.textContent = authoringReadOnly ? "BUILT-IN / READ ONLY" : (ad?.dirty ? "DIRTY" : "Saved");
+      const preview = previewSession.current();
+      previewDraftBtn.disabled = authoringReadOnly || !ad || authoringModel.hasErrors();
+      previewSavedBtn.disabled = !CONTENT.fsmPresets.get(presetModel.selectedId);
+      previewRestartBtn.disabled = !preview.source;
+      previewStopBtn.disabled = preview.status !== "running";
+      previewStatus.textContent = `PREVIEW: ${preview.source ? preview.source.toUpperCase() : "IDLE"}\nStatus: ${preview.status.toUpperCase()}${preview.endedReason ? ` (${preview.endedReason})` : ""}\nPreset: ${preview.presetId || "(none)"}`;
+      const rt = preview.runtime;
+      previewDiagnostics.textContent = rt ? [
+        `State: ${rt.stateLabel} (${rt.stateId})`,
+        `Index: ${rt.stateIndex}`,
+        `Age: ${formatNum(rt.stateAge, 2)} s`,
+        `Entries: ${rt.entryCount}`,
+        `Movement: ${rt.movementPresetId ?? "none"}`,
+        `Modifiers: ${rt.modifierTypes.join(", ") || "none"}`,
+        `Suppressed: ${rt.movementSuppressed ? "yes" : "no"}`,
+        `Combat: ${rt.combatMode}`,
+        `Attack: ${rt.activeAttackProfileId ?? "none"}`,
+        `Position: ${preview.position ? `${formatNum(preview.position.x)}, ${formatNum(preview.position.y)}` : "none"}`,
+        `Pending/Removed: ${preview.position?.pendingKill ? "pending-kill" : preview.position?.removed ? "removed" : "live"}`,
+        ...preview.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code}: ${x.message}`),
+      ].join("\n") : preview.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code}: ${x.message}`).join("\n");
+      previewTrace.textContent = `Transition Trace\n${preview.trace.map((t) => `${t.tick}: ${t.fromStateId ?? "spawn"} -> ${t.toStateId} #${t.entryCount}`).join("\n")}`;
       for (const b of [addStateBtn, dupStateBtn, delStateBtn, upStateBtn, downStateBtn, addSineBtn, addClampBtn, despawnBtn, addTransitionBtn]) b.disabled = authoringReadOnly;
       saveBtn.disabled = readOnly || !draft.dirty || !authoringModel.canSave;
       refreshFsmSpawnSelect(CONTENT.fsmPresets.get(presetModel.selectedId) ? presetModel.selectedId : fsmSpawnSelect.value);
@@ -1202,6 +1241,10 @@ ${d.states.join(", ")}` : "No preset selected";
     addClampBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.addModifier(id, "clampY"); renderPresetEditor(); });
     despawnBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.addDespawnAction(id); renderPresetEditor(); });
     addTransitionBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.addTransition(id); renderPresetEditor(); });
+    previewDraftBtn.addEventListener("click", () => { previewSession.startDraftPreview(authoringModel.draft?.preset ?? null, !authoringModel.readOnly); renderPresetEditor(); });
+    previewSavedBtn.addEventListener("click", () => { previewSession.startPersistedPreview(presetModel.selectedId); renderPresetEditor(); });
+    previewRestartBtn.addEventListener("click", () => { previewSession.restart(); renderPresetEditor(); });
+    previewStopBtn.addEventListener("click", () => { previewSession.stop(); renderPresetEditor(); });
     renderPresetEditor();
     panel.appendChild(presetPanel);
     panel.appendChild(createSectionGap());
