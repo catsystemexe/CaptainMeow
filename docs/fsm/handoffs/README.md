@@ -34,3 +34,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [S11 — FSM preview workflow, runtime diagnostics, and integration closeout](./S11.md)
 - [U0 — Appearance/FSM spawn contract decoupling](./U0.md)
 - [U0.1 — Group FSM spawn propagation fix](./U0.1.md)
+- [U0.2 — Browser group FSM selection fix](./U0.2.md)

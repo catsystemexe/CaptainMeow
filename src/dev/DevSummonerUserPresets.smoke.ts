@@ -9,7 +9,7 @@ assert.equal(model.select(userId).ok,true);
 const payload = createDevSummonerSpawnPayload({ typeId:"grunt", spawnX:1, spawnY:2, behaviorPresetId:"straight.basic", fsmPresetId:userId, devManualSpawnId:7 });
 assert.equal((payload as any).fsmPresetId,userId); assert.equal(payload.behaviorPresetId,"straight.basic"); assert(CONTENT.fsmPresets.get(userId)); assert.equal(CONTENT.fsmPresets.sourceOf(userId),"user");
 const before = CONTENT.userFsmPresets.inspectRawStorage().raw; createDevSummonerSpawnPayload({ typeId:"grunt", spawnX:1, spawnY:2, behaviorPresetId:"straight.basic", fsmPresetId:userId, devManualSpawnId:8 }); assert.equal(CONTENT.userFsmPresets.inspectRawStorage().raw,before);
-const src = readFileSync("src/dev/DevSummoner.ts","utf8"); assert(src.includes("CONTENT.fsmPresets.list()")); assert(src.includes("getFsmDebugSnapshot")); assert(src.includes("endFsmInspection"));
+const src = readFileSync("src/dev/DevSummoner.ts","utf8"); assert(src.includes("CONTENT.userFsmPresets.registry().list()")); assert(src.includes("getFsmDebugSnapshot")); assert(src.includes("endFsmInspection"));
 const builtin = CONTENT.builtinFsmPresets.list()[0].id; const builtinPayload = createDevSummonerSpawnPayload({ typeId:"grunt", spawnX:1, spawnY:2, behaviorPresetId:"straight.basic", fsmPresetId:builtin, devManualSpawnId:9 }); assert.equal((builtinPayload as any).fsmPresetId,builtin); assert.equal(builtinPayload.behaviorPresetId,"straight.basic");
 CONTENT.userFsmPresets.delete(userId);
 console.log("DevSummonerUserPresets smoke passed");
