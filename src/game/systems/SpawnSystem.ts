@@ -280,6 +280,7 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
                 spawnedCount++;
               } catch (err) {
                 if (spawnedCount === 0) this.groups.remove(groupId);
+                if (typeof p.fsmPresetId === "string" && p.fsmPresetId.length) throw err;
                 break;
               }
             }
