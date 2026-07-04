@@ -17,6 +17,7 @@ export const ENEMY_LAB_DEBUG_PANEL_ID = "ds-enemy-lab-debug";
 const EMPTY_ENEMY_LAB = "No FSM enemy selected/spawned.";
 type MovementClassId = "dumb" | "smart";
 type SpawnMode = "enemy" | "group";
+type EnemyLabMode = "simple" | "smart" | "fsm";
 
 type MovementGroups = Record<MovementClassId, Record<string, string[]>>;
 type RetainedFsmInspectionStatus = "live" | "ended";
@@ -625,9 +626,64 @@ export class DevSummoner {
     title.style.cssText = "font-weight:bold;letter-spacing:1px;margin:0 0 2px 0;";
     panel.appendChild(title);
 
+    let enemyLabMode: EnemyLabMode = "simple";
+
+    const labModeRow = document.createElement("div");
+    labModeRow.id = "ds-enemy-lab-mode-row";
+    labModeRow.style.cssText = "display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;";
+    panel.appendChild(labModeRow);
+    const styleLabModeButton = (button: HTMLButtonElement, active: boolean) => {
+      button.style.cssText = [
+        "font:12px monospace",
+        "min-height:26px",
+        "padding:2px 4px",
+        "border:1px solid rgba(255,255,255,0.28)",
+        "background:" + (active ? "#365173" : "#111"),
+        "color:" + (active ? "#fff" : "#bbb"),
+        "cursor:pointer",
+        "box-sizing:border-box",
+        "font-weight:" + (active ? "800" : "400"),
+      ].join(";");
+    };
+    const simpleModeButton = document.createElement("button");
+    const smartModeButton = document.createElement("button");
+    const fsmModeButton = document.createElement("button");
+    for (const [button, text] of [[simpleModeButton, "SIMPLE"], [smartModeButton, "SMART"], [fsmModeButton, "FSM"]] as const) {
+      button.type = "button";
+      button.textContent = text;
+      labModeRow.appendChild(button);
+    }
+
+    const simpleLabSection = document.createElement("div");
+    simpleLabSection.id = "ds-simple-lab-section";
+    simpleLabSection.style.cssText = "display:flex;flex-direction:column;gap:6px;";
+    const smartLabSection = document.createElement("div");
+    smartLabSection.id = "ds-smart-lab-section";
+    smartLabSection.style.cssText = "display:none;flex-direction:column;gap:6px;";
+    const fsmLabSection = document.createElement("div");
+    fsmLabSection.id = "ds-fsm-lab-section";
+    fsmLabSection.style.cssText = "display:none;flex-direction:column;gap:6px;";
+    panel.appendChild(simpleLabSection);
+    panel.appendChild(smartLabSection);
+    panel.appendChild(fsmLabSection);
+
+    const simpleLabTitle = document.createElement("div");
+    simpleLabTitle.textContent = "SIMPLE LAB";
+    simpleLabTitle.style.cssText = "font-weight:800;opacity:0.95;";
+    simpleLabSection.appendChild(simpleLabTitle);
+    const smartLabTitle = document.createElement("div");
+    smartLabTitle.textContent = "SMART LAB";
+    smartLabTitle.style.cssText = "font-weight:800;opacity:0.95;";
+    smartLabSection.appendChild(smartLabTitle);
+    const fsmLabTitle = document.createElement("div");
+    fsmLabTitle.textContent = "FSM LAB";
+    fsmLabTitle.style.cssText = "font-weight:800;opacity:0.95;";
+    fsmLabSection.appendChild(fsmLabTitle);
+
     const spawnSection = document.createElement("div");
+    spawnSection.id = "ds-shared-spawn-section";
     spawnSection.style.cssText = "display:flex;flex-direction:column;gap:6px;";
-    panel.appendChild(spawnSection);
+    simpleLabSection.appendChild(spawnSection);
 
     const spawnTitle = document.createElement("div");
     spawnTitle.textContent = "Spawn";
@@ -915,6 +971,10 @@ export class DevSummoner {
       const dumbButton = document.createElement("button");
       const smartButton = document.createElement("button");
       let movementClass: MovementClassId = "dumb";
+      const rememberedMovement = new Map<MovementClassId, { primitive: string; preset: string }>();
+      const rememberMovementSelection = () => {
+        rememberedMovement.set(movementClass, { primitive: primitiveSelect.value, preset: presetSelect.value });
+      };
       const primitiveWrap = createSelectLabel(primitiveLabel, "secondary");
       const presetWrap = createSelectLabel("Preset", "secondary");
       primitiveWrap.appendChild(primitiveSelect.root);
@@ -950,8 +1010,10 @@ export class DevSummoner {
           presetSelect.setOptions([{ value: "", label: "(none)", disabled: true }]);
           return;
         }
-        const preferredPreset = prefix === "ds-group" && presets.includes("straight.basic") ? "straight.basic" : presetSelect.value;
+        const rememberedPreset = rememberedMovement.get(movementClass)?.preset;
+        const preferredPreset = rememberedPreset && presets.includes(rememberedPreset) ? rememberedPreset : prefix === "ds-group" && presets.includes("straight.basic") ? "straight.basic" : presetSelect.value;
         presetSelect.setOptions(presets.map((presetId) => ({ value: presetId, label: presetId })), preferredPreset);
+        rememberMovementSelection();
       };
       const repopulatePrimitiveSelect = () => {
         const primitives = sortPrimitiveIds(Object.keys(movementGroups[movementClass] ?? {}));
@@ -960,20 +1022,23 @@ export class DevSummoner {
           repopulatePresetSelect();
           return;
         }
-        const preferredPrimitive = prefix === "ds-group" && primitives.includes("straight") ? "straight" : primitiveSelect.value;
+        const rememberedPrimitive = rememberedMovement.get(movementClass)?.primitive;
+        const preferredPrimitive = rememberedPrimitive && primitives.includes(rememberedPrimitive) ? rememberedPrimitive : prefix === "ds-group" && primitives.includes("straight") ? "straight" : primitiveSelect.value;
         primitiveSelect.setOptions(primitives.map((primitive) => ({ value: primitive, label: formatPrimitiveLabel(primitive) })), preferredPrimitive);
         repopulatePresetSelect();
       };
       const setMovementClass = (next: MovementClassId) => {
         if (next === "dumb" && !hasDumbPresets) return;
         if (next === "smart" && !hasSmartPresets) return;
+        rememberMovementSelection();
         movementClass = next;
         refreshMovementClassButtons();
         repopulatePrimitiveSelect();
       };
       dumbButton.addEventListener("click", () => setMovementClass("dumb"));
       smartButton.addEventListener("click", () => setMovementClass("smart"));
-      primitiveSelect.addEventListener("change", repopulatePresetSelect);
+      primitiveSelect.addEventListener("change", () => { repopulatePresetSelect(); rememberMovementSelection(); });
+      presetSelect.addEventListener("change", rememberMovementSelection);
       refreshMovementClassButtons();
       repopulatePrimitiveSelect();
       return { movementClassRow, movementPresetRow, presetSelect, setMovementClass };
@@ -1041,6 +1106,12 @@ export class DevSummoner {
     const groupYControl = createSpawnYControl("ds-group");
     groupControls.appendChild(groupYControl.wrap);
 
+    const setLabSectionFocusable = (section: HTMLElement, visible: boolean) => {
+      for (const el of Array.from(section.querySelectorAll("button,input,select,textarea"))) {
+        (el as HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).tabIndex = visible ? 0 : -1;
+      }
+    };
+
     const btn = document.createElement("button");
     btn.textContent = "RELEASE";
     btn.style.cssText = "cursor:pointer;margin-top:2px;font:12px monospace;font-weight:800;min-height:28px;background:#26384f;color:#fff;border:1px solid rgba(255,255,255,0.28);border-radius:2px;";
@@ -1075,7 +1146,7 @@ export class DevSummoner {
           formationId: formationChoice.value,
           movementPresetId: groupMovement.presetSelect.value,
           cohesionId: cohesionChoice.value,
-          fsmPresetId: fsmSpawnSelect.value || undefined,
+          fsmPresetId: enemyLabMode === "fsm" ? fsmSpawnSelect.value || undefined : undefined,
           params: {
             formation: {
               spacing: spacingStepper.value,
@@ -1105,13 +1176,12 @@ export class DevSummoner {
         typeId: enemySelect.value,
         spawnX: this.logicW - 40,
         spawnY: screenYControl.value,
-        behaviorPresetId: enemyMovement.presetSelect.value,
-        fsmPresetId: fsmSpawnSelect.value || undefined,
+        behaviorPresetId: enemyLabMode === "fsm" ? undefined : enemyMovement.presetSelect.value,
+        fsmPresetId: enemyLabMode === "fsm" ? fsmSpawnSelect.value || undefined : undefined,
         devManualSpawnId: this.latestManualSpawnId,
       }) as any);
     });
     spawnSection.appendChild(btn);
-    panel.appendChild(createSectionGap());
 
     const presetModel = new FsmPresetEditorModel(CONTENT.userFsmPresets);
     let authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId);
@@ -1252,8 +1322,8 @@ ${d.states.join(", ")}` : "No preset selected";
     previewRestartBtn.addEventListener("click", () => { previewSession.restart(); renderPresetEditor(); });
     previewStopBtn.addEventListener("click", () => { previewSession.stop(); renderPresetEditor(); });
     renderPresetEditor();
-    panel.appendChild(presetPanel);
-    panel.appendChild(createSectionGap());
+    fsmLabSection.appendChild(presetPanel);
+    fsmLabSection.appendChild(createSectionGap());
 
     const labPanel = document.createElement("div");
     labPanel.id = ENEMY_LAB_DEBUG_PANEL_ID;
@@ -1268,7 +1338,44 @@ ${d.states.join(", ")}` : "No preset selected";
       "box-sizing:border-box"
     ].join(";");
     labPanel.textContent = EMPTY_ENEMY_LAB;
-    panel.appendChild(labPanel);
+    fsmLabSection.appendChild(labPanel);
+
+
+    const refreshEnemyLabMode = () => {
+      const isSimple = enemyLabMode === "simple";
+      const isSmart = enemyLabMode === "smart";
+      const isFsm = enemyLabMode === "fsm";
+      styleLabModeButton(simpleModeButton, isSimple);
+      styleLabModeButton(smartModeButton, isSmart);
+      styleLabModeButton(fsmModeButton, isFsm);
+      simpleModeButton.setAttribute("aria-pressed", String(isSimple));
+      smartModeButton.setAttribute("aria-pressed", String(isSmart));
+      fsmModeButton.setAttribute("aria-pressed", String(isFsm));
+      simpleLabSection.style.display = isSimple ? "flex" : "none";
+      smartLabSection.style.display = isSmart ? "flex" : "none";
+      fsmLabSection.style.display = isFsm ? "flex" : "none";
+      fsmSpawnWrap.style.display = isFsm ? "flex" : "none";
+      fsmSpawnWrap.setAttribute("aria-hidden", String(!isFsm));
+      if (isFsm) refreshFsmSpawnSelect();
+      if (isSimple) {
+        simpleLabSection.appendChild(spawnSection);
+        enemyMovement.setMovementClass("dumb");
+        groupMovement.setMovementClass("dumb");
+      } else if (isSmart) {
+        smartLabSection.appendChild(spawnSection);
+        enemyMovement.setMovementClass("smart");
+        groupMovement.setMovementClass("smart");
+      } else {
+        fsmLabSection.appendChild(spawnSection);
+      }
+      setLabSectionFocusable(simpleLabSection, isSimple);
+      setLabSectionFocusable(smartLabSection, isSmart);
+      setLabSectionFocusable(fsmLabSection, isFsm);
+    };
+    simpleModeButton.addEventListener("click", () => { enemyLabMode = "simple"; refreshEnemyLabMode(); });
+    smartModeButton.addEventListener("click", () => { enemyLabMode = "smart"; refreshEnemyLabMode(); });
+    fsmModeButton.addEventListener("click", () => { enemyLabMode = "fsm"; refreshEnemyLabMode(); });
+    refreshEnemyLabMode();
 
     document.body.appendChild(panel);
     this.panel = panel;
