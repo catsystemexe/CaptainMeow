@@ -10,6 +10,7 @@ import { EnemyBehaviorPresets } from "../game/enemies/EnemyBehaviorPresets";
 import { getFsmDebugSnapshot, type FsmDebugSnapshot } from "../game/enemies/fsm";
 import { ENEMY_GROUP_COHESION_IDS, ENEMY_GROUP_FORMATION_IDS, ENEMY_GROUP_PARAM_LIMITS, normalizeEnemyGroupParams, normalizeGroupFormationStartAngle } from "../game/enemies/EnemyGroups";
 import type { CohesionId, FormationId } from "../game/enemies/EnemyGroups";
+import { ENEMY_LAB_BASIC_SETUP_LIMITS } from "./EnemyLabPresetModel";
 
 export const DEV_SUMMONER_PANEL_ID = "dev-summoner";
 export const FSM_PRESET_EDITOR_ID = "ds-fsm-preset-editor";
@@ -684,6 +685,7 @@ export class DevSummoner {
     panel.appendChild(title);
 
     let enemyLabMode: EnemyLabMode = "simple";
+    let editFsmBasicSetupDraft: (() => void) | undefined;
 
     const labModeRow = document.createElement("div");
     labModeRow.id = "ds-enemy-lab-mode-row";
@@ -837,8 +839,8 @@ export class DevSummoner {
       countSegment.setAttribute("aria-valuenow", String(groupCount));
       countDecButton.disabled = groupCount <= (enemyLabMode === "fsm" ? 1 : 2);
     };
-    countDecButton.addEventListener("click", () => { groupCount = enemyLabMode === "fsm" ? stepFsmSpawnCount(groupCount, -1) : stepGroupCount(groupCount, -1); refreshGroupCount(); refreshFsmBasicSetupVisibility?.(); });
-    countIncButton.addEventListener("click", () => { groupCount = enemyLabMode === "fsm" ? stepFsmSpawnCount(groupCount, 1) : stepGroupCount(groupCount, 1); refreshGroupCount(); refreshFsmBasicSetupVisibility?.(); });
+    countDecButton.addEventListener("click", () => { groupCount = enemyLabMode === "fsm" ? stepFsmSpawnCount(groupCount, -1) : stepGroupCount(groupCount, -1); refreshGroupCount(); refreshFsmBasicSetupVisibility?.(); if (enemyLabMode === "fsm") editFsmBasicSetupDraft?.(); });
+    countIncButton.addEventListener("click", () => { groupCount = enemyLabMode === "fsm" ? stepFsmSpawnCount(groupCount, 1) : stepGroupCount(groupCount, 1); refreshGroupCount(); refreshFsmBasicSetupVisibility?.(); if (enemyLabMode === "fsm") editFsmBasicSetupDraft?.(); });
     styleCountButton(countDecButton);
     styleCountButton(countIncButton);
     countSegment.appendChild(countDecButton);
@@ -1251,8 +1253,11 @@ export class DevSummoner {
 
     const fsmSpacingSlider = createRangeRow("ds-fsm-spacing", "Spacing", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
     const fsmElasticitySlider = createRangeRow("ds-fsm-elasticity", "Elasticity", { min: 0, max: 10, default: 0, step: 1 });
+    const fsmBaseSpeedSlider = createRangeRow("ds-fsm-base-speed", "Speed", ENEMY_LAB_BASIC_SETUP_LIMITS.baseSpeed);
+    fsmBaseSpeedSlider.wrap.title = "Preset base speed data. U1.3 persists it; runtime movement still uses existing behavior/FSM movement speeds until U1.7 multiplier integration.";
     fsmBasicSection.appendChild(fsmSpacingSlider.wrap);
     fsmBasicSection.appendChild(fsmElasticitySlider.wrap);
+    fsmBasicSection.appendChild(fsmBaseSpeedSlider.wrap);
 
     const formationIconLabels: Record<FormationId, { icon: string; label: string }> = {
       "line.horizontal": { icon: "━", label: "Line formation" },
@@ -1270,6 +1275,7 @@ export class DevSummoner {
       button.addEventListener("click", () => {
         formationChoice.setValue(id);
         refreshFsmBasicSetupVisibility();
+        if (enemyLabMode === "fsm") editFsmBasicSetupDraft?.();
       });
       fsmFormationButtons.appendChild(button);
       return { id, button };
@@ -1501,6 +1507,19 @@ Initial: ${d.initialState} | Validation: ${d.validationStatus}
 ${d.states.join(", ")}` : "No preset selected";
       diagBox.textContent = presetModel.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.presetId ? x.presetId + ": " : ""}${x.message}`).join("\n");
       if (authoringModel.draft?.originalPresetId !== presetModel.selectedId) authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId);
+      if (draft) {
+        enemySelect.value = draft.basicSetup.appearanceId;
+        groupEnemySelect.value = draft.basicSetup.appearanceId;
+        groupCount = normalizeFsmSpawnCount(draft.basicSetup.count);
+        refreshGroupCount();
+        if (draft.basicSetup.formationId) formationChoice.setValue(draft.basicSetup.formationId);
+        fsmSpacingSlider.setValue(draft.basicSetup.spacing ?? ENEMY_LAB_BASIC_SETUP_LIMITS.spacing.default);
+        fsmElasticitySlider.setValue(draft.basicSetup.elasticity ?? ENEMY_LAB_BASIC_SETUP_LIMITS.elasticity.default);
+        fsmBaseSpeedSlider.setValue(draft.basicSetup.baseSpeed);
+        screenYControl.setValue(draft.basicSetup.spawnY);
+        groupYControl.setValue(draft.basicSetup.spawnY);
+        refreshFsmBasicSetupVisibility();
+      }
       const ad = authoringModel.draft; const selected = ad?.preset.graph.states.find((s) => s.id === ad.selectedStateId) ?? ad?.preset.graph.states[0]; const authoringReadOnly = authoringModel.readOnly;
       initialSelect.textContent = ""; for (const s of ad?.preset.graph.states ?? []) appendOption(initialSelect, String(s.id), String(s.id)); initialSelect.value = String(ad?.preset.graph.initialStateId ?? ""); initialSelect.disabled = authoringReadOnly;
       stateSelect.textContent = ""; for (const s of ad?.preset.graph.states ?? []) appendOption(stateSelect, String(s.id), `${s.id} ${s.label}`); stateSelect.value = String(selected?.id ?? ""); stateSelect.disabled = false;
@@ -1535,9 +1554,10 @@ ${d.states.join(", ")}` : "No preset selected";
       ].join("\n") : preview.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code}: ${x.message}`).join("\n");
       previewTrace.textContent = `Transition Trace\n${preview.trace.map((t) => `${t.tick}: ${t.fromStateId ?? "spawn"} -> ${t.toStateId} #${t.entryCount}`).join("\n")}`;
       for (const b of [addStateBtn, dupStateBtn, delStateBtn, upStateBtn, downStateBtn, addSineBtn, addClampBtn, despawnBtn, addTransitionBtn]) b.disabled = authoringReadOnly;
-      saveBtn.disabled = readOnly || !draft.dirty || !authoringModel.canSave;
+      saveBtn.disabled = readOnly || (!draft.dirty && !authoringModel.canSave);
       refreshFsmSpawnSelect(CONTENT.fsmPresets.get(presetModel.selectedId) ? presetModel.selectedId : fsmSpawnSelect.value);
     };
+    editFsmBasicSetupDraft = () => { presetModel.setBasicSetup({ appearanceId: enemySelect.value, count: groupCount, formationId: formationChoice.value, spacing: fsmSpacingSlider.value, elasticity: fsmElasticitySlider.value, baseSpeed: fsmBaseSpeedSlider.value, spawnY: screenYControl.value }); renderPresetEditor(); };
     presetList.addEventListener("change", () => { if (!authoringModel.requireDiscardConfirmation(presetList.value) || window.confirm("Discard unsaved FSM authoring changes?")) { presetModel.select(presetList.value); authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId); } renderPresetEditor(); });
     idInput.addEventListener("input", () => { presetModel.setDraftId(idInput.value); renderPresetEditor(); });
     labelInput.addEventListener("input", () => { presetModel.setDraftLabel(labelInput.value); renderPresetEditor(); });
@@ -1552,7 +1572,7 @@ ${d.states.join(", ")}` : "No preset selected";
     rawBtn.addEventListener("click", () => { exportText.value = presetModel.inspectRawStorage().rawStorage ?? ""; renderPresetEditor(); });
     clearBtn.addEventListener("click", () => { if (window.confirm("Clear all user FSM presets?")) presetModel.clearUserPresets(true); renderPresetEditor(); });
     topNewBtn.addEventListener("click", () => { presetModel.create(); renderPresetEditor(); });
-    topEditBtn.addEventListener("click", () => { if (presetModel.draft?.source === "builtin") presetModel.duplicate(); renderPresetEditor(); });
+    topEditBtn.addEventListener("click", () => { if (presetModel.draft?.source === "builtin") presetModel.duplicateForEdit(); renderPresetEditor(); });
     topImportBtn.addEventListener("click", () => { presetModel.importJson(importText.value, collisionSelect.value as any); renderPresetEditor(); });
     topDeleteBtn.addEventListener("click", () => { if (presetModel.draft?.source === "user" && window.confirm("Delete selected user FSM preset?")) presetModel.delete(presetModel.selectedId, true); renderPresetEditor(); });
     initialSelect.addEventListener("change", () => { authoringModel.setInitialState(initialSelect.value); renderPresetEditor(); });
@@ -1572,6 +1592,13 @@ ${d.states.join(", ")}` : "No preset selected";
     addClampBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.addModifier(id, "clampY"); renderPresetEditor(); });
     despawnBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.addDespawnAction(id); renderPresetEditor(); });
     addTransitionBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.addTransition(id); renderPresetEditor(); });
+    for (const el of [enemySelect, groupEnemySelect]) el.addEventListener("change", () => { if (enemyLabMode === "fsm") { enemySelect.value = el.value; groupEnemySelect.value = el.value; editFsmBasicSetupDraft(); } });
+    fsmSpacingSlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    fsmElasticitySlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    fsmBaseSpeedSlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    screenYControl.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    screenYControl.valueInput.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    fsmSpawnSelect.addEventListener("change", () => { if (enemyLabMode === "fsm" && fsmSpawnSelect.value && fsmSpawnSelect.value !== presetModel.selectedId) { presetModel.select(fsmSpawnSelect.value); authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId); renderPresetEditor(); } });
     previewDraftBtn.addEventListener("click", () => { previewSession.startDraftPreview(authoringModel.draft?.preset ?? null, !authoringModel.readOnly); renderPresetEditor(); });
     previewSavedBtn.addEventListener("click", () => { previewSession.startPersistedPreview(presetModel.selectedId); renderPresetEditor(); });
     previewRestartBtn.addEventListener("click", () => { previewSession.restart(); renderPresetEditor(); });
