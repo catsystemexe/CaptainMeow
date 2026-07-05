@@ -130,6 +130,8 @@ function assertGroupRuntime(payload: CMEventMap[typeof EventType.SPAWN_ENEMY_GRO
   const { enemies, groups } = runThroughSpawnSystem(payload);
   assert.equal(enemies.length, payload.count, "SpawnSystem creates every requested DOM group member");
   assert.equal(groups.size(), 1, "group metadata remains present");
+  assert.equal((groups.get(1) as any)?.fsm?.preset?.id, expectedFsmPresetId, "group anchor runtime uses selected FSM preset");
+  assert.equal((groups.get(1) as any)?.movementPresetId, "none.hold", "group anchor does not use default movement when FSM is selected");
   for (const ent of enemies) {
     const fsm = getFsmDebugSnapshot(ent);
     assert.equal(ent.typeId, payload.enemyTypeId, "member type/appearance remains selected Type");

@@ -31,6 +31,8 @@ function runDevGroup(input: { enemyTypeId: string; fsmPresetId: string }) {
   const enemies = ((store as any).entities as any[]).filter((e) => e?.alive && e.kind === "enemy");
   assert.equal(enemies.length, 3, "browser Count > 1 group path spawns every member");
   assert.equal(groups.size(), 1, "browser group path keeps group registry membership");
+  assert.equal((groups.get(1) as any)?.fsm?.preset?.id, input.fsmPresetId, "browser group path resolves selected FSM on the group anchor");
+  assert.equal((groups.get(1) as any)?.movementPresetId, "none.hold", "browser group path does not leave default group movement in control");
   for (const ent of enemies) {
     assert.equal(getFsmDebugSnapshot(ent)?.presetId, input.fsmPresetId, "browser group path resolves selected FSM on every member");
     assert(ent.group, "browser group path preserves member group metadata");

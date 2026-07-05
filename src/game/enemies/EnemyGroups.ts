@@ -3,6 +3,8 @@ import type { EntityStore } from "../../engine/ecs/EntityStore";
 import { EnemyBehaviorDB } from "./EnemyBehaviorDB";
 import { EnemyBehaviorPresets } from "./EnemyBehaviorPresets";
 import { resolveMovementCullReferenceX } from "./EnemyCullReference";
+import { createFsmRuntimeSnapshot, executeFsmMovement, getFsmMovementCullReferenceX, updateResolvedFsm, type FsmRuntimeSnapshot } from "./fsm";
+import type { ResolvedFsmPreset } from "./fsm/resolve";
 
 type Vec2 = { x: number; y: number };
 export type GroupId = number;
@@ -39,6 +41,8 @@ export type EnemyGroupSpawnRequest = {
   formationId: string;
   movementPresetId: string;
   cohesionId: string;
+  fsmPreset?: ResolvedFsmPreset;
+  inheritedAttackProfileId?: string | null;
   /** Legacy compatibility alias for formation.spacing. */
   spacing?: number;
   params?: EnemyGroupParams;
@@ -53,6 +57,9 @@ type Group = {
   behavior: Record<string, unknown>;
   bState: Record<string, unknown> & { t: number };
   vel: Vec2;
+  fsm?: FsmRuntimeSnapshot;
+  fsmEnt?: { pos: Vec2; vel: Vec2; bState: Record<string, unknown>; hp: number; maxHp: number };
+  inheritedAttackProfileId?: string | null;
   formationId: FormationId;
   cohesionId: CohesionId;
   params: NormalizedEnemyGroupParams;
@@ -182,6 +189,11 @@ export class EnemyGroupRegistry {
       slotCount: Math.max(0, Math.floor(finite(req.count, 0))),
       members: [],
     };
+    if (req.fsmPreset) {
+      group.fsmEnt = { pos: group.anchor, vel: group.vel, bState: { t: 0 }, hp: 1, maxHp: 1 };
+      group.fsm = createFsmRuntimeSnapshot(req.fsmPreset, {}, group.fsmEnt, { inheritedAttackProfileId: req.inheritedAttackProfileId ?? null, lifecycle: { markKill: () => {}, isKilled: () => false } });
+      group.inheritedAttackProfileId = req.inheritedAttackProfileId ?? null;
+    }
     EnemyBehaviorDB[behaviorId as keyof typeof EnemyBehaviorDB]?.init?.({ pos: group.anchor, vel: group.vel, behavior: group.behavior, bState: group.bState, spawnOrdinal: group.id } as any);
     this.groups.set(group.id, group);
     return group.id;
@@ -199,17 +211,37 @@ export class EnemyGroupRegistry {
   updateAnchors(dt: number, ctx: { playerPos: Vec2 | null; logicW: number; logicH: number }): void {
     if (!(dt > 0)) return;
     for (const group of this.groups.values()) {
-      const behavior = EnemyBehaviorDB[group.behaviorId as keyof typeof EnemyBehaviorDB] ?? EnemyBehaviorDB.none;
-      const ent = { pos: group.anchor, vel: group.vel, behavior: group.behavior, bState: group.bState, spawnOrdinal: group.id };
       const behaviorCtx = { dt, playerPos: ctx.playerPos, logicW: ctx.logicW, logicH: ctx.logicH };
-      behavior.update?.(ent, behaviorCtx as any);
-      const target = behavior.getTarget?.(ent, behaviorCtx as any);
-      if (target && Number.isFinite(target.x) && Number.isFinite(target.y)) {
-        group.vel.x = (target.x - group.anchor.x) / dt;
-        group.vel.y = (target.y - group.anchor.y) / dt;
+      if (group.fsm && group.fsmEnt) {
+        group.fsmEnt.pos = group.anchor;
+        group.fsmEnt.vel = group.vel;
+        updateResolvedFsm(group.fsmEnt, group.fsm, {
+          scrollX: 0,
+          logicW: ctx.logicW,
+          dt,
+          inheritedAttackProfileId: group.inheritedAttackProfileId ?? null,
+          lifecycle: { markKill: () => {}, isKilled: () => false },
+        });
+        const target = executeFsmMovement(group.fsm.movement, group.fsmEnt, behaviorCtx);
+        if (target && Number.isFinite(target.x) && Number.isFinite(target.y)) {
+          group.vel.x = (target.x - group.anchor.x) / dt;
+          group.vel.y = (target.y - group.anchor.y) / dt;
+        } else {
+          group.vel.x = finite(group.fsmEnt.vel?.x);
+          group.vel.y = finite(group.fsmEnt.vel?.y);
+        }
       } else {
-        group.vel.x = finite(ent.vel?.x);
-        group.vel.y = finite(ent.vel?.y);
+        const behavior = EnemyBehaviorDB[group.behaviorId as keyof typeof EnemyBehaviorDB] ?? EnemyBehaviorDB.none;
+        const ent = { pos: group.anchor, vel: group.vel, behavior: group.behavior, bState: group.bState, spawnOrdinal: group.id };
+        behavior.update?.(ent, behaviorCtx as any);
+        const target = behavior.getTarget?.(ent, behaviorCtx as any);
+        if (target && Number.isFinite(target.x) && Number.isFinite(target.y)) {
+          group.vel.x = (target.x - group.anchor.x) / dt;
+          group.vel.y = (target.y - group.anchor.y) / dt;
+        } else {
+          group.vel.x = finite(ent.vel?.x);
+          group.vel.y = finite(ent.vel?.y);
+        }
       }
       group.anchor.x += group.vel.x * dt;
       group.anchor.y += group.vel.y * dt;
@@ -263,7 +295,7 @@ export class EnemyGroupRegistry {
   resolveCullReferenceX(id: GroupId, fallbackX: unknown): number {
     const group = this.groups.get(id);
     if (!group) return finite(fallbackX);
-    return resolveMovementCullReferenceX(group.behaviorId, group.bState, group.anchor.x);
+    return group.fsm ? getFsmMovementCullReferenceX(group.fsm.movement, { pos: group.anchor }) : resolveMovementCullReferenceX(group.behaviorId, group.bState, group.anchor.x);
   }
   markMembersForKill(id: GroupId, store: EntityStore<any>): void {
     const group = this.groups.get(id);

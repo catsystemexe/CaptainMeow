@@ -254,15 +254,26 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
             const formationId = normalizeFormationId(String(p.formationId));
             const cohesionId = normalizeCohesionId(String(p.cohesionId));
             const params = normalizeEnemyGroupParams(p.params, cohesionId, spacing);
+            const explicitFsmPresetId = typeof p.fsmPresetId === "string" && p.fsmPresetId.length ? p.fsmPresetId : "";
+            const defaultGraphId = typeof ENEMY_DEFS[enemyTypeId as EnemyTypeId]?.behaviorGraphId === "string" ? ENEMY_DEFS[enemyTypeId as EnemyTypeId].behaviorGraphId : "";
+            const groupFsmPreset = explicitFsmPresetId
+              ? CONTENT.fsmPresets.get(explicitFsmPresetId)
+              : defaultGraphId
+                ? CONTENT.fsmPresets.get(defaultGraphId)
+                : undefined;
+            if (explicitFsmPresetId && !groupFsmPreset) {
+              throw new Error(`[SpawnSystem] Unknown explicit fsmPresetId: ${explicitFsmPresetId}`);
+            }
             const groupId = this.groups.create({
               enemyTypeId,
               count,
               anchor: worldAnchor,
               formationId,
-              movementPresetId: String(p.movementPresetId),
+              movementPresetId: groupFsmPreset ? "none.hold" : String(p.movementPresetId),
               cohesionId,
               spacing,
               params,
+              ...(groupFsmPreset ? { fsmPreset: groupFsmPreset, inheritedAttackProfileId: ENEMY_DEFS[enemyTypeId as EnemyTypeId]?.attackProfile?.id ?? null } : {}),
             });
 
             let spawnedCount = 0;
