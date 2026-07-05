@@ -98,14 +98,17 @@ function mountAndSpawnGroup(input: { enemyTypeId: string; fsmPresetId?: string }
   assert(panel, "DevSummoner panel mounted");
 
   clickButtonByText(panel, "FSM");
-  clickButtonByText(panel, "Group");
-  assert.notEqual(panel.findById("ds-fsm-preset")?.parentNode?.style.display, "none", "FSM selector remains visible in FSM group mode");
-  const groupType = panel.findById("ds-group-enemy")!;
+  assert.notEqual(panel.findById("ds-fsm-preset")?.parentNode?.style.display, "none", "FSM selector remains visible in FSM presets block");
+  const groupType = panel.findById("ds-enemy")!;
   groupType.value = input.enemyTypeId;
-  chooseCompact(panel, "ds-group-movement-primitive", "straight");
-  chooseCompact(panel, "ds-group-movement-preset", "straight.basic");
+  const count = panel.findById("ds-group-count")!;
+  const countButtons = count.findAll((el) => el.tagName === "BUTTON");
+  while (count.getAttribute("aria-valuenow") !== "3") {
+    const now = Number(count.getAttribute("aria-valuenow"));
+    countButtons[now > 3 ? 0 : 1].click();
+  }
   chooseCompact(panel, "ds-fsm-preset", input.fsmPresetId ?? "(movement preset)");
-  clickButtonByText(panel, "Spawn Group");
+  clickButtonByText(panel, "SPAWN");
 
   assert.equal(emitted.length, 1, "actual group Spawn button emits one event");
   assert.equal(emitted[0].type, EventType.SPAWN_ENEMY_GROUP, "actual group Spawn button emits SPAWN_ENEMY_GROUP");
