@@ -37,3 +37,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [U0.2 — Browser group FSM selection fix](./U0.2.md)
 - [U1.1 — SIMPLE / SMART / FSM mode split](./U1.1.md)
 - [U1.2 — FSM Presets and Basic Setup workflow](./U1.2.md)
+- [U1.3 — Basic Setup as part of all Enemy Lab presets](./U1.3.md)

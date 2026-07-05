@@ -99,6 +99,7 @@ function mountAndSpawnGroup(input: { enemyTypeId: string; fsmPresetId?: string }
 
   clickButtonByText(panel, "FSM");
   assert.notEqual(panel.findById("ds-fsm-preset")?.parentNode?.style.display, "none", "FSM selector remains visible in FSM presets block");
+  chooseCompact(panel, "ds-fsm-preset", input.fsmPresetId ?? "(movement preset)");
   const groupType = panel.findById("ds-enemy")!;
   groupType.value = input.enemyTypeId;
   const count = panel.findById("ds-group-count")!;
@@ -107,7 +108,6 @@ function mountAndSpawnGroup(input: { enemyTypeId: string; fsmPresetId?: string }
     const now = Number(count.getAttribute("aria-valuenow"));
     countButtons[now > 3 ? 0 : 1].click();
   }
-  chooseCompact(panel, "ds-fsm-preset", input.fsmPresetId ?? "(movement preset)");
   clickButtonByText(panel, "SPAWN");
 
   assert.equal(emitted.length, 1, "actual group Spawn button emits one event");
@@ -154,9 +154,9 @@ const overridePayload = mountAndSpawnGroup({ enemyTypeId: "fsm_turret", fsmPrese
 assertGroupRuntime(overridePayload, "fsm.hover");
 
 const defaultPayload = mountAndSpawnGroup({ enemyTypeId: "fsm_turret" });
-assert.equal(defaultPayload.fsmPresetId, undefined, "no explicit DOM FSM selection omits fsmPresetId");
+assert.equal(defaultPayload.fsmPresetId, "fsm.turret", "default FSM selection emits selected preset id");
 const defaultRuntime = runThroughSpawnSystem(defaultPayload).enemies.map((ent) => getFsmDebugSnapshot(ent)?.presetId);
-assert(defaultRuntime.every((id) => id === "fsm.turret"), "no explicit FSM preserves default behaviorGraphId behavior");
+assert(defaultRuntime.every((id) => id === "fsm.turret"), "default FSM selection uses selected preset id matching type default");
 
 const invalidPayload = { ...builtinPayload, fsmPresetId: "fsm.missing.u0_2" };
 assert.throws(() => runThroughSpawnSystem(invalidPayload), /Unknown explicit fsmPresetId/, "invalid explicit FSM fails clearly without silent fallback");

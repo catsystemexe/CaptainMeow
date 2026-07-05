@@ -1,9 +1,10 @@
 import { CONTENT } from "../game/content/CONTENT";
 import { FSM_SCHEMA_VERSION, asFsmStateId, type FsmPresetSchemaV1 } from "../game/enemies/fsm/schema";
 import type { CombinedFsmPresetRegistry, ImportCollisionPolicy, UserFsmPresetDiagnostic, UserFsmPresetStore } from "../game/enemies/fsm/UserFsmPresetStore";
+import { cloneBasicSetup, defaultBasicSetupForMode, normalizeBasicSetup, validateBasicSetup, type EnemyLabBasicSetup } from "./EnemyLabPresetModel";
 
 export interface FsmPresetListItem { id: string; label: string; source: "builtin" | "user"; readOnly: boolean; stateCount: number; valid: boolean; }
-export interface FsmPresetEditorDraft { originalId: string; id: string; label: string; dirty: boolean; source: "builtin" | "user"; }
+export interface FsmPresetEditorDraft { originalId: string; id: string; label: string; dirty: boolean; source: "builtin" | "user"; basicSetup: EnemyLabBasicSetup; }
 export interface FsmPresetDetails { source: "builtin" | "user"; schemaVersion: number; stateCount: number; initialState: string; validationStatus: "valid" | "invalid"; states: readonly string[]; }
 export interface FsmPresetOperationResult { ok: boolean; selectedId: string; diagnostics: readonly UserFsmPresetDiagnostic[]; exportedText?: string; importedIds?: readonly string[]; rawStorage?: string | null; }
 
@@ -28,11 +29,13 @@ export class FsmPresetEditorModel {
   select(id: string): FsmPresetOperationResult { if (!this.store.registry().get(id)) return this.fail("E_SELECT_UNKNOWN_ID", `FSM preset ID ${id} does not exist.`, id); this.selectedId = id; this.loadDraft(); return this.ok(); }
   setDraftId(id: string): void { if (!this.draft || this.draft.source === "builtin") return; this.draft = { ...this.draft, id, dirty: id !== this.draft.originalId || this.draft.label !== this.currentLabel(this.draft.originalId) }; }
   setDraftLabel(label: string): void { if (!this.draft || this.draft.source === "builtin") return; this.draft = { ...this.draft, label, dirty: this.draft.id !== this.draft.originalId || label !== this.currentLabel(this.draft.originalId) }; }
+  setBasicSetup(next: Partial<EnemyLabBasicSetup>): void { if (!this.draft) return; const basicSetup = normalizeBasicSetup({ ...this.draft.basicSetup, ...next }, "fsm"); this.draft = { ...this.draft, basicSetup, dirty: true }; }
+  duplicateForEdit(id = this.selectedId): FsmPresetOperationResult { return this.duplicate(id); }
   cancel(): FsmPresetOperationResult { this.loadDraft(); return this.ok(); }
 
   create(): FsmPresetOperationResult {
     const id = this.nextId("fsm.user.new");
-    const preset: FsmPresetSchemaV1 = { schemaVersion: FSM_SCHEMA_VERSION, metadata: { id, name: "New FSM preset", source: "user", schemaVersion: FSM_SCHEMA_VERSION }, graph: { initialStateId: asFsmStateId("idle"), states: [{ id: asFsmStateId("idle"), label: "Idle", movement: { base: { type: "movementPreset", params: { presetId: "none.hold" } } }, targeting: { type: "forward" }, combat: { mode: "disabled" }, lifecycle: {}, transitions: [] }] } };
+    const preset: FsmPresetSchemaV1 = { schemaVersion: FSM_SCHEMA_VERSION, metadata: { id, name: "New FSM preset", source: "user", schemaVersion: FSM_SCHEMA_VERSION }, basicSetup: defaultBasicSetupForMode("fsm"), graph: { initialStateId: asFsmStateId("idle"), states: [{ id: asFsmStateId("idle"), label: "Idle", movement: { base: { type: "movementPreset", params: { presetId: "none.hold" } } }, targeting: { type: "forward" }, combat: { mode: "disabled" }, lifecycle: {}, transitions: [] }] } };
     return this.afterMutation(this.store.upsert(preset), id);
   }
 
@@ -42,6 +45,7 @@ export class FsmPresetEditorModel {
     if (!resolved || !original) return this.fail("E_DUPLICATE_UNKNOWN_ID", `FSM preset ID ${id} does not exist.`, id);
     const copy = clone(original) as FsmPresetSchemaV1;
     copy.metadata = { ...copy.metadata, id: this.nextId(`${id}-copy`), name: `${resolved.definition.metadata.name} Copy`, source: "user", schemaVersion: FSM_SCHEMA_VERSION };
+    copy.basicSetup = normalizeBasicSetup((copy as any).basicSetup, "fsm");
     return this.afterMutation(this.store.upsert(copy), copy.metadata.id);
   }
 
@@ -49,7 +53,16 @@ export class FsmPresetEditorModel {
     const d = this.draft;
     if (!d || !d.dirty) return this.ok();
     if (d.source === "builtin") return this.fail("E_BUILTIN_READONLY", "Built-in presets are read-only.", d.originalId);
-    return this.afterMutation(this.store.rename(d.originalId, d.id.trim(), d.label.trim()), d.id.trim());
+    const basicIssues = validateBasicSetup(d.basicSetup);
+    if (basicIssues.some((x) => x.severity === "error")) return this.fail("E_BASIC_SETUP_INVALID", basicIssues.map((x) => x.message).join("\n"), d.originalId);
+    const preset = this.store.get(d.originalId);
+    if (!preset) return this.fail("E_SAVE_UNKNOWN_ID", `FSM user preset ID ${d.originalId} does not exist.`, d.originalId);
+    const next = clone(preset) as FsmPresetSchemaV1;
+    next.metadata = { ...next.metadata, id: d.id.trim(), name: d.label.trim(), source: "user", schemaVersion: FSM_SCHEMA_VERSION };
+    next.basicSetup = cloneBasicSetup(d.basicSetup);
+    const renamed = d.id.trim() !== d.originalId ? this.store.delete(d.originalId) : { ok: true, diagnostics: [] };
+    if (!renamed.ok) return this.afterMutation(renamed, d.originalId);
+    return this.afterMutation(this.store.upsert(next), d.id.trim());
   }
 
   delete(id = this.selectedId, confirmed = false): FsmPresetOperationResult {
@@ -67,7 +80,7 @@ export class FsmPresetEditorModel {
   inspectRawStorage(): FsmPresetOperationResult { const r = this.store.inspectRawStorage(); this.rawStorage = r.raw; this.diagnostics = r.diagnostics; return { ok: r.ok, selectedId: this.selectedId, diagnostics: r.diagnostics, rawStorage: r.raw }; }
 
   private currentLabel(id: string): string { return this.store.registry().get(id)?.definition.metadata.name ?? ""; }
-  private loadDraft(): void { const p = this.store.registry().get(this.selectedId); const source = this.store.registry().sourceOf(this.selectedId); this.draft = p && source ? { originalId: p.id, id: p.id, label: p.definition.metadata.name, dirty: false, source } : null; }
+  private loadDraft(): void { const p = this.store.registry().get(this.selectedId); const source = this.store.registry().sourceOf(this.selectedId); this.draft = p && source ? { originalId: p.id, id: p.id, label: p.definition.metadata.name, dirty: false, source, basicSetup: normalizeBasicSetup((p.definition as any).basicSetup, "fsm") } : null; }
   private nextId(base: string): string { if (!this.store.registry().get(base)) return base; for (let i = 2; ; i++) { const id = `${base}-${i}`; if (!this.store.registry().get(id)) return id; } }
   private ok(extra: Partial<FsmPresetOperationResult> = {}): FsmPresetOperationResult { this.diagnostics = []; return { ok: true, selectedId: this.selectedId, diagnostics: [], ...extra }; }
   private fail(code: string, message: string, presetId?: string): FsmPresetOperationResult { this.diagnostics = [error(code, message, presetId)]; return { ok: false, selectedId: this.selectedId, diagnostics: this.diagnostics }; }

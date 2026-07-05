@@ -20,6 +20,16 @@ export interface FsmPresetMetadata {
 export interface FsmPresetSchemaV1 {
   schemaVersion: typeof FSM_SCHEMA_VERSION;
   metadata: FsmPresetMetadata;
+  /** Enemy Lab U1.3 preset-owned spawn/setup draft data. Optional for legacy presets. */
+  basicSetup?: {
+    appearanceId: string;
+    count: number;
+    formationId?: string;
+    spacing?: number;
+    elasticity?: number;
+    baseSpeed: number;
+    spawnY: number;
+  };
   graph: FsmGraphDefinition;
 }
 
