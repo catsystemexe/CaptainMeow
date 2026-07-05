@@ -81,7 +81,7 @@ export type CMEventMap = {
     formationId: string;
     movementPresetId: string;
     cohesionId: string;
-    /** Explicit FSM controller preset id propagated to every group member. */
+    /** Explicit FSM controller preset id for the group anchor and members. */
     fsmPresetId?: string;
     spacing?: number;
     params?: {

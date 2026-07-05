@@ -66,6 +66,26 @@ assert.equal(saved.basicSetup?.appearanceId, "blue", "saved FSM preset persists 
 assert.equal(saved.basicSetup?.baseSpeed, 155, "saved FSM preset persists baseSpeed");
 const reloaded = new FsmPresetEditorModel(store, model.selectedId);
 assert.equal(reloaded.draft?.basicSetup.spacing, 44, "reloaded FSM preset restores Basic Setup");
+const selectedBeforeBasicSetup = model.selectedId;
+const graphBeforeBasicSetup = store.registry().get(selectedBeforeBasicSetup)?.definition.graph;
+for (const edit of [
+  { appearanceId: "green" },
+  { count: 2 },
+  { count: 1 },
+  { formationId: "wedge" },
+  { spacing: 52 },
+  { elasticity: 3 },
+  { baseSpeed: 205 },
+  { spawnY: 321 },
+]) {
+  model.setBasicSetup(edit as any);
+  assert.equal(model.selectedId, selectedBeforeBasicSetup, "Basic Setup edit preserves selected FSM preset ID");
+  assert.equal(store.registry().get(model.selectedId)?.definition.graph, graphBeforeBasicSetup, "Basic Setup edit preserves FSM graph identity");
+}
+const explicitSelection = model.select(builtinId);
+assert.equal(explicitSelection.ok, true, "explicit preset selection succeeds");
+assert.notEqual(model.selectedId, selectedBeforeBasicSetup, "only explicit preset selection changes selected FSM behavior");
+assert.equal(model.select(selectedBeforeBasicSetup).ok, true, "test reselects saved user preset before export");
 
 const beforeLegacyRaw = storage.getItem(store.storageKey);
 const legacyStore = createUserFsmPresetStore({ builtinRegistry: CONTENT.builtinFsmPresets, storage: new MemoryStorage(), knownMovementPresetIds: new Set(CONTENT.behaviorPresets.map((p) => p.id)) });
