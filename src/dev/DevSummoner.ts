@@ -18,6 +18,11 @@ const EMPTY_ENEMY_LAB = "No FSM enemy selected/spawned.";
 type MovementClassId = "dumb" | "smart";
 type SpawnMode = "enemy" | "group";
 type EnemyLabMode = "simple" | "smart" | "fsm";
+type FsmElasticitySettings = {
+  cohesionId: CohesionId;
+  response: number;
+  maxCatchupSpeed: number;
+};
 
 type MovementGroups = Record<MovementClassId, Record<string, string[]>>;
 type RetainedFsmInspectionStatus = "live" | "ended";
@@ -502,6 +507,44 @@ export function stepGroupCount(value: unknown, delta: -1 | 1): number {
   return normalizeGroupCount(normalizeGroupCount(value) + delta);
 }
 
+export function normalizeFsmSpawnCount(value: unknown): number {
+  const raw = Number(value);
+  const n = Number.isFinite(raw) ? Math.floor(raw) : 1;
+  return Math.min(10, Math.max(1, n));
+}
+
+export function stepFsmSpawnCount(value: unknown, delta: -1 | 1): number {
+  return normalizeFsmSpawnCount(normalizeFsmSpawnCount(value) + delta);
+}
+
+export function normalizeFsmElasticity(value: unknown): number {
+  const raw = Number(value);
+  const n = Number.isFinite(raw) ? Math.floor(raw) : 0;
+  return Math.min(10, Math.max(0, n));
+}
+
+export function mapElasticityToGroupSettings(value: unknown): FsmElasticitySettings {
+  const elasticity = normalizeFsmElasticity(value);
+  const catchLimits = ENEMY_GROUP_PARAM_LIMITS.cohesion.maxCatchupSpeed;
+  const responseLimits = ENEMY_GROUP_PARAM_LIMITS.cohesion.response;
+  if (elasticity === 0) {
+    return {
+      cohesionId: "rigid",
+      response: responseLimits.default,
+      maxCatchupSpeed: catchLimits.rigidDefault,
+    };
+  }
+  const t = elasticity / 10;
+  // U1.2 keeps the existing group runtime contract and maps one UI slider onto
+  // the existing elastic response/catch-up fields deterministically. Higher
+  // elasticity means softer response and slower catch-up within current limits.
+  return {
+    cohesionId: "elastic",
+    response: Math.round(responseLimits.max - (responseLimits.max - responseLimits.min) * t),
+    maxCatchupSpeed: Math.round((catchLimits.rigidDefault - (catchLimits.rigidDefault - catchLimits.min) * t) / catchLimits.step) * catchLimits.step,
+  };
+}
+
 type GroupParamKey = "spacing" | "depth" | "radius" | "angle" | "startAngle" | "response" | "maxCatchupSpeed";
 
 export function normalizeGroupStepperValue(key: GroupParamKey, value: unknown, cohesionId: CohesionId = "rigid"): number {
@@ -778,14 +821,15 @@ export class DevSummoner {
       applyInlineStepperButtonStyle(button);
     };
     const refreshGroupCount = () => {
-      groupCount = normalizeGroupCount(groupCount);
+      groupCount = enemyLabMode === "fsm" ? normalizeFsmSpawnCount(groupCount) : normalizeGroupCount(groupCount);
       countValue.textContent = String(groupCount);
-      countSegment.setAttribute("aria-valuemin", "2");
+      countSegment.setAttribute("aria-valuemin", enemyLabMode === "fsm" ? "1" : "2");
       countSegment.setAttribute("aria-valuemax", "10");
       countSegment.setAttribute("aria-valuenow", String(groupCount));
+      countDecButton.disabled = groupCount <= (enemyLabMode === "fsm" ? 1 : 2);
     };
-    countDecButton.addEventListener("click", () => { groupCount = stepGroupCount(groupCount, -1); refreshGroupCount(); });
-    countIncButton.addEventListener("click", () => { groupCount = stepGroupCount(groupCount, 1); refreshGroupCount(); });
+    countDecButton.addEventListener("click", () => { groupCount = enemyLabMode === "fsm" ? stepFsmSpawnCount(groupCount, -1) : stepGroupCount(groupCount, -1); refreshGroupCount(); refreshFsmBasicSetupVisibility?.(); });
+    countIncButton.addEventListener("click", () => { groupCount = enemyLabMode === "fsm" ? stepFsmSpawnCount(groupCount, 1) : stepGroupCount(groupCount, 1); refreshGroupCount(); refreshFsmBasicSetupVisibility?.(); });
     styleCountButton(countDecButton);
     styleCountButton(countIncButton);
     countSegment.appendChild(countDecButton);
@@ -804,7 +848,12 @@ export class DevSummoner {
       select.setOptions([...options], defaultValue);
       this.cleanupHandlers.push(() => select.destroy());
       wrap.appendChild(select.root);
-      return { wrap, get value() { return select.value as T; }, addEventListener(listener: () => void) { select.addEventListener("change", listener); } };
+      return {
+        wrap,
+        get value() { return select.value as T; },
+        setValue(next: T) { select.setOptions([...options], next); },
+        addEventListener(listener: () => void) { select.addEventListener("change", listener); },
+      };
     };
     const makeSegmentedChoice = <T extends string>(label: string, ariaLabel: string, options: ReadonlyArray<{ value: T; label: string }>, defaultValue: T) => {
       let value = defaultValue;
@@ -1106,6 +1155,139 @@ export class DevSummoner {
     const groupYControl = createSpawnYControl("ds-group");
     groupControls.appendChild(groupYControl.wrap);
 
+    const createRangeRow = (id: string, labelText: string, limits: { min: number; max: number; default: number; step: number }) => {
+      let value = limits.default;
+      const wrap = document.createElement("label");
+      wrap.id = `${id}-row`;
+      wrap.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr) 38px;gap:6px;align-items:center;min-width:0;";
+      const label = document.createElement("span");
+      label.textContent = labelText;
+      applyLabelTextStyle(label);
+      const slider = document.createElement("input");
+      slider.id = id;
+      slider.type = "range";
+      slider.min = String(limits.min);
+      slider.max = String(limits.max);
+      slider.step = String(limits.step);
+      slider.value = String(limits.default);
+      slider.style.cssText = "width:100%;min-width:0;box-sizing:border-box;accent-color:#6f8fc0;";
+      const valueLabel = document.createElement("span");
+      valueLabel.style.cssText = "font-weight:800;text-align:right;color:#eee;";
+      const setValue = (next: unknown) => {
+        const raw = Number(next);
+        const clamped = Number.isFinite(raw) ? Math.min(limits.max, Math.max(limits.min, raw)) : limits.default;
+        value = clamped;
+        slider.value = String(clamped);
+        valueLabel.textContent = String(clamped);
+      };
+      slider.addEventListener("input", () => setValue(slider.value));
+      wrap.appendChild(label);
+      wrap.appendChild(slider);
+      wrap.appendChild(valueLabel);
+      setValue(value);
+      return { wrap, slider, setValue, get value() { return value; } };
+    };
+
+    const fsmPresetSection = document.createElement("div");
+    fsmPresetSection.id = "ds-fsm-preset-section";
+    fsmPresetSection.style.cssText = "display:flex;flex-direction:column;gap:4px;padding-top:2px;border-top:1px solid rgba(255,255,255,0.12);";
+    const fsmPresetHeading = document.createElement("div");
+    fsmPresetHeading.textContent = "PRESETS";
+    fsmPresetHeading.style.cssText = "font-weight:800;letter-spacing:1px;opacity:0.95;";
+    const fsmPresetToolbar = document.createElement("div");
+    fsmPresetToolbar.id = "ds-fsm-preset-toolbar";
+    fsmPresetToolbar.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) 26px 26px 26px 26px;gap:2px;align-items:center;";
+    fsmPresetSection.appendChild(fsmPresetHeading);
+    fsmPresetSection.appendChild(fsmPresetToolbar);
+
+    const fsmBasicSection = document.createElement("div");
+    fsmBasicSection.id = "ds-fsm-basic-setup";
+    fsmBasicSection.style.cssText = "display:flex;flex-direction:column;gap:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.12);";
+    const fsmBasicHeading = document.createElement("div");
+    fsmBasicHeading.textContent = "BASIC SETUP";
+    fsmBasicHeading.style.cssText = "font-weight:800;letter-spacing:1px;opacity:0.95;";
+    fsmBasicSection.appendChild(fsmBasicHeading);
+
+    const fsmTypeRow = document.createElement("label");
+    fsmTypeRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px;align-items:center;min-width:0;";
+    const fsmTypeLabel = document.createElement("span");
+    fsmTypeLabel.textContent = "Type";
+    applyLabelTextStyle(fsmTypeLabel);
+    fsmTypeRow.appendChild(fsmTypeLabel);
+    fsmBasicSection.appendChild(fsmTypeRow);
+
+    const fsmCountRow = document.createElement("div");
+    fsmCountRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px;align-items:center;";
+    const fsmCountLabel = document.createElement("span");
+    fsmCountLabel.textContent = "Count";
+    applyLabelTextStyle(fsmCountLabel);
+    fsmCountRow.appendChild(fsmCountLabel);
+    fsmCountRow.appendChild(countSegment);
+    fsmBasicSection.appendChild(fsmCountRow);
+
+    const fsmFormationRow = document.createElement("div");
+    fsmFormationRow.id = "ds-fsm-formation-row";
+    fsmFormationRow.style.cssText = "display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;";
+    const fsmFormationLabel = document.createElement("span");
+    fsmFormationLabel.textContent = "Form";
+    applyLabelTextStyle(fsmFormationLabel);
+    const fsmFormationButtons = document.createElement("div");
+    fsmFormationButtons.id = "ds-fsm-formation-icons";
+    fsmFormationButtons.setAttribute("role", "radiogroup");
+    fsmFormationButtons.setAttribute("aria-label", "FSM group formation");
+    fsmFormationButtons.style.cssText = "display:grid;grid-template-columns:repeat(5,1fr);gap:2px;";
+    fsmFormationRow.appendChild(fsmFormationLabel);
+    fsmFormationRow.appendChild(fsmFormationButtons);
+    fsmBasicSection.appendChild(fsmFormationRow);
+
+    const fsmSpacingSlider = createRangeRow("ds-fsm-spacing", "Spacing", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
+    const fsmElasticitySlider = createRangeRow("ds-fsm-elasticity", "Elasticity", { min: 0, max: 10, default: 0, step: 1 });
+    fsmBasicSection.appendChild(fsmSpacingSlider.wrap);
+    fsmBasicSection.appendChild(fsmElasticitySlider.wrap);
+
+    const formationIconLabels: Record<FormationId, { icon: string; label: string }> = {
+      "line.horizontal": { icon: "━", label: "Line formation" },
+      "wedge": { icon: "⌃", label: "Wedge formation" },
+      "column.vertical": { icon: "┃", label: "Column formation" },
+      "arc.forward": { icon: "◜", label: "Arc formation" },
+      "ring": { icon: "○", label: "Ring formation" },
+    };
+    const fsmFormationIconButtons = ENEMY_GROUP_FORMATION_IDS.map((id) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = formationIconLabels[id].icon;
+      button.title = formationIconLabels[id].label;
+      button.setAttribute("aria-label", formationIconLabels[id].label);
+      button.addEventListener("click", () => {
+        formationChoice.setValue(id);
+        refreshFsmBasicSetupVisibility();
+      });
+      fsmFormationButtons.appendChild(button);
+      return { id, button };
+    });
+
+    const refreshFsmFormationIcons = () => {
+      for (const { id, button } of fsmFormationIconButtons) {
+        const active = formationChoice.value === id;
+        button.setAttribute("aria-pressed", String(active));
+        button.setAttribute("aria-checked", String(active));
+        styleSegmentButton(button, active);
+      }
+    };
+
+    const setFsmGroupOnlyVisible = (el: HTMLElement, visible: boolean) => {
+      el.style.display = visible ? (el.tagName === "LABEL" ? "grid" : el.id === "ds-fsm-formation-row" ? "grid" : "flex") : "none";
+      el.setAttribute("aria-hidden", String(!visible));
+    };
+
+    function refreshFsmBasicSetupVisibility(): void {
+      const isGroup = normalizeFsmSpawnCount(groupCount) > 1;
+      setFsmGroupOnlyVisible(fsmFormationRow, isGroup);
+      setFsmGroupOnlyVisible(fsmSpacingSlider.wrap, isGroup);
+      setFsmGroupOnlyVisible(fsmElasticitySlider.wrap, isGroup);
+      refreshFsmFormationIcons();
+    }
+
     const setLabSectionFocusable = (section: HTMLElement, visible: boolean) => {
       for (const el of Array.from(section.querySelectorAll("button,input,select,textarea"))) {
         (el as HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).tabIndex = visible ? 0 : -1;
@@ -1136,6 +1318,52 @@ export class DevSummoner {
     refreshModeButtons();
     btn.addEventListener("click", () => {
       this.latestManualSpawnId += 1;
+      if (enemyLabMode === "fsm") {
+        const fsmCount = normalizeFsmSpawnCount(groupCount);
+        groupCount = fsmCount;
+        refreshGroupCount();
+        if (fsmCount > 1) {
+          const elasticity = mapElasticityToGroupSettings(fsmElasticitySlider.value);
+          const payload = createDevSummonerGroupSpawnPayload({
+            enemyTypeId: enemySelect.value,
+            count: fsmCount,
+            anchorX: this.logicW - 40,
+            anchorY: screenYControl.value,
+            formationId: formationChoice.value,
+            movementPresetId: groupMovement.presetSelect.value,
+            cohesionId: elasticity.cohesionId,
+            fsmPresetId: fsmSpawnSelect.value || undefined,
+            params: {
+              formation: {
+                spacing: fsmSpacingSlider.value,
+                depth: depthStepper.value,
+                radius: radiusStepper.value,
+                angle: angleStepper.value,
+                facing: formationChoice.value === "arc.forward" ? arcFacingChoice.value : formationChoice.value === "wedge" ? wedgeFacingChoice.value : undefined,
+                startAngle: formationChoice.value === "ring" ? startAngleStepper.value : undefined,
+              },
+              cohesion: {
+                response: elasticity.response,
+                maxCatchupSpeed: elasticity.maxCatchupSpeed,
+              },
+            },
+          });
+          if (!payload) {
+            console.warn("[DevSummoner] invalid FSM group spawn payload");
+            return;
+          }
+          this.bus.emitNext(EventType.SPAWN_ENEMY_GROUP, payload);
+          return;
+        }
+        this.bus.emitNext(EventType.SPAWN_ENEMY, createDevSummonerSpawnPayload({
+          typeId: enemySelect.value,
+          spawnX: this.logicW - 40,
+          spawnY: screenYControl.value,
+          fsmPresetId: fsmSpawnSelect.value || undefined,
+          devManualSpawnId: this.latestManualSpawnId,
+        }) as any);
+        return;
+      }
       if (spawnMode === "group") {
         const anchorY = groupYControl.value;
         const payload = createDevSummonerGroupSpawnPayload({
@@ -1146,7 +1374,6 @@ export class DevSummoner {
           formationId: formationChoice.value,
           movementPresetId: groupMovement.presetSelect.value,
           cohesionId: cohesionChoice.value,
-          fsmPresetId: enemyLabMode === "fsm" ? fsmSpawnSelect.value || undefined : undefined,
           params: {
             formation: {
               spacing: spacingStepper.value,
@@ -1176,8 +1403,7 @@ export class DevSummoner {
         typeId: enemySelect.value,
         spawnX: this.logicW - 40,
         spawnY: screenYControl.value,
-        behaviorPresetId: enemyLabMode === "fsm" ? undefined : enemyMovement.presetSelect.value,
-        fsmPresetId: enemyLabMode === "fsm" ? fsmSpawnSelect.value || undefined : undefined,
+        behaviorPresetId: enemyMovement.presetSelect.value,
         devManualSpawnId: this.latestManualSpawnId,
       }) as any);
     });
@@ -1200,6 +1426,21 @@ export class DevSummoner {
     const buttons = document.createElement("div"); buttons.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:3px;";
     const makeBtn = (text: string) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.style.cssText = "font:12px monospace;min-height:24px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; buttons.appendChild(b); return b; };
     const newBtn = makeBtn("New"); const dupBtn = makeBtn("Duplicate"); const saveBtn = makeBtn("Save"); const cancelBtn = makeBtn("Cancel"); const delBtn = makeBtn("Delete"); const importBtn = makeBtn("Import"); const exportBtn = makeBtn("Export selected"); const exportAllBtn = makeBtn("Export users"); const rawBtn = makeBtn("Copy raw"); const clearBtn = makeBtn("Clear users");
+    const makeIconBtn = (icon: string, label: string) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = icon;
+      b.title = label;
+      b.setAttribute("aria-label", label);
+      b.style.cssText = "font:14px monospace;min-height:26px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);";
+      fsmPresetToolbar.appendChild(b);
+      return b;
+    };
+    fsmPresetToolbar.appendChild(fsmSpawnSelect.root);
+    const topNewBtn = makeIconBtn("+", "New FSM preset");
+    const topEditBtn = makeIconBtn("✎", "Edit selected FSM preset; duplicates built-ins before editing");
+    const topImportBtn = makeIconBtn("⇧", "Import FSM preset JSON from the editor import box");
+    const topDeleteBtn = makeIconBtn("×", "Delete selected user FSM preset");
     presetPanel.appendChild(Object.assign(document.createElement("div"), { textContent: "FSM Presets" }));
     presetPanel.appendChild(presetList); presetPanel.appendChild(idInput); presetPanel.appendChild(labelInput); presetPanel.appendChild(details); presetPanel.appendChild(collisionSelect); presetPanel.appendChild(importText); presetPanel.appendChild(buttons); presetPanel.appendChild(exportText); presetPanel.appendChild(diagBox);
     const authoringSections = document.createElement("div");
@@ -1244,7 +1485,7 @@ export class DevSummoner {
 
     const renderPresetEditor = () => {
       const items = presetModel.list(); presetList.textContent = ""; for (const item of items) appendOption(presetList, item.id, `${item.source === "user" ? "USER" : "BUILT-IN"} ${item.id}`); presetList.value = presetModel.selectedId;
-      const draft = presetModel.draft; idInput.value = draft?.id ?? ""; labelInput.value = draft?.label ?? ""; const readOnly = !draft || draft.source === "builtin"; idInput.disabled = readOnly; labelInput.disabled = readOnly; saveBtn.disabled = readOnly || !draft.dirty; delBtn.disabled = readOnly;
+      const draft = presetModel.draft; idInput.value = draft?.id ?? ""; labelInput.value = draft?.label ?? ""; const readOnly = !draft || draft.source === "builtin"; idInput.disabled = readOnly; labelInput.disabled = readOnly; saveBtn.disabled = readOnly || !draft.dirty; delBtn.disabled = readOnly; topDeleteBtn.disabled = readOnly;
       const d = presetModel.details(); details.textContent = d ? `Source: ${d.source.toUpperCase()} | Schema: ${d.schemaVersion} | States: ${d.stateCount}
 Initial: ${d.initialState} | Validation: ${d.validationStatus}
 ${d.states.join(", ")}` : "No preset selected";
@@ -1300,6 +1541,10 @@ ${d.states.join(", ")}` : "No preset selected";
     exportAllBtn.addEventListener("click", () => { exportText.value = presetModel.exportAllUsers().exportedText ?? ""; renderPresetEditor(); });
     rawBtn.addEventListener("click", () => { exportText.value = presetModel.inspectRawStorage().rawStorage ?? ""; renderPresetEditor(); });
     clearBtn.addEventListener("click", () => { if (window.confirm("Clear all user FSM presets?")) presetModel.clearUserPresets(true); renderPresetEditor(); });
+    topNewBtn.addEventListener("click", () => { presetModel.create(); renderPresetEditor(); });
+    topEditBtn.addEventListener("click", () => { if (presetModel.draft?.source === "builtin") presetModel.duplicate(); renderPresetEditor(); });
+    topImportBtn.addEventListener("click", () => { presetModel.importJson(importText.value, collisionSelect.value as any); renderPresetEditor(); });
+    topDeleteBtn.addEventListener("click", () => { if (presetModel.draft?.source === "user" && window.confirm("Delete selected user FSM preset?")) presetModel.delete(presetModel.selectedId, true); renderPresetEditor(); });
     initialSelect.addEventListener("change", () => { authoringModel.setInitialState(initialSelect.value); renderPresetEditor(); });
     stateSelect.addEventListener("change", () => { if (!authoringModel.requireDiscardConfirmation(presetModel.selectedId, stateSelect.value) || window.confirm("Discard selected state view change?")) authoringModel.selectState(stateSelect.value); renderPresetEditor(); });
     stateIdInput.addEventListener("change", () => { const oldId = authoringModel.draft?.selectedStateId; if (oldId) authoringModel.renameState(oldId, stateIdInput.value); renderPresetEditor(); });
@@ -1322,6 +1567,8 @@ ${d.states.join(", ")}` : "No preset selected";
     previewRestartBtn.addEventListener("click", () => { previewSession.restart(); renderPresetEditor(); });
     previewStopBtn.addEventListener("click", () => { previewSession.stop(); renderPresetEditor(); });
     renderPresetEditor();
+    fsmLabSection.appendChild(fsmPresetSection);
+    fsmLabSection.appendChild(fsmBasicSection);
     fsmLabSection.appendChild(presetPanel);
     fsmLabSection.appendChild(createSectionGap());
 
@@ -1354,19 +1601,43 @@ ${d.states.join(", ")}` : "No preset selected";
       simpleLabSection.style.display = isSimple ? "flex" : "none";
       smartLabSection.style.display = isSmart ? "flex" : "none";
       fsmLabSection.style.display = isFsm ? "flex" : "none";
-      fsmSpawnWrap.style.display = isFsm ? "flex" : "none";
-      fsmSpawnWrap.setAttribute("aria-hidden", String(!isFsm));
-      if (isFsm) refreshFsmSpawnSelect();
+      fsmSpawnWrap.style.display = isFsm ? "none" : "flex";
+      fsmSpawnWrap.setAttribute("aria-hidden", String(isFsm));
       if (isSimple) {
+        modeRow.style.display = "grid";
+        spawnTitle.style.display = "block";
+        if (!groupTypeRow.contains(countSegment)) groupTypeRow.appendChild(countSegment);
+        if (!enemyTypeRow.contains(enemySelect)) enemyTypeRow.appendChild(enemySelect);
+        if (!enemyControls.contains(screenYControl.wrap)) enemyControls.appendChild(screenYControl.wrap);
+        if (!spawnSection.contains(btn)) spawnSection.appendChild(btn);
+        refreshModeButtons();
         simpleLabSection.appendChild(spawnSection);
         enemyMovement.setMovementClass("dumb");
         groupMovement.setMovementClass("dumb");
       } else if (isSmart) {
+        modeRow.style.display = "grid";
+        spawnTitle.style.display = "block";
+        if (!groupTypeRow.contains(countSegment)) groupTypeRow.appendChild(countSegment);
+        if (!enemyTypeRow.contains(enemySelect)) enemyTypeRow.appendChild(enemySelect);
+        if (!enemyControls.contains(screenYControl.wrap)) enemyControls.appendChild(screenYControl.wrap);
+        if (!spawnSection.contains(btn)) spawnSection.appendChild(btn);
+        refreshModeButtons();
         smartLabSection.appendChild(spawnSection);
         enemyMovement.setMovementClass("smart");
         groupMovement.setMovementClass("smart");
       } else {
-        fsmLabSection.appendChild(spawnSection);
+        modeRow.style.display = "none";
+        spawnTitle.style.display = "none";
+        refreshFsmSpawnSelect();
+        if (!fsmPresetToolbar.contains(fsmSpawnSelect.root)) fsmPresetToolbar.insertBefore(fsmSpawnSelect.root, fsmPresetToolbar.firstChild);
+        if (!fsmTypeRow.contains(enemySelect)) fsmTypeRow.appendChild(enemySelect);
+        if (!fsmCountRow.contains(countSegment)) fsmCountRow.appendChild(countSegment);
+        if (!fsmBasicSection.contains(screenYControl.wrap)) fsmBasicSection.appendChild(screenYControl.wrap);
+        if (!fsmBasicSection.contains(btn)) fsmBasicSection.appendChild(btn);
+        groupCount = normalizeFsmSpawnCount(groupCount);
+        btn.textContent = "SPAWN";
+        refreshGroupCount();
+        refreshFsmBasicSetupVisibility();
       }
       setLabSectionFocusable(simpleLabSection, isSimple);
       setLabSectionFocusable(smartLabSection, isSmart);

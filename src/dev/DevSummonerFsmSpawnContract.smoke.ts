@@ -28,6 +28,7 @@ assert.equal(groupPayload?.movementPresetId, "none.hold", "group movement payloa
 const src = readFileSync("src/dev/DevSummoner.ts", "utf8");
 assert(src.includes("type EnemyLabMode = \"simple\" | \"smart\" | \"fsm\""), "U1 mode split model exists");
 assert(src.includes("SIMPLE") && src.includes("SMART") && src.includes("FSM"), "U1 mode buttons exist");
-assert(src.includes("fsmPresetId: enemyLabMode === \"fsm\" ? fsmSpawnSelect.value || undefined : undefined"), "UI wires FSM selector to fsmPresetId only in FSM mode");
+assert(src.includes("if (enemyLabMode === \"fsm\")"), "UI has an FSM-only spawn dispatch branch");
+assert(src.includes("fsmPresetId: fsmSpawnSelect.value || undefined"), "UI wires FSM selector to fsmPresetId in FSM mode");
 CONTENT.userFsmPresets.delete(userId);
 console.log("DevSummonerFsmSpawnContract smoke passed");
