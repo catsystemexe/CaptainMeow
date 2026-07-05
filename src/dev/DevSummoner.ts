@@ -545,6 +545,20 @@ export function mapElasticityToGroupSettings(value: unknown): FsmElasticitySetti
   };
 }
 
+export function mapUiSpawnYToRuntimeY(value: unknown, logicH: number): number {
+  const maxY = Math.max(0, logicH);
+  const raw = Number(value);
+  const uiY = Number.isFinite(raw) ? Math.min(maxY, Math.max(0, raw)) : 260;
+  return maxY - uiY;
+}
+
+export function mapFsmSpacingToFormationParams(formationId: FormationId, spacing: unknown): { spacing: number; radius?: number } {
+  const normalizedSpacing = normalizeGroupStepperValue("spacing", spacing);
+  return formationId === "arc.forward" || formationId === "ring"
+    ? { spacing: normalizedSpacing, radius: normalizedSpacing }
+    : { spacing: normalizedSpacing };
+}
+
 type GroupParamKey = "spacing" | "depth" | "radius" | "angle" | "startAngle" | "response" | "maxCatchupSpeed";
 
 export function normalizeGroupStepperValue(key: GroupParamKey, value: unknown, cohesionId: CohesionId = "rigid"): number {
@@ -718,11 +732,6 @@ export class DevSummoner {
     smartLabTitle.textContent = "SMART LAB";
     smartLabTitle.style.cssText = "font-weight:800;opacity:0.95;";
     smartLabSection.appendChild(smartLabTitle);
-    const fsmLabTitle = document.createElement("div");
-    fsmLabTitle.textContent = "FSM LAB";
-    fsmLabTitle.style.cssText = "font-weight:800;opacity:0.95;";
-    fsmLabSection.appendChild(fsmLabTitle);
-
     const spawnSection = document.createElement("div");
     spawnSection.id = "ds-shared-spawn-section";
     spawnSection.style.cssText = "display:flex;flex-direction:column;gap:6px;";
@@ -1324,20 +1333,21 @@ export class DevSummoner {
         refreshGroupCount();
         if (fsmCount > 1) {
           const elasticity = mapElasticityToGroupSettings(fsmElasticitySlider.value);
+          const fsmFormationParams = mapFsmSpacingToFormationParams(formationChoice.value, fsmSpacingSlider.value);
           const payload = createDevSummonerGroupSpawnPayload({
             enemyTypeId: enemySelect.value,
             count: fsmCount,
             anchorX: this.logicW - 40,
-            anchorY: screenYControl.value,
+            anchorY: mapUiSpawnYToRuntimeY(screenYControl.value, this.logicH),
             formationId: formationChoice.value,
             movementPresetId: groupMovement.presetSelect.value,
             cohesionId: elasticity.cohesionId,
             fsmPresetId: fsmSpawnSelect.value || undefined,
             params: {
               formation: {
-                spacing: fsmSpacingSlider.value,
+                ...fsmFormationParams,
                 depth: depthStepper.value,
-                radius: radiusStepper.value,
+                radius: fsmFormationParams.radius ?? radiusStepper.value,
                 angle: angleStepper.value,
                 facing: formationChoice.value === "arc.forward" ? arcFacingChoice.value : formationChoice.value === "wedge" ? wedgeFacingChoice.value : undefined,
                 startAngle: formationChoice.value === "ring" ? startAngleStepper.value : undefined,
@@ -1358,7 +1368,7 @@ export class DevSummoner {
         this.bus.emitNext(EventType.SPAWN_ENEMY, createDevSummonerSpawnPayload({
           typeId: enemySelect.value,
           spawnX: this.logicW - 40,
-          spawnY: screenYControl.value,
+          spawnY: mapUiSpawnYToRuntimeY(screenYControl.value, this.logicH),
           fsmPresetId: fsmSpawnSelect.value || undefined,
           devManualSpawnId: this.latestManualSpawnId,
         }) as any);

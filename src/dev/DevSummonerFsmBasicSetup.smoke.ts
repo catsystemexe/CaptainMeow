@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { EventType, type CMEventMap } from "../engine/core/events";
 import { CONTENT } from "../game/content/CONTENT";
 import { createWorldState } from "../game/data/WorldState";
-import { DevSummoner, DEV_SUMMONER_PANEL_ID, mapElasticityToGroupSettings } from "./DevSummoner";
+import { DevSummoner, DEV_SUMMONER_PANEL_ID, mapElasticityToGroupSettings, mapUiSpawnYToRuntimeY } from "./DevSummoner";
 import { FsmPresetEditorModel } from "./FsmPresetEditorModel";
 
 class FakeStyle {
@@ -115,6 +115,8 @@ clickButtonByText(panel, "FSM");
 const fsm = panel.findById("ds-fsm-lab-section")!;
 const presets = panel.findById("ds-fsm-preset-section")!;
 const basic = panel.findById("ds-fsm-basic-setup")!;
+assert.equal(fsm.findAll((el) => el.textContent === "FSM LAB").length, 0, "FSM LAB heading is not visible in FSM mode");
+assert(panel.findById("ds-fsm-lab-section"), "FSM wrapper remains present");
 assert(fsm.children.indexOf(presets) < fsm.children.indexOf(basic), "PRESETS appears before BASIC SETUP");
 assert(fsm.children.indexOf(basic) < fsm.children.indexOf(panel.findById("ds-fsm-preset-editor")!), "existing FSM editor remains below BASIC SETUP");
 assert.equal(presets.findAll((el) => el.textContent === "Preset").length, 0, "PRESETS has no visible redundant Preset row label");
@@ -184,7 +186,13 @@ assert.equal(spacing.value, "18", "Spacing slider returns to default without san
 assert.equal(resetGroup.payload.params.formation.spacing, 18, "group payload contains restored spacing 18");
 assert.equal(group.payload.cohesionId, "elastic", "group payload contains mapped cohesion mode");
 assert.equal(group.payload.params.cohesion.response, mapElasticityToGroupSettings(5).response, "group payload contains mapped response");
-assert.equal(group.payload.anchor.y, 123, "Y value reaches spawn payload");
+assert.equal(group.payload.anchor.y, mapUiSpawnYToRuntimeY(123, 504), "Y UI value is inverted before reaching group runtime payload");
+while (count.getAttribute("aria-valuenow") !== "1") countButtons[0].click();
+y.value = "404"; y.dispatchEvent({ type: "input" });
+clickButtonByText(panel, "SPAWN");
+assert.equal(emitted.at(-1)?.type, EventType.SPAWN_ENEMY, "Count = 1 still emits single spawn after Y changes");
+assert.equal(emitted.at(-1)?.payload.spawn.y, mapUiSpawnYToRuntimeY(404, 504), "Y UI value is inverted before reaching single runtime payload");
+countButtons[1].click();
 const beforeSwitches = emitted.length;
 for (let i = 0; i < 4; i++) { clickButtonByText(panel, "SIMPLE"); clickButtonByText(panel, "SMART"); clickButtonByText(panel, "FSM"); }
 clickButtonByText(panel, "SPAWN");
