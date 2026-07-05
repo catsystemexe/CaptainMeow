@@ -144,6 +144,9 @@ function assertGroupRuntime(payload: CMEventMap[typeof EventType.SPAWN_ENEMY_GRO
 
 const builtinPayload = mountAndSpawnGroup({ enemyTypeId: "red", fsmPresetId: "fsm.hover" });
 assertGroupRuntime(builtinPayload, "fsm.hover");
+const chargePayload = mountAndSpawnGroup({ enemyTypeId: "red", fsmPresetId: "fsm.charge" });
+assert.equal(chargePayload.count, 3, "Charge default-single preset uses visible/draft Count for group cardinality");
+assertGroupRuntime(chargePayload, "fsm.charge");
 
 const model = new FsmPresetEditorModel(CONTENT.userFsmPresets);
 model.create();

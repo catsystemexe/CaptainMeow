@@ -1346,7 +1346,7 @@ export class DevSummoner {
             anchorX: this.logicW - 40,
             anchorY: mapUiSpawnYToRuntimeY(screenYControl.value, this.logicH),
             formationId: formationChoice.value,
-            movementPresetId: groupMovement.presetSelect.value,
+            movementPresetId: "none.hold",
             cohesionId: elasticity.cohesionId,
             fsmPresetId: fsmSpawnSelect.value || undefined,
             params: {

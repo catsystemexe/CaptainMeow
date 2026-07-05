@@ -41,6 +41,8 @@ function runDevGroup(input: { enemyTypeId: string; fsmPresetId: string }) {
 }
 
 runDevGroup({ enemyTypeId: "red", fsmPresetId: "fsm.hover" });
+runDevGroup({ enemyTypeId: "red", fsmPresetId: "fsm.charge" });
+runDevGroup({ enemyTypeId: "fsm_turret", fsmPresetId: "fsm.turret" });
 runDevGroup({ enemyTypeId: "fsm_turret", fsmPresetId: "fsm.hover" });
 
 const model = new FsmPresetEditorModel(CONTENT.userFsmPresets);
