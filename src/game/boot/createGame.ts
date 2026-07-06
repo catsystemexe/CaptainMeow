@@ -391,6 +391,7 @@ export async function createGame(
         });
         upgradeWeaponSlot = (slot: "w1" | "w2") => { weaponSystem.upgradeSlot(slot); };
         if (typeof window !== "undefined") {
+          (window as any).__CM.enemyGroups = enemyGroups;
           (window as any).__CM.weapons = {
             setLevel: (slot: "w1" | "w2", level: number) => weaponSystem.setLevel(slot, level),
             getSnapshot: () => weaponSystem.getSnapshot(),

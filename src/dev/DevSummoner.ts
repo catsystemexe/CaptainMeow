@@ -11,6 +11,7 @@ import { getFsmDebugSnapshot, type FsmDebugSnapshot } from "../game/enemies/fsm"
 import { ENEMY_GROUP_COHESION_IDS, ENEMY_GROUP_FORMATION_IDS, ENEMY_GROUP_PARAM_LIMITS, normalizeEnemyGroupParams, normalizeGroupFormationStartAngle } from "../game/enemies/EnemyGroups";
 import type { CohesionId, FormationId } from "../game/enemies/EnemyGroups";
 import { ENEMY_LAB_BASIC_SETUP_LIMITS } from "./EnemyLabPresetModel";
+import { findLatestFsmRuntimeDiagnostics, renderFsmRuntimeDiagnosticsText } from "./FsmRuntimeDiagnostics";
 
 export const DEV_SUMMONER_PANEL_ID = "dev-summoner";
 export const FSM_PRESET_EDITOR_ID = "ds-fsm-preset-editor";
@@ -622,6 +623,7 @@ export function createDevSummonerGroupSpawnPayload(input: {
   movementPresetId: string;
   cohesionId: string;
   fsmPresetId?: string;
+  devManualSpawnId?: number;
   params?: CMEventMap[typeof EventType.SPAWN_ENEMY_GROUP]["params"];
 }): CMEventMap[typeof EventType.SPAWN_ENEMY_GROUP] | null {
   if (!isValidEnemyTypeId(input.enemyTypeId)) return null;
@@ -638,6 +640,7 @@ export function createDevSummonerGroupSpawnPayload(input: {
     movementPresetId: input.movementPresetId,
     cohesionId: input.cohesionId,
     ...(input.fsmPresetId ? { fsmPresetId: input.fsmPresetId } : {}),
+    ...(typeof input.devManualSpawnId === "number" ? { devManualSpawnId: input.devManualSpawnId } : {}),
     params,
   };
 }
@@ -1309,6 +1312,20 @@ export class DevSummoner {
       }
     };
 
+
+    const runtimeDiagnosticsSection = document.createElement("div");
+    runtimeDiagnosticsSection.id = "ds-fsm-runtime-diagnostics";
+    runtimeDiagnosticsSection.style.cssText = "display:flex;flex-direction:column;gap:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.12);";
+    const runtimeDiagnosticsHeading = document.createElement("div");
+    runtimeDiagnosticsHeading.textContent = "RUNTIME DIAGNOSTICS";
+    runtimeDiagnosticsHeading.style.cssText = "font-weight:800;letter-spacing:1px;opacity:0.95;";
+    const runtimeDiagnosticsBody = document.createElement("pre");
+    runtimeDiagnosticsBody.id = "ds-fsm-runtime-diagnostics-body";
+    runtimeDiagnosticsBody.style.cssText = "margin:0;white-space:pre-wrap;font:11px monospace;line-height:1.25;color:#dff3ff;background:rgba(90,150,210,0.10);border:1px solid rgba(150,210,255,0.18);padding:4px;border-radius:2px;";
+    runtimeDiagnosticsBody.textContent = "Diagnostics version: A1.1\nNo FSM runtime spawned";
+    runtimeDiagnosticsSection.appendChild(runtimeDiagnosticsHeading);
+    runtimeDiagnosticsSection.appendChild(runtimeDiagnosticsBody);
+
     const btn = document.createElement("button");
     btn.textContent = "RELEASE";
     btn.style.cssText = "cursor:pointer;margin-top:2px;font:12px monospace;font-weight:800;min-height:28px;background:#26384f;color:#fff;border:1px solid rgba(255,255,255,0.28);border-radius:2px;";
@@ -1349,6 +1366,7 @@ export class DevSummoner {
             movementPresetId: "none.hold",
             cohesionId: elasticity.cohesionId,
             fsmPresetId: fsmSpawnSelect.value || undefined,
+            devManualSpawnId: this.latestManualSpawnId,
             params: {
               formation: {
                 ...fsmFormationParams,
@@ -1606,6 +1624,7 @@ ${d.states.join(", ")}` : "No preset selected";
     renderPresetEditor();
     fsmLabSection.appendChild(fsmPresetSection);
     fsmLabSection.appendChild(fsmBasicSection);
+    fsmLabSection.appendChild(runtimeDiagnosticsSection);
     fsmLabSection.appendChild(presetPanel);
     fsmLabSection.appendChild(createSectionGap());
 
@@ -1692,6 +1711,18 @@ ${d.states.join(", ")}` : "No preset selected";
   }
 
   private refreshEnemyLab(): void {
+    const runtimeOut = this.panel?.querySelector("#ds-fsm-runtime-diagnostics-body") as HTMLElement | null;
+    if (runtimeOut) {
+      const cm = (window as any).__CM;
+      const bundle = findLatestFsmRuntimeDiagnostics({
+        store: cm?.store,
+        groups: cm?.enemyGroups,
+        latestManualSpawnId: this.latestManualSpawnId,
+        scrollX: Number((this.world as any)?.scrollX ?? 0),
+      });
+      runtimeOut.textContent = renderFsmRuntimeDiagnosticsText(bundle);
+    }
+
     const out = this.panel?.querySelector(`#${ENEMY_LAB_DEBUG_PANEL_ID}`) as HTMLElement | null;
     if (!out) return;
 
