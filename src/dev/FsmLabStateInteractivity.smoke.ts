@@ -85,7 +85,7 @@ assert(source.includes("let expandedStateId: string | null"), "DevSummoner uses 
 assert(source.includes("expandedStateId = expandedStateId === row.id ? null : row.id"), "row click toggles expand/collapse");
 assert(source.includes("if (row.id === expandedStateId) stateList.appendChild(editorSection)"), "only expanded row renders the inline editor");
 assert(source.includes("editorSection.addEventListener(\"click\", (ev) => ev.stopPropagation())"), "inner editor clicks stop propagation");
-assert(source.includes("ev.stopPropagation(); const states") && source.includes("authoringModel.selectState(row.id); expandedStateId = row.id;"), "Move arrows stop row bubbling and preserve expanded selected state");
+assert(source.includes("ev.stopPropagation(); if (b.disabled) return; authoringModel.selectState(row.id);") && source.includes("expandedStateId = row.id; authoringModel.reorderState"), "Move arrows stop row bubbling and preserve expanded selected state");
 assert(source.includes("setLabFormationOverrideEnabled"), "formation override checkbox calls model toggle method");
 assert(source.includes("cursor:default"), "drag handle is decorative rather than a fake active drag affordance");
 

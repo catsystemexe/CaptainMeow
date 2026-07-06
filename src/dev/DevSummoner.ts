@@ -5,7 +5,7 @@ import { ENEMY_DEFS } from "../game/defs/EnemyDefs";
 import { CONTENT } from "../game/content/CONTENT";
 import { FsmPresetEditorModel } from "./FsmPresetEditorModel";
 import { FsmPresetAuthoringModel } from "./FsmPresetAuthoringModel";
-import { FsmPreviewSession } from "./FsmPreviewSession";
+import { FsmPreviewSession, resolveEphemeralFsmPreset } from "./FsmPreviewSession";
 import { EnemyBehaviorPresets } from "../game/enemies/EnemyBehaviorPresets";
 import { getFsmDebugSnapshot, type FsmDebugSnapshot } from "../game/enemies/fsm";
 import { ENEMY_GROUP_COHESION_IDS, ENEMY_GROUP_FORMATION_IDS, ENEMY_GROUP_PARAM_LIMITS, normalizeEnemyGroupParams, normalizeGroupFormationStartAngle } from "../game/enemies/EnemyGroups";
@@ -73,6 +73,17 @@ const CONTROL_FONT = "12px monospace";
 const CONTROL_BG = "#111";
 const CONTROL_BORDER = "1px solid rgba(255,255,255,0.24)";
 const LABEL_WEIGHT = "800";
+const ICONS = { new: "+", edit: "✎", import: "⇧", delete: "×", restart: "↻", duplicate: "⧉", up: "↑", down: "↓", stop: "■" } as const;
+
+function applyIconButtonStyle(button: HTMLButtonElement, disabled = false): void {
+  button.style.cssText = `display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:26px;min-height:26px;padding:0;font:14px monospace;background:${disabled ? "#1a1a1a" : "#111"};color:${disabled ? "#666" : "#eee"};border:${CONTROL_BORDER};border-radius:${CONTROL_RADIUS_PX}px;cursor:${disabled ? "not-allowed" : "pointer"};box-sizing:border-box;`;
+}
+
+function setIconButtonDisabled(button: HTMLButtonElement, disabled: boolean): void {
+  button.disabled = disabled;
+  applyIconButtonStyle(button, disabled);
+}
+
 
 function applyControlBaseStyle(el: HTMLElement): void {
   el.style.boxSizing = "border-box";
@@ -488,6 +499,7 @@ export function createDevSummonerSpawnPayload(input: {
   spawnY: number;
   behaviorPresetId?: string;
   fsmPresetId?: string;
+  resolvedFsmPresetOverride?: CMEventMap[typeof EventType.SPAWN_ENEMY]["resolvedFsmPresetOverride"];
   devManualSpawnId: number;
 }) {
   return {
@@ -495,6 +507,7 @@ export function createDevSummonerSpawnPayload(input: {
     spawn: { x: input.spawnX, y: input.spawnY },
     ...(input.behaviorPresetId ? { behaviorPresetId: input.behaviorPresetId } : {}),
     ...(input.fsmPresetId ? { fsmPresetId: input.fsmPresetId } : {}),
+    ...(input.resolvedFsmPresetOverride ? { resolvedFsmPresetOverride: input.resolvedFsmPresetOverride } : {}),
     devManualSpawnId: input.devManualSpawnId,
   };
 }
@@ -624,6 +637,7 @@ export function createDevSummonerGroupSpawnPayload(input: {
   cohesionId: string;
   fsmPresetId?: string;
   devManualSpawnId?: number;
+  resolvedFsmPresetOverride?: CMEventMap[typeof EventType.SPAWN_ENEMY_GROUP]["resolvedFsmPresetOverride"];
   params?: CMEventMap[typeof EventType.SPAWN_ENEMY_GROUP]["params"];
 }): CMEventMap[typeof EventType.SPAWN_ENEMY_GROUP] | null {
   if (!isValidEnemyTypeId(input.enemyTypeId)) return null;
@@ -1326,9 +1340,17 @@ export class DevSummoner {
     runtimeDiagnosticsSection.appendChild(runtimeDiagnosticsHeading);
     runtimeDiagnosticsSection.appendChild(runtimeDiagnosticsBody);
 
+    const spawnActionRow = document.createElement("div");
+    spawnActionRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) 26px;gap:4px;align-items:center;";
     const btn = document.createElement("button");
     btn.textContent = "RELEASE";
     btn.style.cssText = "cursor:pointer;margin-top:2px;font:12px monospace;font-weight:800;min-height:28px;background:#26384f;color:#fff;border:1px solid rgba(255,255,255,0.28);border-radius:2px;";
+    const stopLatestSpawnBtn = document.createElement("button");
+    stopLatestSpawnBtn.type = "button";
+    stopLatestSpawnBtn.textContent = ICONS.stop;
+    stopLatestSpawnBtn.title = "Stop latest manual Enemy Lab spawn";
+    stopLatestSpawnBtn.setAttribute("aria-label", "Stop latest manual Enemy Lab spawn");
+    applyIconButtonStyle(stopLatestSpawnBtn);
     const refreshModeButtons = () => {
       enemyModeButton.type = "button";
       groupModeButton.type = "button";
@@ -1343,14 +1365,36 @@ export class DevSummoner {
       groupModeButton.style.borderRadius = "0 2px 2px 0";
       enemyControls.style.display = spawnMode === "enemy" ? "flex" : "none";
       groupControls.style.display = spawnMode === "group" ? "flex" : "none";
-      btn.textContent = spawnMode === "enemy" ? "RELEASE" : "Spawn Group";
+      btn.textContent = enemyLabMode === "fsm" ? "SPAWN" : (spawnMode === "enemy" ? "RELEASE" : "Spawn Group");
     };
     enemyModeButton.addEventListener("click", () => { spawnMode = "enemy"; refreshModeButtons(); });
     groupModeButton.addEventListener("click", () => { spawnMode = "group"; refreshModeButtons(); });
     refreshModeButtons();
+    const currentDraftFsmOverride = () => {
+      const draft = authoringModel?.draft?.preset;
+      return draft && !authoringModel.hasErrors() ? resolveEphemeralFsmPreset(draft) : null;
+    };
+    const stopLatestManualSpawn = () => {
+      const token = this.latestManualSpawnId;
+      const cm = (window as any).__CM;
+      const store = cm?.store;
+      if (!token || !store || typeof store.debugForEachAlive !== "function" || typeof store.markKill !== "function") return;
+      const groupIds = new Set<number>();
+      store.debugForEachAlive((ref: any, ent: any) => {
+        if (!ent || ent.kind !== "enemy" || ent.pendingKill || ent.devManualSpawnId !== token) return;
+        if (typeof ent.group?.groupId === "number") groupIds.add(ent.group.groupId);
+        store.markKill(ref);
+      });
+      for (const id of groupIds) cm?.enemyGroups?.remove?.(id);
+    };
+    stopLatestSpawnBtn.addEventListener("click", (ev) => { ev.stopPropagation(); stopLatestManualSpawn(); });
     btn.addEventListener("click", () => {
       this.latestManualSpawnId += 1;
       if (enemyLabMode === "fsm") {
+        const draftOverride = currentDraftFsmOverride();
+        if (draftOverride && !draftOverride.ok) { console.warn("[DevSummoner] invalid FSM draft spawn", draftOverride.diagnostics); return; }
+        const resolvedFsmPresetOverride = draftOverride?.ok ? draftOverride.preset : undefined;
+        const currentDraftPresetId = (resolvedFsmPresetOverride?.id ?? fsmSpawnSelect.value) || undefined;
         const fsmCount = normalizeFsmSpawnCount(groupCount);
         groupCount = fsmCount;
         refreshGroupCount();
@@ -1365,7 +1409,8 @@ export class DevSummoner {
             formationId: formationChoice.value,
             movementPresetId: "none.hold",
             cohesionId: elasticity.cohesionId,
-            fsmPresetId: fsmSpawnSelect.value || undefined,
+            fsmPresetId: currentDraftPresetId,
+            resolvedFsmPresetOverride,
             devManualSpawnId: this.latestManualSpawnId,
             params: {
               formation: {
@@ -1393,7 +1438,8 @@ export class DevSummoner {
           typeId: enemySelect.value,
           spawnX: this.logicW - 40,
           spawnY: mapUiSpawnYToRuntimeY(screenYControl.value, this.logicH),
-          fsmPresetId: fsmSpawnSelect.value || undefined,
+          fsmPresetId: currentDraftPresetId,
+          resolvedFsmPresetOverride,
           devManualSpawnId: this.latestManualSpawnId,
         }) as any);
         return;
@@ -1441,7 +1487,9 @@ export class DevSummoner {
         devManualSpawnId: this.latestManualSpawnId,
       }) as any);
     });
-    spawnSection.appendChild(btn);
+    spawnActionRow.appendChild(btn);
+    spawnActionRow.appendChild(stopLatestSpawnBtn);
+    spawnSection.appendChild(spawnActionRow);
 
     const presetModel = new FsmPresetEditorModel(CONTENT.userFsmPresets);
     let authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId);
@@ -1466,16 +1514,17 @@ export class DevSummoner {
       b.textContent = icon;
       b.title = label;
       b.setAttribute("aria-label", label);
-      b.style.cssText = "font:14px monospace;min-height:26px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);";
+      applyIconButtonStyle(b);
       fsmPresetToolbar.appendChild(b);
       return b;
     };
     fsmPresetToolbar.appendChild(fsmSpawnSelect.root);
-    const topNewBtn = makeIconBtn("+", "New FSM preset");
-    const topEditBtn = makeIconBtn("✎", "Edit selected FSM preset; duplicates built-ins before editing");
-    const topImportBtn = makeIconBtn("⇧", "Import FSM preset JSON from the editor import box");
+    const topNewBtn = makeIconBtn(ICONS.new, "New FSM preset");
+    const topEditBtn = makeIconBtn(ICONS.edit, "Edit selected FSM preset; duplicates built-ins before editing");
+    const topImportBtn = makeIconBtn(ICONS.import, "Import FSM preset JSON from the editor import box");
+    const topRestartBtn = makeIconBtn(ICONS.restart, "Restart latest manual spawn with current FSM draft");
     const topSaveBtn = makeIconBtn("✓", "Save selected FSM preset");
-    const topDeleteBtn = makeIconBtn("×", "Delete selected user FSM preset");
+    const topDeleteBtn = makeIconBtn(ICONS.delete, "Delete selected user FSM preset");
     // Legacy full preset-management controls remain wired below for model/debug continuity but are not mounted in the normal FSM layout.
     void details; void diagBox; void importText; void exportText; void collisionSelect;
     const authoringSections = document.createElement("div");
@@ -1488,20 +1537,20 @@ export class DevSummoner {
     stateList.style.cssText = "display:flex;flex-direction:column;gap:3px;";
     statesSection.appendChild(stateList);
     const stateButtons = document.createElement("div");
-    stateButtons.style.cssText = "display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;";
+    stateButtons.style.cssText = "display:none;grid-template-columns:1fr 1fr 1fr;gap:3px;";
     statesSection.appendChild(stateButtons);
     const stateBtn = (text: string) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.style.cssText = "font:12px monospace;min-height:24px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; stateButtons.appendChild(b); return b; };
     const addStateBtn = stateBtn("Add state"); const dupStateBtn = stateBtn("Duplicate"); const delStateBtn = stateBtn("Delete");
     const editorSection = document.createElement("div");
     editorSection.id = "ds-fsm-selected-state-editor";
-    editorSection.style.cssText = "display:flex;flex-direction:column;gap:4px;margin:2px 0 4px 44px;padding:5px;border-left:2px solid #7cc7ff;background:rgba(80,170,255,0.10);";
+    editorSection.style.cssText = "display:flex;flex-direction:column;gap:4px;width:100%;box-sizing:border-box;margin:2px 0 4px 0;padding:5px;border-left:2px solid #7cc7ff;background:rgba(80,170,255,0.10);";
     editorSection.addEventListener("click", (ev) => ev.stopPropagation());
     editorSection.addEventListener("input", (ev) => ev.stopPropagation());
     editorSection.addEventListener("change", (ev) => ev.stopPropagation());
     const selectedStateTitle = document.createElement("div");
     selectedStateTitle.id = "ds-fsm-selected-state-title";
     selectedStateTitle.style.cssText = "color:#bfe3ff;font-weight:bold;";
-    editorSection.appendChild(selectedStateTitle);
+    void selectedStateTitle;
     const behaviorBlock = document.createElement("div"); behaviorBlock.setAttribute("data-fsm-editor-block", "Behavior"); behaviorBlock.style.cssText = "display:flex;flex-direction:column;gap:3px;";
     behaviorBlock.appendChild(Object.assign(document.createElement("div"), { textContent: "Behavior" }));
     const movementPresetInput = document.createElement("select"); applyNativeSelectStyle(movementPresetInput); for (const id of Object.keys(EnemyBehaviorPresets).sort()) appendOption(movementPresetInput, id, id); behaviorBlock.appendChild(movementPresetInput); editorSection.appendChild(behaviorBlock);
@@ -1517,16 +1566,31 @@ export class DevSummoner {
     const stateSpeedSlider = createRangeRow("ds-fsm-state-speed", "Speed ×", { min: 0.25, max: 3, default: 1, step: 0.05 });
     formationControls.appendChild(stateSpacingSlider.wrap); formationControls.appendChild(stateElasticitySlider.wrap); formationControls.appendChild(stateSpeedSlider.wrap); editorSection.appendChild(formationBlock);
     const triggerBlock = document.createElement("div"); triggerBlock.setAttribute("data-fsm-editor-block", "Trigger"); triggerBlock.style.cssText = "display:flex;flex-direction:column;gap:3px;border-top:1px solid rgba(255,255,255,0.10);padding-top:4px;"; triggerBlock.appendChild(Object.assign(document.createElement("div"), { textContent: "Trigger" }));
-    const triggerSelect = document.createElement("select"); applyNativeSelectStyle(triggerSelect); for (const [v,l] of [["never","Never"],["time","Time"],["screenXBelow","screenXBelow"],["hit","Hit"]] as const) appendOption(triggerSelect, v, l); triggerBlock.appendChild(triggerSelect);
+    const triggerSelect = document.createElement("select"); applyNativeSelectStyle(triggerSelect); for (const [v,l] of [["never","Never"],["time","Time"],["screenXBelow","scrX"],["hit","Hit"]] as const) appendOption(triggerSelect, v, l); triggerBlock.appendChild(triggerSelect);
     const triggerParamWrap = document.createElement("div"); triggerParamWrap.style.cssText = "display:flex;flex-direction:column;gap:3px;"; triggerBlock.appendChild(triggerParamWrap);
     const triggerTimeInput = document.createElement("input"); triggerTimeInput.type = "number"; triggerTimeInput.step = "0.1"; triggerTimeInput.placeholder = "seconds"; applyControlBaseStyle(triggerTimeInput);
     const triggerXInput = document.createElement("input"); triggerXInput.type = "number"; triggerXInput.step = "1"; triggerXInput.placeholder = "screen x"; applyControlBaseStyle(triggerXInput);
+    const makeTriggerStepper = (label: string, step: number, min: number, format: (n: number) => string, commit: (n: number) => void) => {
+      let value = min;
+      const wrap = document.createElement("div");
+      wrap.style.cssText = "display:grid;grid-template-columns:max-content 26px minmax(38px,1fr) 26px;gap:3px;align-items:center;";
+      const labelNode = document.createElement("span"); labelNode.textContent = label; applyLabelTextStyle(labelNode, "secondary");
+      const dec = document.createElement("button"); const valueNode = document.createElement("span"); const inc = document.createElement("button");
+      for (const [button, text, aria] of [[dec, "−", `Decrease ${label}`], [inc, "+", `Increase ${label}`]] as const) { button.type = "button"; button.textContent = text; button.title = aria; button.setAttribute("aria-label", aria); applyIconButtonStyle(button); button.addEventListener("click", (ev) => { ev.stopPropagation(); value = Math.max(min, value + (button === dec ? -step : step)); commit(value); }); }
+      valueNode.style.cssText = "display:flex;align-items:center;justify-content:center;min-height:26px;border:1px solid rgba(255,255,255,0.18);background:#090909;color:#eee;box-sizing:border-box;";
+      wrap.appendChild(labelNode); wrap.appendChild(dec); wrap.appendChild(valueNode); wrap.appendChild(inc);
+      return { wrap, setValue(next: unknown) { const n = Number(next); value = Math.max(min, Number.isFinite(n) ? n : min); valueNode.textContent = format(value); dec.disabled = value <= min; applyIconButtonStyle(dec, dec.disabled); }, setDisabled(disabled: boolean) { for (const b of [dec, inc]) setIconButtonDisabled(b, disabled || (b === dec && value <= min)); } };
+    };
+    const triggerTimeStepper = makeTriggerStepper("Time", 0.25, 0, (n) => n.toFixed(2).replace(/0$/, ""), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "time", { seconds: n }); renderPresetEditor(); });
+    const triggerXStepper = makeTriggerStepper("scrX", 10, 0, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "screenXBelow", { x: Math.round(n) }); renderPresetEditor(); });
+    const triggerHitStepper = makeTriggerStepper("Hit", 1, 1, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "hit", { ratio: 0.999 }); renderPresetEditor(); });
     const triggerHint = document.createElement("div"); triggerHint.id = "ds-fsm-trigger-next-hint"; triggerHint.style.cssText = "color:#aaa;"; triggerBlock.appendChild(triggerHint); editorSection.appendChild(triggerBlock);
     const advancedSection = document.createElement("details"); advancedSection.id = "ds-fsm-advanced"; advancedSection.setAttribute("data-fsm-editor-block", "Advanced"); advancedSection.style.cssText = "border-top:1px solid rgba(255,255,255,0.10);padding-top:4px;"; const advancedSummary = document.createElement("summary"); advancedSummary.textContent = "Advanced"; advancedSummary.style.cssText = "cursor:pointer;font-weight:bold;color:#fff;"; advancedSection.appendChild(advancedSummary);
     const advancedBody = document.createElement("div"); advancedBody.id = "ds-fsm-advanced-body"; advancedBody.style.cssText = "display:flex;flex-direction:column;gap:3px;padding-top:4px;color:#ccc;white-space:pre-wrap;"; advancedSection.appendChild(advancedBody); editorSection.appendChild(advancedSection);
     const diagnosticsSection = addAuthoringSection("Diagnostics"); const authoringDiagnostics = document.createElement("div"); authoringDiagnostics.style.cssText = "white-space:pre-wrap;color:#ffd27a;"; diagnosticsSection.appendChild(authoringDiagnostics);
-    const previewSection = addAuthoringSection("Preview");
+    const previewSection = document.createElement("div");
     previewSection.id = "ds-fsm-preview-section";
+    previewSection.style.display = "none";
     const previewButtons = document.createElement("div"); previewButtons.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:3px;"; previewSection.appendChild(previewButtons);
     const previewBtn = (text: string) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.style.cssText = "font:12px monospace;min-height:24px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; previewButtons.appendChild(b); return b; };
     const previewDraftBtn = previewBtn("Preview Draft"); const previewSavedBtn = previewBtn("Preview Saved"); const previewRestartBtn = previewBtn("Restart"); const previewStopBtn = previewBtn("Stop");
@@ -1573,21 +1637,33 @@ ${d.states.join(", ")}` : "No preset selected";
       for (const row of rows) {
         const stateRow = document.createElement("div");
         stateRow.setAttribute("data-fsm-state-row", String(row.number));
-        stateRow.style.cssText = `display:grid;grid-template-columns:16px 24px minmax(0,1fr) 24px;gap:4px;align-items:center;padding:3px;border:${row.selected ? "1px solid #7cc7ff" : "1px solid rgba(255,255,255,0.12)"};background:${row.selected ? "rgba(80,170,255,0.22)" : "rgba(255,255,255,0.04)"};`;
+        stateRow.style.cssText = `display:grid;grid-template-columns:16px 24px minmax(0,1fr) repeat(4,26px);gap:4px;align-items:center;padding:3px;border:${row.selected ? "1px solid #7cc7ff" : "1px solid rgba(255,255,255,0.12)"};background:${row.selected ? "rgba(80,170,255,0.22)" : "rgba(255,255,255,0.04)"};`;
         stateRow.addEventListener("click", () => { authoringModel.selectState(row.id); expandedStateId = expandedStateId === row.id ? null : row.id; renderPresetEditor(); });
         const handle = document.createElement("span"); handle.textContent = "↕"; handle.title = "Use row arrows to reorder"; handle.style.cssText = "color:#aaa;text-align:center;cursor:default;"; stateRow.appendChild(handle);
         const number = document.createElement("span"); number.textContent = String(row.number); number.style.cssText = "display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#fff;color:#000;font-weight:900;border:1px solid #000;"; stateRow.appendChild(number);
         const labelWrap = document.createElement("button"); labelWrap.type = "button"; labelWrap.style.cssText = "min-width:0;text-align:left;background:transparent;color:#eee;border:0;padding:0;font:12px monospace;";
         const main = document.createElement("div"); main.textContent = row.behaviorPresetId || row.id; main.style.cssText = "font-weight:bold;overflow:hidden;text-overflow:ellipsis;"; labelWrap.appendChild(main);
         const sub = document.createElement("div"); sub.textContent = row.triggerSummary; sub.style.cssText = "font-size:10px;color:#bbb;overflow:hidden;text-overflow:ellipsis;"; labelWrap.appendChild(sub); stateRow.appendChild(labelWrap);
-        const menu = document.createElement("div"); menu.style.cssText = "display:flex;flex-direction:column;gap:1px;";
-        const more = document.createElement("button"); more.type = "button"; more.textContent = "⋯"; more.title = "Duplicate selected state"; more.style.cssText = "font:12px monospace;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; more.addEventListener("click", (ev) => { ev.stopPropagation(); authoringModel.selectState(row.id); authoringModel.duplicateState(row.id); expandedStateId = authoringModel.draft?.selectedStateId ?? null; renderPresetEditor(); }); menu.appendChild(more);
-        const arrows = document.createElement("div"); arrows.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:1px;"; for (const [txt, delta, label] of [["↑", -1, "Move state up"], ["↓", 1, "Move state down"]] as const) { const arrow = document.createElement("button"); arrow.type = "button"; arrow.textContent = txt; arrow.title = label; arrow.setAttribute("aria-label", `${label}: ${row.id}`); const rowIndex = row.number - 1; arrow.disabled = authoringReadOnly || (delta < 0 ? rowIndex === 0 : rowIndex === rows.length - 1); arrow.style.cssText = `font:10px monospace;background:${arrow.disabled ? "#1a1a1a" : "#111"};color:${arrow.disabled ? "#666" : "#eee"};border:1px solid rgba(255,255,255,0.18);cursor:${arrow.disabled ? "not-allowed" : "pointer"};`; arrow.addEventListener("click", (ev) => { ev.stopPropagation(); const states = authoringModel.draft?.preset.graph.states ?? []; authoringModel.selectState(row.id); expandedStateId = row.id; authoringModel.reorderState(row.id, states.findIndex((state) => String(state.id) === row.id) + delta); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); }); arrows.appendChild(arrow); } menu.appendChild(arrows); stateRow.appendChild(menu);
+        const rowIndex = row.number - 1;
+        const rowIcon = (icon: string, label: string, disabled: boolean, action: () => void) => { const b = document.createElement("button"); b.type = "button"; b.textContent = icon; b.title = label; b.setAttribute("aria-label", `${label}: ${row.id}`); setIconButtonDisabled(b, disabled); b.addEventListener("click", (ev) => { ev.stopPropagation(); if (b.disabled) return; authoringModel.selectState(row.id); action(); renderPresetEditor(); }); stateRow.appendChild(b); return b; };
+        rowIcon(ICONS.duplicate, "Duplicate state", authoringReadOnly, () => { authoringModel.duplicateState(row.id); expandedStateId = authoringModel.draft?.selectedStateId ?? null; });
+        rowIcon(ICONS.delete, "Delete state", authoringReadOnly || rows.length <= 1, () => { authoringModel.deleteState(row.id, true); authoringModel.normalizeSequentialTriggers(); expandedStateId = authoringModel.draft?.selectedStateId ?? null; });
+        rowIcon(ICONS.up, "Move state up", authoringReadOnly || rowIndex === 0, () => { const states = authoringModel.draft?.preset.graph.states ?? []; expandedStateId = row.id; authoringModel.reorderState(row.id, states.findIndex((state) => String(state.id) === row.id) - 1); authoringModel.normalizeSequentialTriggers(); });
+        rowIcon(ICONS.down, "Move state down", authoringReadOnly || rowIndex === rows.length - 1, () => { const states = authoringModel.draft?.preset.graph.states ?? []; expandedStateId = row.id; authoringModel.reorderState(row.id, states.findIndex((state) => String(state.id) === row.id) + 1); authoringModel.normalizeSequentialTriggers(); });
         stateList.appendChild(stateRow);
         if (row.id === expandedStateId) stateList.appendChild(editorSection);
       }
+      const inlineNewStateBtn = document.createElement("button");
+      inlineNewStateBtn.type = "button";
+      inlineNewStateBtn.textContent = "+ New state";
+      inlineNewStateBtn.title = "Add new FSM state";
+      inlineNewStateBtn.setAttribute("aria-label", "Add new FSM state");
+      inlineNewStateBtn.disabled = authoringReadOnly;
+      inlineNewStateBtn.style.cssText = `font:12px monospace;min-height:26px;text-align:left;background:${authoringReadOnly ? "#1a1a1a" : "#111"};color:${authoringReadOnly ? "#666" : "#eee"};border:1px dashed rgba(255,255,255,0.28);border-radius:2px;cursor:${authoringReadOnly ? "not-allowed" : "pointer"};`;
+      inlineNewStateBtn.addEventListener("click", (ev) => { ev.stopPropagation(); authoringModel.addState(); authoringModel.normalizeSequentialTriggers(); expandedStateId = authoringModel.draft?.selectedStateId ?? null; renderPresetEditor(); });
+      stateList.appendChild(inlineNewStateBtn);
       const view = authoringModel.selectedStateView();
-      selectedStateTitle.textContent = view ? `State ${view.number}: ${view.behaviorPresetId}` : "No state selected";
+      selectedStateTitle.textContent = "";
       movementPresetInput.value = view?.behaviorPresetId ?? "none.hold"; movementPresetInput.disabled = authoringReadOnly || !view;
       const formation = view?.formation; formationOverrideCheck.checked = formation?.enabled ?? false; formationOverrideCheck.disabled = authoringReadOnly || !view; formationControls.style.display = formationOverrideCheck.checked ? "flex" : "none";
       selectedFormationShape = ((formation?.shape as FormationId) || "line.horizontal");
@@ -1595,8 +1671,12 @@ ${d.states.join(", ")}` : "No preset selected";
       stateSpacingSlider.setValue(formation?.spacing ?? 64); stateElasticitySlider.setValue(formation?.elasticity ?? 0); stateSpeedSlider.setValue(formation?.speedMultiplier ?? 1);
       for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateSpeedSlider.slider]) el.disabled = authoringReadOnly || !formationOverrideCheck.checked;
       triggerSelect.value = view?.triggerType ?? "never"; triggerSelect.disabled = authoringReadOnly || !view || view.isLast;
-      triggerParamWrap.textContent = ""; if (triggerSelect.value === "time") { triggerTimeInput.value = String(view?.triggerParams.seconds ?? 1); triggerParamWrap.appendChild(triggerTimeInput); } else if (triggerSelect.value === "screenXBelow") { triggerXInput.value = String(view?.triggerParams.x ?? 650); triggerParamWrap.appendChild(triggerXInput); }
-      triggerHint.textContent = view?.nextStateId ? `Targets next state only: State ${view.number + 1}` : "Last/only state: no next target; Never is valid.";
+      triggerParamWrap.textContent = "";
+      triggerTimeStepper.setDisabled(authoringReadOnly || !view || view.isLast); triggerXStepper.setDisabled(authoringReadOnly || !view || view.isLast); triggerHitStepper.setDisabled(authoringReadOnly || !view || view.isLast);
+      if (triggerSelect.value === "time") { triggerTimeStepper.setValue(view?.triggerParams.seconds ?? 1); triggerParamWrap.appendChild(triggerTimeStepper.wrap); }
+      else if (triggerSelect.value === "screenXBelow") { triggerXStepper.setValue(view?.triggerParams.x ?? 650); triggerParamWrap.appendChild(triggerXStepper.wrap); }
+      else if (triggerSelect.value === "hit") { triggerHitStepper.setValue(1); triggerParamWrap.appendChild(triggerHitStepper.wrap); }
+      triggerHint.textContent = view?.nextStateId ? "" : "Last/only state: no next target; Never is valid.";
       advancedBody.textContent = selected ? [`State id: ${selected.id}`, `Label: ${selected.label}`, `Targeting: ${selected.targeting.type}`, `Combat: ${selected.combat.mode}${(selected.combat as any).profileId ? ` ${(selected.combat as any).profileId}` : ""}`, `Modifiers: ${(selected.movement.modifiers ?? []).map((m) => m.type).join(", ") || "none"}`, `Lifecycle: ${(selected.lifecycle?.enterActions ?? []).map((a) => a.type).join(", ") || "none"}`].join("\n") : "Advanced combat, targeting, modifier, and lifecycle details appear here.";
       authoringDiagnostics.textContent = ad?.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code} ${x.path}: ${x.message}`).join("\n") ?? "";
       dirtyBadge.textContent = authoringReadOnly ? "BUILT-IN / READ ONLY" : (ad?.dirty ? "DIRTY" : "Saved");
@@ -1645,6 +1725,7 @@ ${d.states.join(", ")}` : "No preset selected";
     topNewBtn.addEventListener("click", () => { presetModel.create(); renderPresetEditor(); });
     topEditBtn.addEventListener("click", () => { if (presetModel.draft?.source === "builtin") presetModel.duplicateForEdit(); renderPresetEditor(); });
     topImportBtn.addEventListener("click", () => { presetModel.importJson(importText.value, collisionSelect.value as any); renderPresetEditor(); });
+    topRestartBtn.addEventListener("click", () => { stopLatestManualSpawn(); btn.click(); renderPresetEditor(); });
     topDeleteBtn.addEventListener("click", () => { if (presetModel.draft?.source === "user" && window.confirm("Delete selected user FSM preset?")) presetModel.delete(presetModel.selectedId, true); renderPresetEditor(); });
     addStateBtn.addEventListener("click", () => { authoringModel.addState(); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); });
     dupStateBtn.addEventListener("click", () => { authoringModel.duplicateState(); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); });
