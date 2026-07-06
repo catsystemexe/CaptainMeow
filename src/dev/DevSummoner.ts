@@ -1495,6 +1495,9 @@ export class DevSummoner {
     const editorSection = document.createElement("div");
     editorSection.id = "ds-fsm-selected-state-editor";
     editorSection.style.cssText = "display:flex;flex-direction:column;gap:4px;margin:2px 0 4px 44px;padding:5px;border-left:2px solid #7cc7ff;background:rgba(80,170,255,0.10);";
+    editorSection.addEventListener("click", (ev) => ev.stopPropagation());
+    editorSection.addEventListener("input", (ev) => ev.stopPropagation());
+    editorSection.addEventListener("change", (ev) => ev.stopPropagation());
     const selectedStateTitle = document.createElement("div");
     selectedStateTitle.id = "ds-fsm-selected-state-title";
     selectedStateTitle.style.cssText = "color:#bfe3ff;font-weight:bold;";
@@ -1540,6 +1543,7 @@ export class DevSummoner {
       previewX: this.logicW - 140,
       previewY: Math.round(this.logicH * 0.5),
     });
+    let expandedStateId: string | null = authoringModel.draft?.selectedStateId ?? null;
 
     const renderPresetEditor = () => {
       const items = presetModel.list(); presetList.textContent = ""; for (const item of items) appendOption(presetList, item.id, `${item.source === "user" ? "USER" : "BUILT-IN"} ${item.id}`); presetList.value = presetModel.selectedId;
@@ -1565,21 +1569,22 @@ ${d.states.join(", ")}` : "No preset selected";
       const ad = authoringModel.draft; const selected = ad?.preset.graph.states.find((state) => state.id === ad.selectedStateId) ?? ad?.preset.graph.states[0]; const authoringReadOnly = authoringModel.readOnly;
       stateList.textContent = "";
       const rows = authoringModel.labStateRows();
-      const selectedRow = rows.find((row) => row.selected) ?? rows[0];
+      if (expandedStateId && !rows.some((row) => row.id === expandedStateId)) expandedStateId = null;
       for (const row of rows) {
         const stateRow = document.createElement("div");
         stateRow.setAttribute("data-fsm-state-row", String(row.number));
         stateRow.style.cssText = `display:grid;grid-template-columns:16px 24px minmax(0,1fr) 24px;gap:4px;align-items:center;padding:3px;border:${row.selected ? "1px solid #7cc7ff" : "1px solid rgba(255,255,255,0.12)"};background:${row.selected ? "rgba(80,170,255,0.22)" : "rgba(255,255,255,0.04)"};`;
-        const handle = document.createElement("span"); handle.textContent = "☰"; handle.title = "Drag handle; use row arrows to reorder in this build"; handle.style.cssText = "color:#aaa;text-align:center;"; stateRow.appendChild(handle);
+        stateRow.addEventListener("click", () => { authoringModel.selectState(row.id); expandedStateId = expandedStateId === row.id ? null : row.id; renderPresetEditor(); });
+        const handle = document.createElement("span"); handle.textContent = "↕"; handle.title = "Use row arrows to reorder"; handle.style.cssText = "color:#aaa;text-align:center;cursor:default;"; stateRow.appendChild(handle);
         const number = document.createElement("span"); number.textContent = String(row.number); number.style.cssText = "display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#fff;color:#000;font-weight:900;border:1px solid #000;"; stateRow.appendChild(number);
-        const labelWrap = document.createElement("button"); labelWrap.type = "button"; labelWrap.style.cssText = "min-width:0;text-align:left;background:transparent;color:#eee;border:0;padding:0;font:12px monospace;"; labelWrap.addEventListener("click", () => { authoringModel.selectState(row.id); renderPresetEditor(); });
+        const labelWrap = document.createElement("button"); labelWrap.type = "button"; labelWrap.style.cssText = "min-width:0;text-align:left;background:transparent;color:#eee;border:0;padding:0;font:12px monospace;";
         const main = document.createElement("div"); main.textContent = row.behaviorPresetId || row.id; main.style.cssText = "font-weight:bold;overflow:hidden;text-overflow:ellipsis;"; labelWrap.appendChild(main);
         const sub = document.createElement("div"); sub.textContent = row.triggerSummary; sub.style.cssText = "font-size:10px;color:#bbb;overflow:hidden;text-overflow:ellipsis;"; labelWrap.appendChild(sub); stateRow.appendChild(labelWrap);
         const menu = document.createElement("div"); menu.style.cssText = "display:flex;flex-direction:column;gap:1px;";
-        const more = document.createElement("button"); more.type = "button"; more.textContent = "⋯"; more.title = "Duplicate selected state"; more.style.cssText = "font:12px monospace;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; more.addEventListener("click", () => { authoringModel.selectState(row.id); authoringModel.duplicateState(row.id); renderPresetEditor(); }); menu.appendChild(more);
-        const arrows = document.createElement("div"); arrows.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:1px;"; for (const [txt, delta, label] of [["↑", -1, "Move state up"], ["↓", 1, "Move state down"]] as const) { const arrow = document.createElement("button"); arrow.type = "button"; arrow.textContent = txt; arrow.title = label; arrow.setAttribute("aria-label", `${label}: ${row.id}`); const rowIndex = row.number - 1; arrow.disabled = authoringReadOnly || (delta < 0 ? rowIndex === 0 : rowIndex === rows.length - 1); arrow.style.cssText = "font:10px monospace;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.18);"; arrow.addEventListener("click", () => { const states = authoringModel.draft?.preset.graph.states ?? []; authoringModel.reorderState(row.id, states.findIndex((state) => String(state.id) === row.id) + delta); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); }); arrows.appendChild(arrow); } menu.appendChild(arrows); stateRow.appendChild(menu);
+        const more = document.createElement("button"); more.type = "button"; more.textContent = "⋯"; more.title = "Duplicate selected state"; more.style.cssText = "font:12px monospace;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; more.addEventListener("click", (ev) => { ev.stopPropagation(); authoringModel.selectState(row.id); authoringModel.duplicateState(row.id); expandedStateId = authoringModel.draft?.selectedStateId ?? null; renderPresetEditor(); }); menu.appendChild(more);
+        const arrows = document.createElement("div"); arrows.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:1px;"; for (const [txt, delta, label] of [["↑", -1, "Move state up"], ["↓", 1, "Move state down"]] as const) { const arrow = document.createElement("button"); arrow.type = "button"; arrow.textContent = txt; arrow.title = label; arrow.setAttribute("aria-label", `${label}: ${row.id}`); const rowIndex = row.number - 1; arrow.disabled = authoringReadOnly || (delta < 0 ? rowIndex === 0 : rowIndex === rows.length - 1); arrow.style.cssText = `font:10px monospace;background:${arrow.disabled ? "#1a1a1a" : "#111"};color:${arrow.disabled ? "#666" : "#eee"};border:1px solid rgba(255,255,255,0.18);cursor:${arrow.disabled ? "not-allowed" : "pointer"};`; arrow.addEventListener("click", (ev) => { ev.stopPropagation(); const states = authoringModel.draft?.preset.graph.states ?? []; authoringModel.selectState(row.id); expandedStateId = row.id; authoringModel.reorderState(row.id, states.findIndex((state) => String(state.id) === row.id) + delta); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); }); arrows.appendChild(arrow); } menu.appendChild(arrows); stateRow.appendChild(menu);
         stateList.appendChild(stateRow);
-        if (row.id === selectedRow?.id) stateList.appendChild(editorSection);
+        if (row.id === expandedStateId) stateList.appendChild(editorSection);
       }
       const view = authoringModel.selectedStateView();
       selectedStateTitle.textContent = view ? `State ${view.number}: ${view.behaviorPresetId}` : "No state selected";
@@ -1645,8 +1650,8 @@ ${d.states.join(", ")}` : "No preset selected";
     dupStateBtn.addEventListener("click", () => { authoringModel.duplicateState(); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); });
     delStateBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id && window.confirm("Delete selected FSM state?")) { authoringModel.deleteState(id, true); authoringModel.normalizeSequentialTriggers(); } renderPresetEditor(); });
     movementPresetInput.addEventListener("change", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.setMovementPreset(id, movementPresetInput.value); renderPresetEditor(); });
-    formationOverrideCheck.addEventListener("change", () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverride(v.id, { ...v.formation, enabled: formationOverrideCheck.checked }); renderPresetEditor(); });
-    const editStateFormationDraft = () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverride(v.id, { enabled: true, shape: selectedFormationShape, spacing: stateSpacingSlider.value, elasticity: stateElasticitySlider.value, speedMultiplier: stateSpeedSlider.value }); renderPresetEditor(); };
+    formationOverrideCheck.addEventListener("change", () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverrideEnabled(v.id, formationOverrideCheck.checked); renderPresetEditor(); });
+    const editStateFormationDraft = () => { const v = authoringModel.selectedStateView(); if (v) { authoringModel.setLabFormationField(v.id, "spacing", stateSpacingSlider.value); authoringModel.setLabFormationField(v.id, "elasticity", stateElasticitySlider.value); authoringModel.setLabFormationField(v.id, "speedMultiplier", stateSpeedSlider.value); } renderPresetEditor(); };
     for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateSpeedSlider.slider]) el.addEventListener("input", editStateFormationDraft);
     const editTrigger = () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, triggerSelect.value as any, { seconds: triggerTimeInput.value, x: triggerXInput.value }); renderPresetEditor(); };
     triggerSelect.addEventListener("change", editTrigger); triggerTimeInput.addEventListener("change", editTrigger); triggerXInput.addEventListener("change", editTrigger);
