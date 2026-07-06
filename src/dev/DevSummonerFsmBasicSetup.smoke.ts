@@ -41,9 +41,10 @@ class FakeElement {
   getAttribute(name: string) { return this.attributes.get(name) ?? null; }
   addEventListener(name: string, fn: (ev?: any) => void) { this.listeners.set(name, [...(this.listeners.get(name) ?? []), fn]); }
   removeEventListener() {}
-  click() { for (const fn of this.listeners.get("click") ?? []) fn({ target: this, preventDefault: () => {}, key: "" }); }
+  click() { for (const fn of this.listeners.get("click") ?? []) fn({ target: this, preventDefault: () => {}, stopPropagation: () => {}, key: "" }); }
   dispatchEvent(ev: { type: string }) { for (const fn of this.listeners.get(ev.type) ?? []) fn(ev); return true; }
   contains(node: FakeElement | null): boolean { for (let cur = node; cur; cur = cur.parentNode) if (cur === this) return true; return false; }
+  getBoundingClientRect() { return { left: 100, right: 300, top: 40, width: 200, height: 26 }; }
   querySelector(selector: string): FakeElement | null { if (selector.startsWith("#")) return this.findById(selector.slice(1)); return null; }
   querySelectorAll(selector: string): FakeElement[] {
     if (selector === "button,input,select,textarea") return this.findAll((el) => ["BUTTON", "INPUT", "SELECT", "TEXTAREA"].includes(el.tagName));
@@ -83,7 +84,7 @@ function chooseCompact(root: FakeElement, id: string, valueText: string) {
   const button = selectRoot.findAll((el) => el.tagName === "BUTTON")[0];
   assert(button, `${id} button exists`);
   button.click();
-  const option = selectRoot.findAll((el) => el.tagName === "BUTTON" && el.textContent.includes(valueText))[0];
+  const option = ((globalThis as any).document.body as FakeElement).findAll((el) => el.tagName === "BUTTON" && el.textContent.includes(valueText))[0];
   assert(option, `${id} option ${valueText} exists`);
   option.click();
 }

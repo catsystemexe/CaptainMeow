@@ -1755,7 +1755,12 @@ ${d.states.join(", ")}` : "No preset selected";
       saveBtn.disabled = readOnly || (!draft.dirty && !authoringModel.canSave); topSaveBtn.disabled = saveBtn.disabled;
       refreshFsmSpawnSelect(CONTENT.fsmPresets.get(presetModel.selectedId) ? presetModel.selectedId : fsmSpawnSelect.value);
     };
-    editFsmBasicSetupDraft = () => { presetModel.setBasicSetup({ appearanceId: enemySelect.value, count: groupCount, formationId: formationChoice.value, spacing: fsmSpacingSlider.value, elasticity: fsmElasticitySlider.value, baseSpeed: fsmBaseSpeedSlider.value, spawnY: screenYControl.value }); renderPresetEditor(); };
+    editFsmBasicSetupDraft = () => {
+      presetModel.setBasicSetup({ appearanceId: enemySelect.value, count: groupCount, formationId: formationChoice.value, spacing: fsmSpacingSlider.value, elasticity: fsmElasticitySlider.value, baseSpeed: fsmBaseSpeedSlider.value, spawnY: screenYControl.value });
+      const normalizedBasicSetup = presetModel.draft?.basicSetup;
+      if (normalizedBasicSetup) authoringModel.setBasicSetup(normalizedBasicSetup);
+      renderPresetEditor();
+    };
     presetList.addEventListener("change", () => { if (!authoringModel.requireDiscardConfirmation(presetList.value) || window.confirm("Discard unsaved FSM authoring changes?")) { presetModel.select(presetList.value); authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId); } renderPresetEditor(); });
     idInput.addEventListener("input", () => { presetModel.setDraftId(idInput.value); renderPresetEditor(); });
     labelInput.addEventListener("input", () => { presetModel.setDraftLabel(labelInput.value); renderPresetEditor(); });
