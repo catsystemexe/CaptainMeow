@@ -23,6 +23,16 @@ export type FsmRuntimeDiagnosticSnapshot = {
   lastTransition?: { from: string; to: string; reason?: string } | null;
   movementSuppressed: boolean;
   memberCount?: number;
+  baseSpeed?: number | null;
+  speedMultiplier?: number | null;
+  effectiveSpeed?: number | null;
+  movementPresetReferenceSpeed?: number | null;
+  rawVelocityX?: number | null;
+  rawVelocityY?: number | null;
+  finalVelocityX?: number | null;
+  finalVelocityY?: number | null;
+  integratedDeltaX?: number | null;
+  integratedDeltaY?: number | null;
 };
 
 export type FsmRuntimeDiagnosticsBundle = {
@@ -36,6 +46,23 @@ const finite = (value: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 const screenX = (worldX: number | null, scrollX: number | null): number | null => worldX === null || scrollX === null ? null : worldX - scrollX;
+
+function speedFields(runtime: any): Partial<FsmRuntimeDiagnosticSnapshot> {
+  const d = runtime?.speedDiagnostics;
+  if (!d || typeof d !== "object") return {};
+  return {
+    baseSpeed: finite(d.baseSpeed),
+    speedMultiplier: finite(d.speedMultiplier),
+    effectiveSpeed: finite(d.effectiveSpeed),
+    movementPresetReferenceSpeed: finite(d.movementPresetReferenceSpeed),
+    rawVelocityX: finite(d.rawVelocityX),
+    rawVelocityY: finite(d.rawVelocityY),
+    finalVelocityX: finite(d.finalVelocityX),
+    finalVelocityY: finite(d.finalVelocityY),
+    integratedDeltaX: finite(d.integratedDeltaX),
+    integratedDeltaY: finite(d.integratedDeltaY),
+  };
+}
 
 function lastTransition(runtime: any): FsmRuntimeDiagnosticSnapshot["lastTransition"] {
   const t = runtime?.lastTransition;
@@ -67,6 +94,7 @@ export function createSingleFsmRuntimeDiagnostic(ent: any, scrollXValue: unknown
     stateAge: finite(fsm.stateAge),
     lastTransition: lastTransition(ent?.fsm),
     movementSuppressed: fsm.movementSuppressed === true,
+    ...speedFields(ent?.fsm),
   });
 }
 
@@ -92,6 +120,7 @@ export function createGroupAnchorFsmRuntimeDiagnostic(group: any, scrollXValue?:
     lastTransition: lastTransition(group.fsm),
     movementSuppressed: false,
     memberCount: Array.isArray(group.members) ? group.members.length : 0,
+    ...speedFields(group.fsm),
   });
 }
 
@@ -147,6 +176,13 @@ export function renderFsmRuntimeDiagnosticsText(bundle: FsmRuntimeDiagnosticsBun
     `${xLabel}: ${fmt(primary.worldX)} / ${fmt(primary.screenX)}`,
     `scrollX: ${fmt(primary.scrollX)}`,
     `Velocity: ${fmt(primary.velocityX, 1)}, ${fmt(primary.velocityY, 1)}`,
+    `baseSpeed: ${fmt(primary.baseSpeed, 1)}`,
+    `speedMultiplier: ${fmt(primary.speedMultiplier, 2)}`,
+    `effectiveSpeed: ${fmt(primary.effectiveSpeed, 1)}`,
+    `Raw movement velocity: ${fmt(primary.rawVelocityX, 1)}, ${fmt(primary.rawVelocityY, 1)}`,
+    `Final movement velocity: ${fmt(primary.finalVelocityX, 1)}, ${fmt(primary.finalVelocityY, 1)}`,
+    `Integrated delta: ${fmt(primary.integratedDeltaX, 2)}, ${fmt(primary.integratedDeltaY, 2)}`,
+    `Movement reference speed: ${fmt(primary.movementPresetReferenceSpeed, 1)}`,
     `State age: ${fmt(primary.stateAge, 2)}`,
     `Last transition: ${transition(primary)}`,
     `Suppressed: ${primary.movementSuppressed ? "yes" : "no"}`,

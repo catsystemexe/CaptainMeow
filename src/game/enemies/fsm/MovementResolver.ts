@@ -136,21 +136,47 @@ export function executeFsmMovement(runtime: FsmMovementRuntime, ent: any, ctx: M
 }
 
 export function fsmEffectiveSpeed(preset: { definition?: { basicSetup?: { baseSpeed?: unknown } }; states?: readonly unknown[]; stateIndex?: number }, state: unknown): number | null {
-  const base = Number(preset?.definition?.basicSetup?.baseSpeed);
-  if (!Number.isFinite(base) || base <= 0) return null;
-  const legacy = (state as any)?.formationOverride;
-  const multiplier = Number((state as any)?.speedMultiplier ?? legacy?.speedMultiplier ?? 1);
-  return base * (Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1);
+  const base = fsmBaseSpeed(preset);
+  if (base === null) return null;
+  return base * fsmSpeedMultiplier(state);
 }
 
-export function velocityFromFsmTarget(ent: any, target: MutableVec2, dt: number, effectiveSpeed: number | null): MutableVec2 {
+export function fsmMovementReferenceSpeed(runtime: FsmMovementRuntime | undefined): number | null {
+  const params = runtime?.base?.params;
+  if (!params) return null;
+  const speedX = Number((params as any).speedX ?? 0);
+  const speedY = Number((params as any).speedY ?? 0);
+  const speed = Number((params as any).speed);
+  const mag = Math.hypot(Number.isFinite(speedX) ? speedX : 0, Number.isFinite(speedY) ? speedY : 0);
+  if (mag > 0.000001) return mag;
+  if (Number.isFinite(speed) && Math.abs(speed) > 0.000001) return Math.abs(speed);
+  return null;
+}
+
+export function velocityFromFsmTarget(ent: any, target: MutableVec2, dt: number, effectiveSpeed: number | null, referenceSpeed: number | null = null): MutableVec2 {
   const dx = target.x - num(ent?.pos?.x, 0);
   const dy = target.y - num(ent?.pos?.y, 0);
+  const raw = { x: dx / dt, y: dy / dt };
   if (effectiveSpeed !== null) {
+    if (referenceSpeed !== null && referenceSpeed > 0.000001) {
+      const scale = effectiveSpeed / referenceSpeed;
+      return { x: raw.x * scale, y: raw.y * scale };
+    }
     const len = Math.hypot(dx, dy);
     if (len > 0.000001) return { x: dx / len * effectiveSpeed, y: dy / len * effectiveSpeed };
   }
-  return { x: dx / dt, y: dy / dt };
+  return raw;
+}
+
+export function fsmSpeedMultiplier(state: unknown): number {
+  const legacy = (state as any)?.formationOverride;
+  const multiplier = Number((state as any)?.speedMultiplier ?? legacy?.speedMultiplier ?? 1);
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1;
+}
+
+export function fsmBaseSpeed(preset: { definition?: { basicSetup?: { baseSpeed?: unknown } } }): number | null {
+  const base = Number(preset?.definition?.basicSetup?.baseSpeed);
+  return Number.isFinite(base) && base > 0 ? base : null;
 }
 
 export function getFsmMovementCullReferenceX(runtime: FsmMovementRuntime | undefined, ent: any): number {

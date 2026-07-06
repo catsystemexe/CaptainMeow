@@ -49,3 +49,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [A1.1 — Live FSM runtime diagnostics](./A1.1.md)
 - [U1.4.5 — Group draft behavior fix and Enemy Lab layout refinement](./U1.4.5.md)
 - [U1.4.6 — State formation/speed runtime wiring and side-panel fixes](./U1.4.6.md)
+- [U1.4.7 — Authoritative Speed, Diagnostics content, and initial Preset lifecycle](./U1.4.7.md)
