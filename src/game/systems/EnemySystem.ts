@@ -47,9 +47,9 @@ export class EnemySystem {
       if (Number.isFinite(x) && Number.isFinite(y)) playerPos = { x, y };
     });
 
-    this.groups?.updateAnchors(dt, { playerPos, logicW: W, logicH: H });
-
     const scrollX = safeNum((this.world as any)?.scrollX, 0);
+
+    this.groups?.updateAnchors(dt, { playerPos, logicW: W, logicH: H, scrollX });
 
     this.store.debugForEachAlive((ref, e: any) => {
       if (!e || e.kind !== "enemy") return;

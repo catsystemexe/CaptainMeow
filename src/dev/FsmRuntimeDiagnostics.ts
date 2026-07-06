@@ -74,7 +74,7 @@ export function createGroupAnchorFsmRuntimeDiagnostic(group: any, scrollXValue?:
   if (!group?.fsm) return null;
   const state = group.fsm.preset?.states?.[group.fsm.stateIndex] ?? group.fsm.preset?.states?.[group.fsm.preset?.initialStateIndex];
   const worldX = finite(group.anchor?.x);
-  const sx = finite(scrollXValue ?? group.fsmLastScrollX ?? 0) ?? 0;
+  const sx = finite(group.fsmLastScrollX ?? scrollXValue ?? 0) ?? 0;
   return Object.freeze({
     kind: "group-anchor",
     authoritative: true,
@@ -124,7 +124,7 @@ export function findLatestFsmRuntimeDiagnostics(input: { store?: EntityStore<any
   const groupId = selected.group?.groupId;
   if ((typeof groupId === "number" || typeof groupId === "string") && groups && typeof groups.get === "function") {
     const group = groups.get(Number(groupId));
-    const anchor = createGroupAnchorFsmRuntimeDiagnostic(group);
+    const anchor = createGroupAnchorFsmRuntimeDiagnostic(group, scrollXValue);
     const member = createGroupMemberFsmRuntimeDiagnostic(selected, scrollXValue);
     if (anchor) return Object.freeze({ version: FSM_RUNTIME_DIAGNOSTICS_VERSION, primary: anchor, member });
   }

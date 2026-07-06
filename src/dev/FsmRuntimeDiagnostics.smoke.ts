@@ -49,7 +49,8 @@ function spawnGroup(spawn: SpawnSystem, id: string, count = 2, token = 202) { sp
   assert.equal(g.stateId, "enter");
   assert.equal(g.movementPresetId, "straight.drift");
   assert.equal(g.memberCount, 2);
-  assert.equal(g.scrollX, 0, "group anchor reports actual transition scrollX context");
+  assert.equal(g.scrollX, 41, "group anchor reports actual world scrollX context before the first anchor tick");
+  assert.equal(g.screenX, (g.worldX ?? 0) - 41);
   const m = bundle.member!;
   assert.equal(m.kind, "group-member");
   assert.equal(m.authoritative, false);
@@ -125,7 +126,7 @@ function installDom(store: any, groups: any) {
   assert(body.textContent.includes("Diagnostics version: A1.1"));
   assert(body.textContent.includes("SINGLE — AUTHORITATIVE"));
   assert.equal(panel.findAll((el) => el.id === "ds-fsm-runtime-diagnostics").length, 1, "no duplicate diagnostics panels");
-  const groupBundle = { version: "A1.1" as const, primary: { kind: "group-anchor" as const, authoritative: true, presetId: "fsm.charge", stateId: "enter", movementPresetId: "straight.drift", worldX: 856, worldY: 244, scrollX: 0, screenX: 856, velocityX: -115, velocityY: 0, stateAge: 0.4, lastTransition: null, movementSuppressed: false, memberCount: 2 }, member: { kind: "group-member" as const, authoritative: false, presetId: "fsm.charge", stateId: "enter", movementPresetId: "straight.drift", worldX: 865, worldY: 244, scrollX: 0, screenX: 865, velocityX: -115, velocityY: 0, stateAge: 0.4, lastTransition: null, movementSuppressed: true } };
+  const groupBundle = { version: "A1.1" as const, primary: { kind: "group-anchor" as const, authoritative: true, presetId: "fsm.charge", stateId: "enter", movementPresetId: "straight.drift", worldX: 856, worldY: 244, scrollX: 41, screenX: 815, velocityX: -115, velocityY: 0, stateAge: 0.4, lastTransition: null, movementSuppressed: false, memberCount: 2 }, member: { kind: "group-member" as const, authoritative: false, presetId: "fsm.charge", stateId: "enter", movementPresetId: "straight.drift", worldX: 865, worldY: 244, scrollX: 41, screenX: 824, velocityX: -115, velocityY: 0, stateAge: 0.4, lastTransition: null, movementSuppressed: true } };
   const rendered = renderFsmRuntimeDiagnosticsText(groupBundle);
   assert(rendered.includes("GROUP ANCHOR — AUTHORITATIVE"));
   assert(rendered.includes("MEMBER — NON-AUTHORITATIVE MOVEMENT"));
