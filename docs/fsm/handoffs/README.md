@@ -47,3 +47,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [U1.4.3 — Polish FSM LAB controls and spawn current draft](./U1.4.3.md)
 - [U1.4.4 — Compact FSM LAB layout, diagnostics, Count, and Speed runtime fixes](./U1.4.4.md)
 - [A1.1 — Live FSM runtime diagnostics](./A1.1.md)
+- [U1.4.5 — Group draft behavior fix and Enemy Lab layout refinement](./U1.4.5.md)
