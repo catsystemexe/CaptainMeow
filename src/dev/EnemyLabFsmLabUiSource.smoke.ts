@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 const source = readFileSync(new URL("./DevSummoner.ts", import.meta.url), "utf8");
 
-for (const text of ["STATES", "ds-fsm-state-list", "ds-fsm-selected-state-editor", "Behavior", "Formation", "Trigger", "Advanced", "Override"]) {
+for (const text of ["STATES", "ds-fsm-state-list", "ds-fsm-selected-state-editor", "Behavior", "Formation", "Trigger", "Advanced"]) {
   assert(source.includes(text), `missing FSM LAB UI marker: ${text}`);
 }
 assert(source.indexOf("fsmLabSection.appendChild(fsmBasicSection)") < source.indexOf("fsmLabSection.appendChild(presetPanel)"), "FSM LAB authoring panel follows Basic Setup");

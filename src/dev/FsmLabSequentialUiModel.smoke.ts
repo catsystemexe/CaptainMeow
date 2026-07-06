@@ -51,8 +51,8 @@ assert.equal(model.labStateRows().length, 4, "delete state removes selected stat
 
 const first = model.labStateRows()[0];
 model.selectState(first.id);
-model.setLabFormationOverride(first.id, { enabled: true, shape: "wedge", spacing: 80, elasticity: 4, speedMultiplier: 1.25 });
-assert.deepEqual(model.selectedStateView()?.formation, { enabled: true, shape: "wedge", spacing: 80, elasticity: 4, speedMultiplier: 1.25 }, "formation override toggle data is state-owned UI model data");
+model.setLabFormationOverride(first.id, { shape: "wedge", spacing: 80, elasticity: 4, speedMultiplier: 1.25 });
+assert.deepEqual(model.selectedStateView()?.formation, { shape: "wedge", spacing: 80, elasticity: 4, speedMultiplier: 1.25 }, "formation override toggle data is state-owned UI model data");
 model.setLabTrigger(first.id, "hit");
 assert.equal(model.selectedStateView()?.triggerType, "hit", "Hit trigger is exposed by UI model");
 assert.equal(model.draft?.preset.graph.states[0].transitions[0]?.targetStateId, model.draft?.preset.graph.states[1].id, "trigger-to-next semantics are enforced");

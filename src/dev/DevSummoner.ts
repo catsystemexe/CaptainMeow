@@ -375,7 +375,7 @@ function createCompactSelect(id: string): {
     "left:0",
     "top:0",
     "z-index:10000",
-    "max-height:132px",
+    "max-height:min(520px, calc(100vh - 16px))",
     "overflow:auto",
     "background:#111",
     "border:1px solid #666",
@@ -451,7 +451,8 @@ function createCompactSelect(id: string): {
     }
   };
 
-  button.addEventListener("click", () => {
+  button.addEventListener("click", (ev) => {
+    ev.stopPropagation();
     if (list.style.display === "none") open();
     else close();
   });
@@ -1341,7 +1342,7 @@ export class DevSummoner {
 
     const runtimeDiagnosticsSection = document.createElement("div");
     runtimeDiagnosticsSection.id = "ds-fsm-runtime-diagnostics";
-    runtimeDiagnosticsSection.style.cssText = "display:flex;flex-direction:column;gap:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.12);";
+    runtimeDiagnosticsSection.style.cssText = "display:none;position:fixed;z-index:10001;flex-direction:column;gap:4px;max-height:calc(100vh - 16px);overflow-y:auto;width:280px;padding:6px;background:#111;border:1px solid rgba(150,210,255,0.28);box-shadow:0 3px 8px rgba(0,0,0,0.45);";
     const runtimeDiagnosticsHeading = document.createElement("div");
     runtimeDiagnosticsHeading.textContent = "RUNTIME DIAGNOSTICS";
     runtimeDiagnosticsHeading.style.cssText = "font-weight:800;letter-spacing:1px;opacity:0.95;";
@@ -1586,12 +1587,10 @@ export class DevSummoner {
     behaviorBlock.appendChild(Object.assign(document.createElement("div"), { textContent: "Behavior" }));
     const movementPresetInput = document.createElement("select"); applyNativeSelectStyle(movementPresetInput); for (const id of Object.keys(EnemyBehaviorPresets).sort()) appendOption(movementPresetInput, id, id); behaviorBlock.appendChild(movementPresetInput); editorSection.appendChild(behaviorBlock);
     const formationBlock = document.createElement("div"); formationBlock.setAttribute("data-fsm-editor-block", "Formation"); formationBlock.style.cssText = "display:flex;flex-direction:column;gap:4px;border-top:1px solid rgba(255,255,255,0.10);padding-top:4px;";
-    const formationOverrideLabel = document.createElement("label"); formationOverrideLabel.style.cssText = "display:flex;gap:5px;align-items:center;";
-    const formationOverrideCheck = document.createElement("input"); formationOverrideCheck.type = "checkbox"; formationOverrideLabel.appendChild(formationOverrideCheck); formationOverrideLabel.appendChild(Object.assign(document.createElement("span"), { textContent: "Override" })); formationBlock.appendChild(formationOverrideLabel);
     const formationControls = document.createElement("div"); formationControls.id = "ds-fsm-state-formation-controls"; formationControls.style.cssText = "display:flex;flex-direction:column;gap:4px;"; formationBlock.appendChild(formationControls);
     const shapeButtons = document.createElement("div"); shapeButtons.id = "ds-fsm-state-shape-icons"; shapeButtons.style.cssText = "display:grid;grid-template-columns:repeat(5,1fr);gap:2px;"; formationControls.appendChild(shapeButtons);
     let selectedFormationShape: FormationId = "line.horizontal";
-    const stateShapeButtons = ENEMY_GROUP_FORMATION_IDS.map((id) => { const b = document.createElement("button"); b.type = "button"; b.textContent = formationIconLabels[id].icon; b.title = id; b.setAttribute("aria-label", `State formation ${id}`); applyIconButtonStyle(b); b.addEventListener("click", () => { selectedFormationShape = id; const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverride(v.id, { ...v.formation, enabled: true, shape: id }); renderPresetEditor(); }); shapeButtons.appendChild(b); return { id, button: b }; });
+    const stateShapeButtons = ENEMY_GROUP_FORMATION_IDS.map((id) => { const b = document.createElement("button"); b.type = "button"; b.textContent = formationIconLabels[id].icon; b.title = id; b.setAttribute("aria-label", `State formation ${id}`); applyIconButtonStyle(b); b.addEventListener("click", () => { selectedFormationShape = id; const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverride(v.id, { ...v.formation, shape: id }); renderPresetEditor(); }); shapeButtons.appendChild(b); return { id, button: b }; });
     const stateSpacingSlider = createRangeRow("ds-fsm-state-spacing", "Spacing", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
     const stateElasticitySlider = createRangeRow("ds-fsm-state-elasticity", "Elasticity", { min: 0, max: 10, default: 0, step: 1 });
     const stateSpeedSlider = createRangeRow("ds-fsm-state-speed", "Speed ×", { min: 0.25, max: 3, default: 1, step: 0.05 });
@@ -1627,7 +1626,7 @@ export class DevSummoner {
     const previewDiagnostics = document.createElement("div"); previewDiagnostics.id = "ds-fsm-preview-diagnostics"; previewDiagnostics.style.cssText = "white-space:pre-wrap;color:#eee;"; previewSection.appendChild(previewDiagnostics);
     const previewTrace = document.createElement("div"); previewTrace.id = "ds-fsm-preview-trace"; previewTrace.style.cssText = "white-space:pre-wrap;color:#ccc;"; previewSection.appendChild(previewTrace);
     const dirtyBadge = document.createElement("div"); dirtyBadge.id = "ds-fsm-dirty-badge"; authoringSections.appendChild(dirtyBadge);
-    statesAndDiagnosticsDock.appendChild(runtimeDiagnosticsSection);
+    document.body.appendChild(runtimeDiagnosticsSection);
     presetPanel.appendChild(authoringSections);
     const cm = (window as any).__CM;
     const previewSession = new FsmPreviewSession({
@@ -1638,6 +1637,22 @@ export class DevSummoner {
       previewY: Math.round(this.logicH * 0.5),
     });
     let expandedStateId: string | null = authoringModel.draft?.selectedStateId ?? null;
+
+    const positionRuntimeDiagnosticsPanel = () => {
+      const r = statesAndDiagnosticsDock.getBoundingClientRect();
+      const margin = 8;
+      const width = 280;
+      const leftCandidate = r.left - width - margin;
+      const left = leftCandidate >= margin ? leftCandidate : Math.min(window.innerWidth - width - margin, r.right + margin);
+      runtimeDiagnosticsSection.style.left = `${Math.max(margin, left)}px`;
+      runtimeDiagnosticsSection.style.top = `${Math.min(Math.max(margin, r.top), Math.max(margin, window.innerHeight - 120))}px`;
+      runtimeDiagnosticsSection.setAttribute("data-side", leftCandidate >= margin ? "left" : "right");
+    };
+    const handleRuntimeDiagnosticsKeydown = (ev: KeyboardEvent) => { if (ev.key === "Escape" && runtimeDiagnosticsDockOpen) { runtimeDiagnosticsDockOpen = false; renderPresetEditor(); } };
+    const handleRuntimeDiagnosticsResize = () => { if (runtimeDiagnosticsDockOpen) positionRuntimeDiagnosticsPanel(); };
+    document.addEventListener("keydown", handleRuntimeDiagnosticsKeydown);
+    if (typeof window.addEventListener === "function") window.addEventListener("resize", handleRuntimeDiagnosticsResize);
+    this.cleanupHandlers.push(() => { document.removeEventListener("keydown", handleRuntimeDiagnosticsKeydown); if (typeof window.removeEventListener === "function") window.removeEventListener("resize", handleRuntimeDiagnosticsResize); runtimeDiagnosticsSection.remove(); });
 
     const renderPresetEditor = () => {
       const items = presetModel.list(); presetList.textContent = ""; for (const item of items) appendOption(presetList, item.id, `${item.source === "user" ? "USER" : "BUILT-IN"} ${item.id}`); presetList.value = presetModel.selectedId;
@@ -1694,11 +1709,11 @@ ${d.states.join(", ")}` : "No preset selected";
       const view = authoringModel.selectedStateView();
       selectedStateTitle.textContent = "";
       movementPresetInput.value = view?.behaviorPresetId ?? "none.hold"; movementPresetInput.disabled = authoringReadOnly || !view;
-      const formation = view?.formation; formationOverrideCheck.checked = formation?.enabled ?? false; formationOverrideCheck.disabled = authoringReadOnly || !view; formationControls.style.display = formationOverrideCheck.checked ? "flex" : "none";
+      const formation = view?.formation; formationControls.style.display = "flex";
       selectedFormationShape = ((formation?.shape as FormationId) || "line.horizontal");
-      for (const { id, button } of stateShapeButtons) { const active = id === selectedFormationShape; button.style.background = active ? "#2b5f8a" : "#111"; button.disabled = authoringReadOnly || !formationOverrideCheck.checked; }
+      for (const { id, button } of stateShapeButtons) { const active = id === selectedFormationShape; button.style.background = active ? "#2b5f8a" : "#111"; button.disabled = authoringReadOnly || !view; }
       stateSpacingSlider.setValue(formation?.spacing ?? 64); stateElasticitySlider.setValue(formation?.elasticity ?? 0); stateSpeedSlider.setValue(formation?.speedMultiplier ?? 1);
-      for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateSpeedSlider.slider]) el.disabled = authoringReadOnly || !formationOverrideCheck.checked;
+      for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateSpeedSlider.slider]) el.disabled = authoringReadOnly || !view;
       triggerSelect.value = view?.triggerType ?? "never"; triggerSelect.disabled = authoringReadOnly || !view || view.isLast;
       triggerParamWrap.textContent = "";
       triggerTimeStepper.setDisabled(authoringReadOnly || !view || view.isLast); triggerXStepper.setDisabled(authoringReadOnly || !view || view.isLast); triggerHitStepper.setDisabled(authoringReadOnly || !view || view.isLast);
@@ -1711,7 +1726,7 @@ ${d.states.join(", ")}` : "No preset selected";
       runtimeDiagnosticsSection.style.display = runtimeDiagnosticsDockOpen ? "flex" : "none";
       runtimeDiagnosticsToggle.setAttribute("aria-pressed", String(runtimeDiagnosticsDockOpen));
       runtimeDiagnosticsToggle.style.background = runtimeDiagnosticsDockOpen ? "#2b5f8a" : "transparent";
-      statesAndDiagnosticsDock.style.gridTemplateColumns = runtimeDiagnosticsDockOpen ? "minmax(0, 2fr) minmax(120px, 1fr)" : "minmax(0,1fr)";
+      statesAndDiagnosticsDock.style.gridTemplateColumns = "minmax(0,1fr)"; if (runtimeDiagnosticsDockOpen) positionRuntimeDiagnosticsPanel();
       dirtyBadge.textContent = authoringReadOnly ? "BUILT-IN / READ ONLY" : (ad?.dirty ? "DIRTY" : "Saved");
       const preview = previewSession.current();
       previewDraftBtn.disabled = authoringReadOnly || !ad || authoringModel.hasErrors();
@@ -1765,7 +1780,6 @@ ${d.states.join(", ")}` : "No preset selected";
     delStateBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id && window.confirm("Delete selected FSM state?")) { authoringModel.deleteState(id, true); authoringModel.normalizeSequentialTriggers(); } renderPresetEditor(); });
     movementPresetInput.addEventListener("change", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.setMovementPreset(id, movementPresetInput.value); renderPresetEditor(); });
     runtimeDiagnosticsToggle.addEventListener("click", () => { runtimeDiagnosticsDockOpen = !runtimeDiagnosticsDockOpen; renderPresetEditor(); });
-    formationOverrideCheck.addEventListener("change", () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverrideEnabled(v.id, formationOverrideCheck.checked); renderPresetEditor(); });
     const editStateFormationDraft = () => { const v = authoringModel.selectedStateView(); if (v) { authoringModel.setLabFormationField(v.id, "spacing", stateSpacingSlider.value); authoringModel.setLabFormationField(v.id, "elasticity", stateElasticitySlider.value); authoringModel.setLabFormationField(v.id, "speedMultiplier", stateSpeedSlider.value); } renderPresetEditor(); };
     for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateSpeedSlider.slider]) el.addEventListener("input", editStateFormationDraft);
     const editTrigger = () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, triggerSelect.value as any, {}); renderPresetEditor(); };

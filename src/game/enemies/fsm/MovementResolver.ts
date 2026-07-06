@@ -138,8 +138,8 @@ export function executeFsmMovement(runtime: FsmMovementRuntime, ent: any, ctx: M
 export function fsmEffectiveSpeed(preset: { definition?: { basicSetup?: { baseSpeed?: unknown } }; states?: readonly unknown[]; stateIndex?: number }, state: unknown): number | null {
   const base = Number(preset?.definition?.basicSetup?.baseSpeed);
   if (!Number.isFinite(base) || base <= 0) return null;
-  const override = (state as any)?.formationOverride;
-  const multiplier = override && override.enabled === true ? Number(override.speedMultiplier ?? 1) : 1;
+  const legacy = (state as any)?.formationOverride;
+  const multiplier = Number((state as any)?.speedMultiplier ?? legacy?.speedMultiplier ?? 1);
   return base * (Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1);
 }
 

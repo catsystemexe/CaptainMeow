@@ -120,8 +120,8 @@ function installDom(store: any, groups: any) {
   (summoner as any).latestManualSpawnId = 66;
   summoner.init();
   const panel = doc.getElementById(DEV_SUMMONER_PANEL_ID)!;
-  assert(panel.findById("ds-fsm-runtime-diagnostics"), "diagnostics panel is visible in normal FSM layout");
-  assert.equal(panel.findAll((el) => el.id === "ds-fsm-runtime-diagnostics").length, 1, "no duplicate diagnostics panels");
+  assert(doc.body.findById("ds-fsm-runtime-diagnostics"), "diagnostics panel is mounted as a side panel");
+  assert.equal(doc.body.findAll((el) => el.id === "ds-fsm-runtime-diagnostics").length, 1, "no duplicate diagnostics panels");
   const singleRendered = renderFsmRuntimeDiagnosticsText(findLatestFsmRuntimeDiagnostics({ store, groups, latestManualSpawnId: 66, scrollX: 0 }));
   assert(singleRendered.includes("Diagnostics version: A1.1"));
   assert(singleRendered.includes("SINGLE — AUTHORITATIVE"));

@@ -15,6 +15,16 @@ function freezeDeep<T>(value: T): T {
 }
 export { freezeDeep as deepFreezeFsmValue };
 
+function resolveStateFormationFields(state: any): Record<string, unknown> {
+  const legacy = state?.formationOverride && typeof state.formationOverride === "object" ? state.formationOverride : {};
+  const out: Record<string, unknown> = {};
+  if (state?.formationId !== undefined || legacy.shape !== undefined) out.formationId = String(state?.formationId ?? legacy.shape);
+  if (state?.spacing !== undefined || legacy.spacing !== undefined) out.spacing = Number(state?.spacing ?? legacy.spacing);
+  if (state?.elasticity !== undefined || legacy.elasticity !== undefined) out.elasticity = Number(state?.elasticity ?? legacy.elasticity);
+  if (state?.speedMultiplier !== undefined || legacy.speedMultiplier !== undefined) out.speedMultiplier = Number(state?.speedMultiplier ?? legacy.speedMultiplier);
+  return out;
+}
+
 export function resolveFsmPreset(preset: FsmPresetSchemaV1, options: ValidateFsmPresetOptions = {}): ResolvedFsmPreset {
   const errors = validateFsmPreset(preset, options).issues.filter((i) => i.severity === "error");
   if (errors.length) throw new Error(`[fsm] cannot resolve invalid preset ${preset.metadata.id}: ${errors.map((i) => `${i.code}:${i.path}`).join(", ")}`);
@@ -31,7 +41,7 @@ export function resolveFsmPreset(preset: FsmPresetSchemaV1, options: ValidateFsm
     combat: state.combat,
     lifecycle: state.lifecycle,
     enterActionDescriptors: Object.freeze((state.lifecycle?.enterActions ?? []).map((a) => getEnterActionDescriptor(a.type)).filter((x): x is EnterActionDescriptor => !!x)),
-    ...(state as any).formationOverride ? { formationOverride: structuredClone((state as any).formationOverride) } : {},
+    ...resolveStateFormationFields(state as any),
     transitions: state.transitions.map((t) => {
       const targetStateIndex = index.get(t.targetStateId);
       if (targetStateIndex === undefined) throw new Error(`[fsm] unresolved transition target ${String(t.targetStateId)} in ${preset.metadata.id}`);
