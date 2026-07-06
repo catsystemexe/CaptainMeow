@@ -87,6 +87,6 @@ assert(source.includes("if (row.id === expandedStateId) stateList.appendChild(ed
 assert(source.includes("editorSection.addEventListener(\"click\", (ev) => ev.stopPropagation())"), "inner editor clicks stop propagation");
 assert(source.includes("ev.stopPropagation(); if (b.disabled) return; authoringModel.selectState(row.id);") && source.includes("expandedStateId = row.id; authoringModel.reorderState"), "Move arrows stop row bubbling and preserve expanded selected state");
 assert(source.includes("setLabFormationOverrideEnabled"), "formation override checkbox calls model toggle method");
-assert(source.includes("cursor:default"), "drag handle is decorative rather than a fake active drag affordance");
+assert(!source.includes('handle.textContent = "↕"'), "drag handle is removed rather than a fake active drag affordance");
 
 console.log("FsmLabStateInteractivity smoke passed");

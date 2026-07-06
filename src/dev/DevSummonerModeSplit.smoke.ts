@@ -133,7 +133,7 @@ assert.equal(panel.findById("ds-fsm-lab-section")!.children[1].id, "ds-fsm-basic
 assert.equal(panel.findById("ds-fsm-lab-section")!.children[2].id, "ds-fsm-preset-editor", "FSM LAB follows Basic Setup in FSM mode");
 assert(panel.findById("ds-fsm-preset-section"), "PRESETS section remains present in FSM mode");
 assert(panel.findById("ds-fsm-basic-setup"), "FSM Basic Setup section is present in FSM mode");
-assert.equal(panel.findById("ds-fsm-runtime-diagnostics"), null, "Runtime Diagnostics panel is hidden from normal FSM mode");
+assert(panel.findById("ds-fsm-runtime-diagnostics"), "Runtime Diagnostics panel is visible in normal FSM mode");
 assert.equal(panel.findAll((el) => el.textContent === "FSM Presets").length, 0, "legacy FSM Presets panel is hidden from normal FSM mode");
 assert(panel.findById("ds-fsm-preset"), "FSM selector is present in FSM mode");
 assert.equal(panel.findById("ds-fsm-preview-section"), null, "legacy Preview controls are not mounted in FSM mode");

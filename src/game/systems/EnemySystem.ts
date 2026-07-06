@@ -2,7 +2,7 @@
 import type { EntityStore } from "../../engine/ecs/EntityStore";
 import type { TickContext } from "../../engine/core/Loop";
 import { EnemyBehaviorDB } from "../enemies/EnemyBehaviorDB";
-import { createFsmMovementRuntime, executeFsmMovement, getFsmMovementCullReferenceX, getFsmRuntimeStateLabel, isFsmIndividualMovementSuppressed, updateResolvedFsm } from "../enemies/fsm";
+import { createFsmMovementRuntime, executeFsmMovement, fsmEffectiveSpeed, getFsmMovementCullReferenceX, getFsmRuntimeStateLabel, isFsmIndividualMovementSuppressed, updateResolvedFsm, velocityFromFsmTarget } from "../enemies/fsm";
 import { isEnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import type { EnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import { ENEMY_DEFS, getAttackProfile } from "../defs/EnemyDefs";
@@ -143,8 +143,10 @@ export class EnemySystem {
           movement.movementSuspended = false;
           const target = executeFsmMovement(movement, e, { dt, playerPos, logicW: W, logicH: H });
           if (target) {
-            e.vel.x = (target.x - safeNum(e.pos?.x, 0)) / dt;
-            e.vel.y = (target.y - safeNum(e.pos?.y, 0)) / dt;
+            const speed = fsmEffectiveSpeed(fsmRuntime.preset as any, fsmResult.state);
+            const vel = velocityFromFsmTarget(e, target, dt, speed);
+            e.vel.x = vel.x;
+            e.vel.y = vel.y;
           }
         }
         fsmAttackProfile = attackProfileId

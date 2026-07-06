@@ -135,6 +135,24 @@ export function executeFsmMovement(runtime: FsmMovementRuntime, ent: any, ctx: M
   return runtime.target;
 }
 
+export function fsmEffectiveSpeed(preset: { definition?: { basicSetup?: { baseSpeed?: unknown } }; states?: readonly unknown[]; stateIndex?: number }, state: unknown): number | null {
+  const base = Number(preset?.definition?.basicSetup?.baseSpeed);
+  if (!Number.isFinite(base) || base <= 0) return null;
+  const override = (state as any)?.formationOverride;
+  const multiplier = override && override.enabled === true ? Number(override.speedMultiplier ?? 1) : 1;
+  return base * (Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1);
+}
+
+export function velocityFromFsmTarget(ent: any, target: MutableVec2, dt: number, effectiveSpeed: number | null): MutableVec2 {
+  const dx = target.x - num(ent?.pos?.x, 0);
+  const dy = target.y - num(ent?.pos?.y, 0);
+  if (effectiveSpeed !== null) {
+    const len = Math.hypot(dx, dy);
+    if (len > 0.000001) return { x: dx / len * effectiveSpeed, y: dy / len * effectiveSpeed };
+  }
+  return { x: dx / dt, y: dy / dt };
+}
+
 export function getFsmMovementCullReferenceX(runtime: FsmMovementRuntime | undefined, ent: any): number {
   const fallback = num(ent?.pos?.x, 0);
   if (!runtime || runtime.base.cullReference === "entityPosition") return fallback;

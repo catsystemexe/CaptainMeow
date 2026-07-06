@@ -3,7 +3,7 @@ import type { EntityStore } from "../../engine/ecs/EntityStore";
 import { EnemyBehaviorDB } from "./EnemyBehaviorDB";
 import { EnemyBehaviorPresets } from "./EnemyBehaviorPresets";
 import { resolveMovementCullReferenceX } from "./EnemyCullReference";
-import { createFsmRuntimeSnapshot, executeFsmMovement, getFsmMovementCullReferenceX, updateResolvedFsm, type FsmRuntimeSnapshot } from "./fsm";
+import { createFsmRuntimeSnapshot, executeFsmMovement, fsmEffectiveSpeed, getFsmMovementCullReferenceX, getFsmRuntimeState, updateResolvedFsm, velocityFromFsmTarget, type FsmRuntimeSnapshot } from "./fsm";
 import type { ResolvedFsmPreset } from "./fsm/resolve";
 
 type Vec2 = { x: number; y: number };
@@ -226,8 +226,10 @@ export class EnemyGroupRegistry {
         });
         const target = executeFsmMovement(group.fsm.movement, group.fsmEnt, behaviorCtx);
         if (target && Number.isFinite(target.x) && Number.isFinite(target.y)) {
-          group.vel.x = (target.x - group.anchor.x) / dt;
-          group.vel.y = (target.y - group.anchor.y) / dt;
+          const speed = fsmEffectiveSpeed(group.fsm.preset as any, getFsmRuntimeState(group.fsm));
+          const vel = velocityFromFsmTarget(group.fsmEnt, target, dt, speed);
+          group.vel.x = vel.x;
+          group.vel.y = vel.y;
         } else {
           group.vel.x = finite(group.fsmEnt.vel?.x);
           group.vel.y = finite(group.fsmEnt.vel?.y);
