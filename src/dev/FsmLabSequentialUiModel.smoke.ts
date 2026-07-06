@@ -24,10 +24,21 @@ assert.equal(store.upsert(preset).ok, true);
 const model = new FsmPresetAuthoringModel(store, "user.u14");
 
 assert.deepEqual(model.labStateRows().map((row) => row.number), [1, 2, 3], "state numbering is derived as 1..n");
-model.reorderState("three", 0);
+model.selectState("two");
+model.reorderState("two", 0);
 model.normalizeSequentialTriggers();
-assert.deepEqual(model.labStateRows().map((row) => `${row.number}:${row.id}`), ["1:three", "2:one", "3:two"], "reorder updates UI numbering");
-assert.equal(model.draft?.preset.graph.states[1].transitions[0]?.targetStateId, "two", "existing trigger targets next state after reorder");
+assert.deepEqual(model.labStateRows().map((row) => `${row.number}:${row.id}`), ["1:two", "2:one", "3:three"], "move up updates graph order and UI numbering");
+assert.equal(model.draft?.selectedStateId, "two", "selected state identity remains stable after reorder");
+assert.equal(model.draft?.dirty, true, "reorder marks draft dirty");
+assert.equal(model.draft?.preset.graph.states[1].transitions[0]?.targetStateId, "three", "existing trigger targets next state after reorder");
+model.reorderState("two", 1);
+model.normalizeSequentialTriggers();
+assert.deepEqual(model.labStateRows().map((row) => `${row.number}:${row.id}`), ["1:one", "2:two", "3:three"], "move down restores expected order");
+model.draft!.dirty = false;
+model.reorderState("one", -1);
+assert.equal(model.draft?.dirty, false, "first state cannot move up and remains clean on no-op");
+model.reorderState("three", 9);
+assert.equal(model.draft?.dirty, false, "last state cannot move down when already at the last index");
 
 model.addState();
 assert.equal(model.labStateRows().length, 4, "add state appends one state");

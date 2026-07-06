@@ -120,12 +120,11 @@ function installDom(store: any, groups: any) {
   (summoner as any).latestManualSpawnId = 66;
   summoner.init();
   const panel = doc.getElementById(DEV_SUMMONER_PANEL_ID)!;
-  const section = panel.findById("ds-fsm-runtime-diagnostics")!;
-  const body = panel.findById("ds-fsm-runtime-diagnostics-body")!;
-  assert(section, "diagnostics block exists");
-  assert(body.textContent.includes("Diagnostics version: A1.1"));
-  assert(body.textContent.includes("SINGLE — AUTHORITATIVE"));
-  assert.equal(panel.findAll((el) => el.id === "ds-fsm-runtime-diagnostics").length, 1, "no duplicate diagnostics panels");
+  assert.equal(panel.findById("ds-fsm-runtime-diagnostics"), null, "diagnostics panel is hidden from normal FSM layout");
+  assert.equal(panel.findAll((el) => el.id === "ds-fsm-runtime-diagnostics").length, 0, "no duplicate diagnostics panels");
+  const singleRendered = renderFsmRuntimeDiagnosticsText(findLatestFsmRuntimeDiagnostics({ store, groups, latestManualSpawnId: 66, scrollX: 0 }));
+  assert(singleRendered.includes("Diagnostics version: A1.1"));
+  assert(singleRendered.includes("SINGLE — AUTHORITATIVE"));
   const groupBundle = { version: "A1.1" as const, primary: { kind: "group-anchor" as const, authoritative: true, presetId: "fsm.charge", stateId: "enter", movementPresetId: "straight.drift", worldX: 856, worldY: 244, scrollX: 41, screenX: 815, velocityX: -115, velocityY: 0, stateAge: 0.4, lastTransition: null, movementSuppressed: false, memberCount: 2 }, member: { kind: "group-member" as const, authoritative: false, presetId: "fsm.charge", stateId: "enter", movementPresetId: "straight.drift", worldX: 865, worldY: 244, scrollX: 41, screenX: 824, velocityX: -115, velocityY: 0, stateAge: 0.4, lastTransition: null, movementSuppressed: true } };
   const rendered = renderFsmRuntimeDiagnosticsText(groupBundle);
   assert(rendered.includes("GROUP ANCHOR — AUTHORITATIVE"));

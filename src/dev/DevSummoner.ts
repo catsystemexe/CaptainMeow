@@ -1210,7 +1210,7 @@ export class DevSummoner {
     fsmPresetHeading.style.cssText = "font-weight:800;letter-spacing:1px;opacity:0.95;";
     const fsmPresetToolbar = document.createElement("div");
     fsmPresetToolbar.id = "ds-fsm-preset-toolbar";
-    fsmPresetToolbar.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) 26px 26px 26px 26px;gap:2px;align-items:center;";
+    fsmPresetToolbar.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) 26px 26px 26px 26px 26px;gap:2px;align-items:center;";
     fsmPresetSection.appendChild(fsmPresetHeading);
     fsmPresetSection.appendChild(fsmPresetToolbar);
 
@@ -1474,9 +1474,10 @@ export class DevSummoner {
     const topNewBtn = makeIconBtn("+", "New FSM preset");
     const topEditBtn = makeIconBtn("✎", "Edit selected FSM preset; duplicates built-ins before editing");
     const topImportBtn = makeIconBtn("⇧", "Import FSM preset JSON from the editor import box");
+    const topSaveBtn = makeIconBtn("✓", "Save selected FSM preset");
     const topDeleteBtn = makeIconBtn("×", "Delete selected user FSM preset");
-    presetPanel.appendChild(Object.assign(document.createElement("div"), { textContent: "FSM Presets" }));
-    presetPanel.appendChild(presetList); presetPanel.appendChild(idInput); presetPanel.appendChild(labelInput); presetPanel.appendChild(details); presetPanel.appendChild(collisionSelect); presetPanel.appendChild(importText); presetPanel.appendChild(buttons); presetPanel.appendChild(exportText); presetPanel.appendChild(diagBox);
+    // Legacy full preset-management controls remain wired below for model/debug continuity but are not mounted in the normal FSM layout.
+    void details; void diagBox; void importText; void exportText; void collisionSelect;
     const authoringSections = document.createElement("div");
     authoringSections.id = "ds-fsm-authoring-sections";
     authoringSections.style.cssText = "display:flex;flex-direction:column;gap:6px;border-top:1px solid rgba(255,255,255,0.18);padding-top:5px;";
@@ -1491,8 +1492,9 @@ export class DevSummoner {
     statesSection.appendChild(stateButtons);
     const stateBtn = (text: string) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.style.cssText = "font:12px monospace;min-height:24px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; stateButtons.appendChild(b); return b; };
     const addStateBtn = stateBtn("Add state"); const dupStateBtn = stateBtn("Duplicate"); const delStateBtn = stateBtn("Delete");
-    const editorSection = addAuthoringSection("SELECTED STATE");
+    const editorSection = document.createElement("div");
     editorSection.id = "ds-fsm-selected-state-editor";
+    editorSection.style.cssText = "display:flex;flex-direction:column;gap:4px;margin:2px 0 4px 44px;padding:5px;border-left:2px solid #7cc7ff;background:rgba(80,170,255,0.10);";
     const selectedStateTitle = document.createElement("div");
     selectedStateTitle.id = "ds-fsm-selected-state-title";
     selectedStateTitle.style.cssText = "color:#bfe3ff;font-weight:bold;";
@@ -1541,12 +1543,12 @@ export class DevSummoner {
 
     const renderPresetEditor = () => {
       const items = presetModel.list(); presetList.textContent = ""; for (const item of items) appendOption(presetList, item.id, `${item.source === "user" ? "USER" : "BUILT-IN"} ${item.id}`); presetList.value = presetModel.selectedId;
-      const draft = presetModel.draft; idInput.value = draft?.id ?? ""; labelInput.value = draft?.label ?? ""; const readOnly = !draft || draft.source === "builtin"; idInput.disabled = readOnly; labelInput.disabled = readOnly; saveBtn.disabled = readOnly || !draft.dirty; delBtn.disabled = readOnly; topDeleteBtn.disabled = readOnly;
+      const draft = presetModel.draft; idInput.value = draft?.id ?? ""; labelInput.value = draft?.label ?? ""; const readOnly = !draft || draft.source === "builtin"; idInput.disabled = readOnly; labelInput.disabled = readOnly; saveBtn.disabled = readOnly || !draft.dirty; delBtn.disabled = readOnly; topDeleteBtn.disabled = readOnly; topSaveBtn.disabled = readOnly || (!draft.dirty && !authoringModel.canSave);
       const d = presetModel.details(); details.textContent = d ? `Source: ${d.source.toUpperCase()} | Schema: ${d.schemaVersion} | States: ${d.stateCount}
 Initial: ${d.initialState} | Validation: ${d.validationStatus}
 ${d.states.join(", ")}` : "No preset selected";
       diagBox.textContent = presetModel.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.presetId ? x.presetId + ": " : ""}${x.message}`).join("\n");
-      if (authoringModel.draft?.originalPresetId !== presetModel.selectedId) authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId);
+      if (authoringModel.draft?.originalPresetId !== presetModel.selectedId) authoringModel.load(presetModel.selectedId);
       if (draft) {
         enemySelect.value = draft.basicSetup.appearanceId;
         groupEnemySelect.value = draft.basicSetup.appearanceId;
@@ -1562,7 +1564,9 @@ ${d.states.join(", ")}` : "No preset selected";
       }
       const ad = authoringModel.draft; const selected = ad?.preset.graph.states.find((state) => state.id === ad.selectedStateId) ?? ad?.preset.graph.states[0]; const authoringReadOnly = authoringModel.readOnly;
       stateList.textContent = "";
-      for (const row of authoringModel.labStateRows()) {
+      const rows = authoringModel.labStateRows();
+      const selectedRow = rows.find((row) => row.selected) ?? rows[0];
+      for (const row of rows) {
         const stateRow = document.createElement("div");
         stateRow.setAttribute("data-fsm-state-row", String(row.number));
         stateRow.style.cssText = `display:grid;grid-template-columns:16px 24px minmax(0,1fr) 24px;gap:4px;align-items:center;padding:3px;border:${row.selected ? "1px solid #7cc7ff" : "1px solid rgba(255,255,255,0.12)"};background:${row.selected ? "rgba(80,170,255,0.22)" : "rgba(255,255,255,0.04)"};`;
@@ -1573,8 +1577,9 @@ ${d.states.join(", ")}` : "No preset selected";
         const sub = document.createElement("div"); sub.textContent = row.triggerSummary; sub.style.cssText = "font-size:10px;color:#bbb;overflow:hidden;text-overflow:ellipsis;"; labelWrap.appendChild(sub); stateRow.appendChild(labelWrap);
         const menu = document.createElement("div"); menu.style.cssText = "display:flex;flex-direction:column;gap:1px;";
         const more = document.createElement("button"); more.type = "button"; more.textContent = "⋯"; more.title = "Duplicate selected state"; more.style.cssText = "font:12px monospace;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; more.addEventListener("click", () => { authoringModel.selectState(row.id); authoringModel.duplicateState(row.id); renderPresetEditor(); }); menu.appendChild(more);
-        const arrows = document.createElement("div"); arrows.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:1px;"; for (const [txt, delta] of [["↑", -1], ["↓", 1]] as const) { const arrow = document.createElement("button"); arrow.type = "button"; arrow.textContent = txt; arrow.disabled = authoringReadOnly; arrow.style.cssText = "font:10px monospace;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.18);"; arrow.addEventListener("click", () => { const states = authoringModel.draft?.preset.graph.states ?? []; authoringModel.reorderState(row.id, states.findIndex((state) => String(state.id) === row.id) + delta); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); }); arrows.appendChild(arrow); } menu.appendChild(arrows); stateRow.appendChild(menu);
+        const arrows = document.createElement("div"); arrows.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:1px;"; for (const [txt, delta, label] of [["↑", -1, "Move state up"], ["↓", 1, "Move state down"]] as const) { const arrow = document.createElement("button"); arrow.type = "button"; arrow.textContent = txt; arrow.title = label; arrow.setAttribute("aria-label", `${label}: ${row.id}`); const rowIndex = row.number - 1; arrow.disabled = authoringReadOnly || (delta < 0 ? rowIndex === 0 : rowIndex === rows.length - 1); arrow.style.cssText = "font:10px monospace;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.18);"; arrow.addEventListener("click", () => { const states = authoringModel.draft?.preset.graph.states ?? []; authoringModel.reorderState(row.id, states.findIndex((state) => String(state.id) === row.id) + delta); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); }); arrows.appendChild(arrow); } menu.appendChild(arrows); stateRow.appendChild(menu);
         stateList.appendChild(stateRow);
+        if (row.id === selectedRow?.id) stateList.appendChild(editorSection);
       }
       const view = authoringModel.selectedStateView();
       selectedStateTitle.textContent = view ? `State ${view.number}: ${view.behaviorPresetId}` : "No state selected";
@@ -1613,7 +1618,7 @@ ${d.states.join(", ")}` : "No preset selected";
       ].join("\n") : preview.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code}: ${x.message}`).join("\n");
       previewTrace.textContent = `Transition Trace\n${preview.trace.map((t) => `${t.tick}: ${t.fromStateId ?? "spawn"} -> ${t.toStateId} #${t.entryCount}`).join("\n")}`;
       for (const b of [addStateBtn, dupStateBtn, delStateBtn]) b.disabled = authoringReadOnly;
-      saveBtn.disabled = readOnly || (!draft.dirty && !authoringModel.canSave);
+      saveBtn.disabled = readOnly || (!draft.dirty && !authoringModel.canSave); topSaveBtn.disabled = saveBtn.disabled;
       refreshFsmSpawnSelect(CONTENT.fsmPresets.get(presetModel.selectedId) ? presetModel.selectedId : fsmSpawnSelect.value);
     };
     editFsmBasicSetupDraft = () => { presetModel.setBasicSetup({ appearanceId: enemySelect.value, count: groupCount, formationId: formationChoice.value, spacing: fsmSpacingSlider.value, elasticity: fsmElasticitySlider.value, baseSpeed: fsmBaseSpeedSlider.value, spawnY: screenYControl.value }); renderPresetEditor(); };
@@ -1622,7 +1627,9 @@ ${d.states.join(", ")}` : "No preset selected";
     labelInput.addEventListener("input", () => { presetModel.setDraftLabel(labelInput.value); renderPresetEditor(); });
     newBtn.addEventListener("click", () => { presetModel.create(); renderPresetEditor(); });
     dupBtn.addEventListener("click", () => { presetModel.duplicate(); renderPresetEditor(); });
-    saveBtn.addEventListener("click", () => { if (authoringModel.draft?.dirty) authoringModel.save(); presetModel.save(); renderPresetEditor(); });
+    const saveSelectedFsmPreset = () => { if (authoringModel.draft?.dirty) authoringModel.save(); presetModel.save(); renderPresetEditor(); };
+    saveBtn.addEventListener("click", saveSelectedFsmPreset);
+    topSaveBtn.addEventListener("click", saveSelectedFsmPreset);
     cancelBtn.addEventListener("click", () => { authoringModel.cancel(); presetModel.cancel(); renderPresetEditor(); });
     delBtn.addEventListener("click", () => { if (window.confirm("Delete selected user FSM preset?")) presetModel.delete(presetModel.selectedId, true); renderPresetEditor(); });
     importBtn.addEventListener("click", () => { presetModel.importJson(importText.value, collisionSelect.value as any); renderPresetEditor(); });
@@ -1649,7 +1656,7 @@ ${d.states.join(", ")}` : "No preset selected";
     fsmBaseSpeedSlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
     screenYControl.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
     screenYControl.valueInput.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
-    fsmSpawnSelect.addEventListener("change", () => { if (enemyLabMode === "fsm" && fsmSpawnSelect.value && fsmSpawnSelect.value !== presetModel.selectedId) { presetModel.select(fsmSpawnSelect.value); authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId); renderPresetEditor(); } });
+    fsmSpawnSelect.addEventListener("change", () => { if (enemyLabMode === "fsm" && fsmSpawnSelect.value && fsmSpawnSelect.value !== presetModel.selectedId) { presetModel.select(fsmSpawnSelect.value); authoringModel.load(presetModel.selectedId); renderPresetEditor(); } });
     previewDraftBtn.addEventListener("click", () => { previewSession.startDraftPreview(authoringModel.draft?.preset ?? null, !authoringModel.readOnly); renderPresetEditor(); });
     previewSavedBtn.addEventListener("click", () => { previewSession.startPersistedPreview(presetModel.selectedId); renderPresetEditor(); });
     previewRestartBtn.addEventListener("click", () => { previewSession.restart(); renderPresetEditor(); });
@@ -1657,7 +1664,6 @@ ${d.states.join(", ")}` : "No preset selected";
     renderPresetEditor();
     fsmLabSection.appendChild(fsmPresetSection);
     fsmLabSection.appendChild(fsmBasicSection);
-    fsmLabSection.appendChild(runtimeDiagnosticsSection);
     fsmLabSection.appendChild(presetPanel);
     fsmLabSection.appendChild(createSectionGap());
 

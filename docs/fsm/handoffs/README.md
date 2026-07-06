@@ -42,4 +42,5 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [U1.3.2 — Remove preset-default Count dependency](./U1.3.2.md)
 - [U1.3.3 — Real scrollX for group-anchor FSM transitions](./U1.3.3.md)
 - [U1.4 — Simplified sequential FSM LAB UI/model](./U1.4.md)
+- [U1.4.1 — FSM LAB preset binding and inline state editors](./U1.4.1.md)
 - [A1.1 — Live FSM runtime diagnostics](./A1.1.md)
