@@ -84,6 +84,8 @@ export type CMEventMap = {
     cohesionId: string;
     /** Explicit FSM controller preset id for the group anchor and members. */
     fsmPresetId?: string;
+    /** Dev-only FSM draft override for Enemy Lab manual group spawns. */
+    resolvedFsmPresetOverride?: unknown;
     /** Dev-only correlation id for Enemy Lab runtime diagnostics. */
     devManualSpawnId?: number;
     spacing?: number;

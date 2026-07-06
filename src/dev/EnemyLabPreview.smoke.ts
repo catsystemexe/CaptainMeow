@@ -1,8 +1,8 @@
-import assert from "node:assert/strict";
+import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
-const src = readFileSync("src/dev/DevSummoner.ts", "utf8");
-for (const text of ["Preview Draft", "Preview Saved", "Restart", "Stop", "ds-fsm-preview-status", "ds-fsm-preview-diagnostics", "ds-fsm-preview-trace", "FsmPreviewSession"]) assert(src.includes(text), `${text} exists in real Enemy Lab bootstrap path`);
-assert(!/node graph/i.test(src), "no node graph controls added");
-assert(!/createElement\(\s*[`'"]canvas/.test(src), "no graph canvas added");
-assert(src.includes("previewDraftBtn.disabled = authoringReadOnly || !ad || authoringModel.hasErrors()"), "invalid/built-in draft preview is disabled");
+const src = readFileSync(new URL("./DevSummoner.ts", import.meta.url), "utf8");
+assert(src.includes("FsmPreviewSession"), "internal preview override infrastructure remains available");
+assert(src.includes("resolveEphemeralFsmPreset"), "draft spawn uses ephemeral FSM resolution");
+for (const text of ["Preview Draft", "Preview Saved", "const previewRestartBtn", "const previewStopBtn"]) assert(src.includes(text), `${text} remains internal only`);
+assert(!src.includes('addAuthoringSection("Preview")'), "legacy Preview section is not mounted in visible authoring UI");
 console.log("EnemyLabPreview smoke passed");

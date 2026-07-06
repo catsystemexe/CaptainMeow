@@ -136,7 +136,7 @@ assert(panel.findById("ds-fsm-basic-setup"), "FSM Basic Setup section is present
 assert.equal(panel.findById("ds-fsm-runtime-diagnostics"), null, "Runtime Diagnostics panel is hidden from normal FSM mode");
 assert.equal(panel.findAll((el) => el.textContent === "FSM Presets").length, 0, "legacy FSM Presets panel is hidden from normal FSM mode");
 assert(panel.findById("ds-fsm-preset"), "FSM selector is present in FSM mode");
-assert(panel.findById("ds-fsm-preview-section"), "Preview controls remain reachable in FSM mode");
+assert.equal(panel.findById("ds-fsm-preview-section"), null, "legacy Preview controls are not mounted in FSM mode");
 assert.equal(panel.findById("ds-fsm-basic-setup")!.findAll((el) => el.textContent === "Count").length, 1, "FSM mode derives Single/Group from Count");
 chooseCompact(panel, "ds-fsm-preset", "fsm.hover");
 clickButtonByText(panel, "SMART");

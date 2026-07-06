@@ -254,13 +254,16 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
             const formationId = normalizeFormationId(String(p.formationId));
             const cohesionId = normalizeCohesionId(String(p.cohesionId));
             const params = normalizeEnemyGroupParams(p.params, cohesionId, spacing);
+            const previewOverride = (p as any).resolvedFsmPresetOverride as ResolvedFsmPreset | undefined;
             const explicitFsmPresetId = typeof p.fsmPresetId === "string" && p.fsmPresetId.length ? p.fsmPresetId : "";
             const defaultGraphId = typeof ENEMY_DEFS[enemyTypeId as EnemyTypeId]?.behaviorGraphId === "string" ? ENEMY_DEFS[enemyTypeId as EnemyTypeId].behaviorGraphId : "";
-            const groupFsmPreset = explicitFsmPresetId
-              ? CONTENT.fsmPresets.get(explicitFsmPresetId)
-              : defaultGraphId
-                ? CONTENT.fsmPresets.get(defaultGraphId)
-                : undefined;
+            const groupFsmPreset = previewOverride
+              ? previewOverride
+              : explicitFsmPresetId
+                ? CONTENT.fsmPresets.get(explicitFsmPresetId)
+                : defaultGraphId
+                  ? CONTENT.fsmPresets.get(defaultGraphId)
+                  : undefined;
             if (explicitFsmPresetId && !groupFsmPreset) {
               throw new Error(`[SpawnSystem] Unknown explicit fsmPresetId: ${explicitFsmPresetId}`);
             }
@@ -285,6 +288,7 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
                   spawn: { x: anchor.x + offset.x, y: anchor.y + offset.y },
                   behaviorPresetId: "none.hold",
                   fsmPresetId: typeof p.fsmPresetId === "string" && p.fsmPresetId.length ? p.fsmPresetId : undefined,
+                  resolvedFsmPresetOverride: previewOverride,
                   spawnOrdinal: slotIndex,
                   devManualSpawnId: typeof (p as any).devManualSpawnId === "number" ? (p as any).devManualSpawnId : undefined,
                   group: { groupId, slotIndex },

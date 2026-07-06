@@ -128,7 +128,7 @@ for (const button of iconButtons) {
   assert(["+", "✎", "⇧", "×"].includes(button.textContent), "icon action is icon-only");
   assert(button.getAttribute("aria-label") || button.getAttribute("title"), "icon action has accessible label");
 }
-assert(panel.findById("ds-fsm-preview-section"), "Preview remains below Basic Setup");
+assert.equal(panel.findById("ds-fsm-preview-section"), null, "legacy Preview controls are not mounted in FSM mode");
 const count = panel.findById("ds-group-count")!;
 const countButtons = count.findAll((el) => el.tagName === "BUTTON");
 while (count.getAttribute("aria-valuenow") !== "1") countButtons[0].click();
