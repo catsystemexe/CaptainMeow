@@ -48,9 +48,9 @@ export function createDevSummonerPanelStyle(): string {
     "background:rgba(0,0,0,0.75)", "border:1px solid #444",
     "color:#eee", "font:12px monospace", "padding:3px",
     "border-radius:2px", "display:flex", "flex-direction:column", "gap:5px",
-    "width:220px",
-    "min-width:220px",
-    "max-width:220px",
+    "width:clamp(220px, 32vw, 264px)",
+    "min-width:min(220px, calc(100vw - 16px))",
+    "max-width:min(264px, calc(100vw - 16px))",
     "max-height:calc(100vh - 16px)",
     "box-sizing:border-box",
     "overflow-x:hidden",
@@ -371,10 +371,9 @@ function createCompactSelect(id: string): {
   list.setAttribute("role", "listbox");
   list.style.cssText = [
     "display:none",
-    "position:absolute",
+    "position:fixed",
     "left:0",
-    "right:0",
-    "top:100%",
+    "top:0",
     "z-index:10000",
     "max-height:132px",
     "overflow:auto",
@@ -393,8 +392,22 @@ function createCompactSelect(id: string): {
     list.style.display = "none";
     button.setAttribute("aria-expanded", "false");
   };
+  const positionList = () => {
+    const r = button.getBoundingClientRect();
+    const listWidth = Math.max(180, Math.round(r.width));
+    const margin = 8;
+    const rightLeft = r.right + margin;
+    const leftLeft = r.left - listWidth - margin;
+    const fitsRight = rightLeft + listWidth <= window.innerWidth - margin;
+    const left = fitsRight ? rightLeft : Math.max(margin, leftLeft);
+    list.style.left = `${left}px`;
+    list.style.top = `${Math.min(Math.max(margin, r.top), Math.max(margin, window.innerHeight - 150))}px`;
+    list.style.width = `${Math.min(listWidth, Math.max(120, window.innerWidth - margin * 2))}px`;
+    list.setAttribute("data-side", fitsRight ? "right" : "left");
+  };
   const open = () => {
     if (button.disabled) return;
+    positionList();
     list.style.display = "block";
     button.setAttribute("aria-expanded", "true");
   };
@@ -460,9 +473,13 @@ function createCompactSelect(id: string): {
     choose(enabled[(currentIndex + delta + enabled.length) % enabled.length].value);
   });
   const handleDocumentClick = (ev: MouseEvent) => {
-    if (!root.contains(ev.target as Node)) close();
+    if (!root.contains(ev.target as Node) && !list.contains(ev.target as Node)) close();
   };
+  const handleDocumentKeydown = (ev: KeyboardEvent) => { if (ev.key === "Escape") close(); };
+  const handleWindowResize = () => { if (list.style.display !== "none") positionList(); };
   document.addEventListener("click", handleDocumentClick);
+  document.addEventListener("keydown", handleDocumentKeydown);
+  if (typeof window.addEventListener === "function") window.addEventListener("resize", handleWindowResize);
 
   return {
     root,
@@ -483,6 +500,8 @@ function createCompactSelect(id: string): {
     },
     destroy() {
       document.removeEventListener("click", handleDocumentClick);
+      document.removeEventListener("keydown", handleDocumentKeydown);
+      if (typeof window.removeEventListener === "function") window.removeEventListener("resize", handleWindowResize);
     },
   };
 }
@@ -654,6 +673,7 @@ export function createDevSummonerGroupSpawnPayload(input: {
     movementPresetId: input.movementPresetId,
     cohesionId: input.cohesionId,
     ...(input.fsmPresetId ? { fsmPresetId: input.fsmPresetId } : {}),
+    ...(input.resolvedFsmPresetOverride ? { resolvedFsmPresetOverride: input.resolvedFsmPresetOverride } : {}),
     ...(typeof input.devManualSpawnId === "number" ? { devManualSpawnId: input.devManualSpawnId } : {}),
     params,
   };
@@ -738,7 +758,7 @@ export class DevSummoner {
     smartLabSection.style.cssText = "display:none;flex-direction:column;gap:6px;";
     const fsmLabSection = document.createElement("div");
     fsmLabSection.id = "ds-fsm-lab-section";
-    fsmLabSection.style.cssText = "display:none;flex-direction:column;gap:6px;width:min(100%, 432px);max-width:100%;";
+    fsmLabSection.style.cssText = "display:none;flex-direction:column;gap:6px;width:100%;max-width:100%;";
     panel.appendChild(simpleLabSection);
     panel.appendChild(smartLabSection);
     panel.appendChild(fsmLabSection);
@@ -1224,7 +1244,7 @@ export class DevSummoner {
     fsmPresetHeading.style.cssText = "font-weight:800;letter-spacing:1px;opacity:0.95;";
     const fsmPresetToolbar = document.createElement("div");
     fsmPresetToolbar.id = "ds-fsm-preset-toolbar";
-    fsmPresetToolbar.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) 26px 26px 26px 26px 26px;gap:2px;align-items:center;";
+    fsmPresetToolbar.style.cssText = "display:grid;grid-template-columns:repeat(6,26px);gap:2px;align-items:center;";
     fsmPresetSection.appendChild(fsmPresetHeading);
     fsmPresetSection.appendChild(fsmPresetToolbar);
 
@@ -1237,21 +1257,13 @@ export class DevSummoner {
     fsmBasicSection.appendChild(fsmBasicHeading);
 
     const fsmTypeRow = document.createElement("label");
-    fsmTypeRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px;align-items:center;min-width:0;";
+    fsmTypeRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center;min-width:0;";
     const fsmTypeLabel = document.createElement("span");
     fsmTypeLabel.textContent = "Type";
     applyLabelTextStyle(fsmTypeLabel);
     fsmTypeRow.appendChild(fsmTypeLabel);
+    fsmTypeRow.appendChild(countSegment);
     fsmBasicSection.appendChild(fsmTypeRow);
-
-    const fsmCountRow = document.createElement("div");
-    fsmCountRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px;align-items:center;";
-    const fsmCountLabel = document.createElement("span");
-    fsmCountLabel.textContent = "Count";
-    applyLabelTextStyle(fsmCountLabel);
-    fsmCountRow.appendChild(fsmCountLabel);
-    fsmCountRow.appendChild(countSegment);
-    fsmBasicSection.appendChild(fsmCountRow);
 
     const fsmFormationRow = document.createElement("div");
     fsmFormationRow.id = "ds-fsm-formation-row";
@@ -1518,20 +1530,39 @@ export class DevSummoner {
       fsmPresetToolbar.appendChild(b);
       return b;
     };
-    fsmPresetToolbar.appendChild(fsmSpawnSelect.root);
     const topNewBtn = makeIconBtn(ICONS.new, "New FSM preset");
     const topEditBtn = makeIconBtn(ICONS.edit, "Edit selected FSM preset; duplicates built-ins before editing");
     const topImportBtn = makeIconBtn(ICONS.import, "Import FSM preset JSON from the editor import box");
     const topRestartBtn = makeIconBtn(ICONS.restart, "Restart latest manual spawn with current FSM draft");
     const topSaveBtn = makeIconBtn("✓", "Save selected FSM preset");
     const topDeleteBtn = makeIconBtn(ICONS.delete, "Delete selected user FSM preset");
+    fsmPresetSection.appendChild(fsmSpawnSelect.root);
     // Legacy full preset-management controls remain wired below for model/debug continuity but are not mounted in the normal FSM layout.
     void details; void diagBox; void importText; void exportText; void collisionSelect;
     const authoringSections = document.createElement("div");
     authoringSections.id = "ds-fsm-authoring-sections";
     authoringSections.style.cssText = "display:flex;flex-direction:column;gap:6px;border-top:1px solid rgba(255,255,255,0.18);padding-top:5px;";
     const addAuthoringSection = (title: string): HTMLDivElement => { const section = document.createElement("div"); section.setAttribute("data-fsm-authoring-section", title); section.style.cssText = "display:flex;flex-direction:column;gap:4px;"; const h = document.createElement("div"); h.textContent = title; h.style.cssText = "font-weight:bold;color:#fff;letter-spacing:0.6px;"; section.appendChild(h); authoringSections.appendChild(section); return section; };
-    const statesSection = addAuthoringSection("STATES");
+    let runtimeDiagnosticsDockOpen = false;
+    const statesAndDiagnosticsDock = document.createElement("div");
+    statesAndDiagnosticsDock.id = "ds-fsm-states-diagnostics-dock";
+    statesAndDiagnosticsDock.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr);gap:6px;align-items:start;";
+    authoringSections.appendChild(statesAndDiagnosticsDock);
+    const statesSection = document.createElement("div");
+    statesSection.setAttribute("data-fsm-authoring-section", "STATES");
+    statesSection.style.cssText = "display:flex;flex-direction:column;gap:4px;min-width:0;";
+    const statesHeading = document.createElement("div");
+    statesHeading.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:6px;font-weight:bold;color:#fff;letter-spacing:0.6px;";
+    statesHeading.appendChild(Object.assign(document.createElement("span"), { textContent: "STATES" }));
+    const runtimeDiagnosticsToggle = document.createElement("button");
+    runtimeDiagnosticsToggle.type = "button";
+    runtimeDiagnosticsToggle.textContent = "◫";
+    runtimeDiagnosticsToggle.title = "Toggle Runtime Diagnostics";
+    runtimeDiagnosticsToggle.setAttribute("aria-label", "Toggle Runtime Diagnostics");
+    applyIconButtonStyle(runtimeDiagnosticsToggle);
+    statesHeading.appendChild(runtimeDiagnosticsToggle);
+    statesSection.appendChild(statesHeading);
+    statesAndDiagnosticsDock.appendChild(statesSection);
     const stateList = document.createElement("div");
     stateList.id = "ds-fsm-state-list";
     stateList.style.cssText = "display:flex;flex-direction:column;gap:3px;";
@@ -1596,7 +1627,7 @@ export class DevSummoner {
     const previewDiagnostics = document.createElement("div"); previewDiagnostics.id = "ds-fsm-preview-diagnostics"; previewDiagnostics.style.cssText = "white-space:pre-wrap;color:#eee;"; previewSection.appendChild(previewDiagnostics);
     const previewTrace = document.createElement("div"); previewTrace.id = "ds-fsm-preview-trace"; previewTrace.style.cssText = "white-space:pre-wrap;color:#ccc;"; previewSection.appendChild(previewTrace);
     const dirtyBadge = document.createElement("div"); dirtyBadge.id = "ds-fsm-dirty-badge"; authoringSections.appendChild(dirtyBadge);
-    authoringSections.appendChild(runtimeDiagnosticsSection);
+    statesAndDiagnosticsDock.appendChild(runtimeDiagnosticsSection);
     presetPanel.appendChild(authoringSections);
     const cm = (window as any).__CM;
     const previewSession = new FsmPreviewSession({
@@ -1677,6 +1708,10 @@ ${d.states.join(", ")}` : "No preset selected";
       triggerHint.textContent = view?.nextStateId ? "" : "Last/only state: no next target; Never is valid.";
       advancedBody.textContent = selected ? [`State id: ${selected.id}`, `Label: ${selected.label}`, `Targeting: ${selected.targeting.type}`, `Combat: ${selected.combat.mode}${(selected.combat as any).profileId ? ` ${(selected.combat as any).profileId}` : ""}`, `Modifiers: ${(selected.movement.modifiers ?? []).map((m) => m.type).join(", ") || "none"}`, `Lifecycle: ${(selected.lifecycle?.enterActions ?? []).map((a) => a.type).join(", ") || "none"}`].join("\n") : "Advanced combat, targeting, modifier, and lifecycle details appear here.";
       authoringDiagnostics.textContent = ad?.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code} ${x.path}: ${x.message}`).join("\n") ?? "";
+      runtimeDiagnosticsSection.style.display = runtimeDiagnosticsDockOpen ? "flex" : "none";
+      runtimeDiagnosticsToggle.setAttribute("aria-pressed", String(runtimeDiagnosticsDockOpen));
+      runtimeDiagnosticsToggle.style.background = runtimeDiagnosticsDockOpen ? "#2b5f8a" : "transparent";
+      statesAndDiagnosticsDock.style.gridTemplateColumns = runtimeDiagnosticsDockOpen ? "minmax(0, 2fr) minmax(120px, 1fr)" : "minmax(0,1fr)";
       dirtyBadge.textContent = authoringReadOnly ? "BUILT-IN / READ ONLY" : (ad?.dirty ? "DIRTY" : "Saved");
       const preview = previewSession.current();
       previewDraftBtn.disabled = authoringReadOnly || !ad || authoringModel.hasErrors();
@@ -1729,6 +1764,7 @@ ${d.states.join(", ")}` : "No preset selected";
     dupStateBtn.addEventListener("click", () => { authoringModel.duplicateState(); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); });
     delStateBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id && window.confirm("Delete selected FSM state?")) { authoringModel.deleteState(id, true); authoringModel.normalizeSequentialTriggers(); } renderPresetEditor(); });
     movementPresetInput.addEventListener("change", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.setMovementPreset(id, movementPresetInput.value); renderPresetEditor(); });
+    runtimeDiagnosticsToggle.addEventListener("click", () => { runtimeDiagnosticsDockOpen = !runtimeDiagnosticsDockOpen; renderPresetEditor(); });
     formationOverrideCheck.addEventListener("change", () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverrideEnabled(v.id, formationOverrideCheck.checked); renderPresetEditor(); });
     const editStateFormationDraft = () => { const v = authoringModel.selectedStateView(); if (v) { authoringModel.setLabFormationField(v.id, "spacing", stateSpacingSlider.value); authoringModel.setLabFormationField(v.id, "elasticity", stateElasticitySlider.value); authoringModel.setLabFormationField(v.id, "speedMultiplier", stateSpeedSlider.value); } renderPresetEditor(); };
     for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateSpeedSlider.slider]) el.addEventListener("input", editStateFormationDraft);
@@ -1808,9 +1844,9 @@ ${d.states.join(", ")}` : "No preset selected";
         modeRow.style.display = "none";
         spawnTitle.style.display = "none";
         refreshFsmSpawnSelect();
-        if (!fsmPresetToolbar.contains(fsmSpawnSelect.root)) fsmPresetToolbar.insertBefore(fsmSpawnSelect.root, fsmPresetToolbar.firstChild);
+        if (!fsmPresetSection.contains(fsmSpawnSelect.root)) fsmPresetSection.appendChild(fsmSpawnSelect.root);
         if (!fsmTypeRow.contains(enemySelect)) fsmTypeRow.appendChild(enemySelect);
-        if (!fsmCountRow.contains(countSegment)) fsmCountRow.appendChild(countSegment);
+        if (!fsmTypeRow.contains(countSegment)) fsmTypeRow.appendChild(countSegment);
         if (!fsmBasicSection.contains(screenYControl.wrap)) fsmBasicSection.appendChild(screenYControl.wrap);
         if (!fsmBasicSection.contains(btn)) fsmBasicSection.appendChild(btn);
         groupCount = normalizeFsmSpawnCount(groupCount);

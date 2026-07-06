@@ -35,7 +35,7 @@ const source = readFileSync(new URL("./DevSummoner.ts", import.meta.url), "utf8"
 assert(source.includes("stateList.appendChild(editorSection)"), "selected-state editor is mounted inline within the state list");
 assert(source.indexOf("stateList.appendChild(stateRow)") < source.indexOf("stateList.appendChild(editorSection)"), "inline editor is appended immediately after a state row");
 assert(!source.includes("addAuthoringSection(\"SELECTED STATE\")"), "selected-state editor is no longer an always-detached authoring section");
-assert(source.includes("authoringSections.appendChild(runtimeDiagnosticsSection)"), "Runtime Diagnostics panel is mounted once in the normal FSM layout");
+assert(source.includes("statesAndDiagnosticsDock.appendChild(runtimeDiagnosticsSection)"), "Runtime Diagnostics panel is mounted once in the normal FSM layout");
 assert(!source.includes("textContent: \"FSM Presets\""), "legacy FSM Presets panel heading is not mounted");
 assert(source.includes("const runtimeDiagnosticsSection = document.createElement"), "runtime diagnostics infrastructure remains defined");
 
