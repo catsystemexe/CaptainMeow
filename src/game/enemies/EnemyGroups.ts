@@ -209,14 +209,14 @@ export class EnemyGroupRegistry {
     return { groupId, slotIndex: slot };
   }
 
-  updateAnchors(dt: number, ctx: { playerPos: Vec2 | null; logicW: number; logicH: number }): void {
+  updateAnchors(dt: number, ctx: { playerPos: Vec2 | null; logicW: number; logicH: number; scrollX: number }): void {
     if (!(dt > 0)) return;
     for (const group of this.groups.values()) {
       const behaviorCtx = { dt, playerPos: ctx.playerPos, logicW: ctx.logicW, logicH: ctx.logicH };
       if (group.fsm && group.fsmEnt) {
         group.fsmEnt.pos = group.anchor;
         group.fsmEnt.vel = group.vel;
-        group.fsmLastScrollX = 0;
+        group.fsmLastScrollX = finite(ctx.scrollX);
         updateResolvedFsm(group.fsmEnt, group.fsm, {
           scrollX: group.fsmLastScrollX,
           logicW: ctx.logicW,
