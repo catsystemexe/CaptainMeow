@@ -7,6 +7,7 @@ import { createFsmRuntimeSnapshot, executeFsmMovement, fsmBaseSpeed, fsmEffectiv
 import type { ResolvedFsmPreset } from "./fsm/resolve";
 
 type Vec2 = { x: number; y: number };
+type AnchorHistorySample = { time: number; x: number; y: number };
 export type GroupId = number;
 export type FormationId = typeof ENEMY_GROUP_FORMATION_IDS[number];
 export type CohesionId = "rigid" | "elastic";
@@ -64,6 +65,12 @@ type Group = {
   formationId: FormationId;
   cohesionId: CohesionId;
   params: NormalizedEnemyGroupParams;
+  followDelay: number;
+  historyTime: number;
+  anchorHistory: AnchorHistorySample[];
+  anchorHistoryStart: number;
+  anchorHistoryCount: number;
+  anchorHistoryCapacity: number;
   slotCount: number;
   members: Member[];
 };
@@ -74,6 +81,10 @@ const FORMATIONS = new Set<string>(ENEMY_GROUP_FORMATION_IDS);
 const COHESION = new Set<string>(ENEMY_GROUP_COHESION_IDS);
 const finite = (n: unknown, fallback = 0) => typeof n === "number" && Number.isFinite(n) ? n : fallback;
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+export const ENEMY_GROUP_FOLLOW_DELAY_LIMITS = { min: 0, max: 0.5, default: 0, step: 0.01 } as const;
+const ANCHOR_HISTORY_SAMPLE_RATE = 60;
+const ANCHOR_HISTORY_SAFETY_SECONDS = 0.5;
+const ANCHOR_HISTORY_MIN_CAPACITY = 8;
 
 export const ENEMY_GROUP_PARAM_LIMITS = {
   formation: {
@@ -168,11 +179,16 @@ export function formationOffset(id: FormationId, slotIndex: number, slotCount: n
 }
 
 
-function stateFormationParams(state: unknown): { formationId: FormationId; params: NormalizedEnemyGroupParams; cohesionId: CohesionId } | null {
+export function normalizeGroupFollowDelay(value: unknown, fallback = ENEMY_GROUP_FOLLOW_DELAY_LIMITS.default): number {
+  return finiteClamped(value, fallback, ENEMY_GROUP_FOLLOW_DELAY_LIMITS.min, ENEMY_GROUP_FOLLOW_DELAY_LIMITS.max);
+}
+
+function stateFormationParams(state: unknown): { formationId: FormationId; params: NormalizedEnemyGroupParams; cohesionId: CohesionId; followDelay: number | null } | null {
   const raw: any = state;
   const legacy = raw?.formationOverride && typeof raw.formationOverride === "object" ? raw.formationOverride : {};
   const formationRaw = raw?.formationId ?? legacy.shape;
-  const hasAny = formationRaw !== undefined || raw?.spacing !== undefined || legacy.spacing !== undefined || raw?.elasticity !== undefined || legacy.elasticity !== undefined;
+  const followRaw = raw?.followDelay ?? legacy.followDelay;
+  const hasAny = formationRaw !== undefined || raw?.spacing !== undefined || legacy.spacing !== undefined || raw?.elasticity !== undefined || legacy.elasticity !== undefined || followRaw !== undefined;
   if (!hasAny) return null;
   const formationId = normalizeFormationId(String(formationRaw ?? "line.horizontal"));
   const spacing = finite(raw?.spacing ?? legacy.spacing, ENEMY_GROUP_PARAM_LIMITS.formation.spacing.default);
@@ -184,7 +200,7 @@ function stateFormationParams(state: unknown): { formationId: FormationId; param
   const response = elasticity === 0 ? responseLimits.default : Math.round(responseLimits.max - (responseLimits.max - responseLimits.min) * t);
   const maxCatchupSpeed = elasticity === 0 ? catchLimits.rigidDefault : Math.round((catchLimits.rigidDefault - (catchLimits.rigidDefault - catchLimits.min) * t) / catchLimits.step) * catchLimits.step;
   const formation = formationId === "arc.forward" || formationId === "ring" ? { spacing, radius: spacing } : { spacing, depth: spacing };
-  return { formationId, cohesionId, params: normalizeEnemyGroupParams({ formation, cohesion: { response, maxCatchupSpeed } }, cohesionId) };
+  return { formationId, cohesionId, followDelay: followRaw === undefined ? null : normalizeGroupFollowDelay(followRaw), params: normalizeEnemyGroupParams({ formation, cohesion: { response, maxCatchupSpeed } }, cohesionId) };
 }
 
 function applyStateFormation(group: Group): void {
@@ -193,8 +209,71 @@ function applyStateFormation(group: Group): void {
   if (!next) return;
   group.formationId = next.formationId;
   group.cohesionId = next.cohesionId;
+  group.followDelay = next.followDelay ?? normalizeGroupFollowDelay((group.fsm.preset?.definition as any)?.basicSetup?.followDelay);
   group.params = next.params;
   for (const member of group.members) member.offset = formationOffset(group.formationId, member.slotIndex, group.slotCount, group.params);
+}
+
+function anchorHistoryCapacity(followDelay: number, slotCount: number): number {
+  const maxDelay = Math.max(0, followDelay) * Math.max(0, slotCount - 1);
+  return Math.max(ANCHOR_HISTORY_MIN_CAPACITY, Math.ceil((maxDelay + ANCHOR_HISTORY_SAFETY_SECONDS) * ANCHOR_HISTORY_SAMPLE_RATE) + 2);
+}
+
+function resetAnchorHistory(group: Group): void {
+  group.anchorHistoryCapacity = anchorHistoryCapacity(group.followDelay, group.slotCount);
+  group.anchorHistory = Array.from({ length: group.anchorHistoryCapacity }, () => ({ time: group.historyTime, x: group.anchor.x, y: group.anchor.y }));
+  group.anchorHistoryStart = 0;
+  group.anchorHistoryCount = 1;
+  group.anchorHistory[0] = { time: group.historyTime, x: group.anchor.x, y: group.anchor.y };
+}
+
+function ensureAnchorHistoryCapacity(group: Group): void {
+  const nextCapacity = anchorHistoryCapacity(group.followDelay, group.slotCount);
+  if (nextCapacity <= group.anchorHistoryCapacity) return;
+  const samples = anchorHistorySamples(group);
+  group.anchorHistoryCapacity = nextCapacity;
+  group.anchorHistory = Array.from({ length: nextCapacity }, (_, i) => samples[i] ?? samples[samples.length - 1] ?? { time: group.historyTime, x: group.anchor.x, y: group.anchor.y });
+  group.anchorHistoryStart = 0;
+  group.anchorHistoryCount = samples.length;
+}
+
+function anchorHistorySamples(group: Group): AnchorHistorySample[] {
+  const samples: AnchorHistorySample[] = [];
+  for (let i = 0; i < group.anchorHistoryCount; i++) samples.push(group.anchorHistory[(group.anchorHistoryStart + i) % group.anchorHistoryCapacity]);
+  return samples;
+}
+
+function pushAnchorHistory(group: Group): void {
+  ensureAnchorHistoryCapacity(group);
+  const sample = { time: group.historyTime, x: group.anchor.x, y: group.anchor.y };
+  if (group.anchorHistoryCount < group.anchorHistoryCapacity) {
+    group.anchorHistory[(group.anchorHistoryStart + group.anchorHistoryCount) % group.anchorHistoryCapacity] = sample;
+    group.anchorHistoryCount += 1;
+    return;
+  }
+  group.anchorHistory[group.anchorHistoryStart] = sample;
+  group.anchorHistoryStart = (group.anchorHistoryStart + 1) % group.anchorHistoryCapacity;
+}
+
+export function sampleAnchorHistoryForGroup(group: any, delaySeconds: number): Vec2 & { sampleAge: number } {
+  const count = group.anchorHistoryCount;
+  if (count <= 0) return { x: group.anchor.x, y: group.anchor.y, sampleAge: 0 };
+  const targetTime = group.historyTime - Math.max(0, delaySeconds);
+  const at = (i: number) => group.anchorHistory[(group.anchorHistoryStart + i) % group.anchorHistoryCapacity];
+  const first = at(0);
+  const last = at(count - 1);
+  if (targetTime <= first.time) return { x: first.x, y: first.y, sampleAge: Math.max(0, group.historyTime - first.time) };
+  if (targetTime >= last.time) return { x: last.x, y: last.y, sampleAge: Math.max(0, group.historyTime - last.time) };
+  for (let i = 1; i < count; i++) {
+    const a = at(i - 1);
+    const b = at(i);
+    if (targetTime <= b.time) {
+      const span = b.time - a.time;
+      const t = span > 0 ? (targetTime - a.time) / span : 0;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, sampleAge: Math.max(0, group.historyTime - targetTime) };
+    }
+  }
+  return { x: last.x, y: last.y, sampleAge: Math.max(0, group.historyTime - last.time) };
 }
 export class EnemyGroupRegistry {
   private nextId = 1;
@@ -216,9 +295,16 @@ export class EnemyGroupRegistry {
       formationId: normalizeFormationId(req.formationId),
       cohesionId,
       params,
+      followDelay: normalizeGroupFollowDelay((req.fsmPreset?.definition as any)?.basicSetup?.followDelay),
+      historyTime: 0,
+      anchorHistory: [],
+      anchorHistoryStart: 0,
+      anchorHistoryCount: 0,
+      anchorHistoryCapacity: 0,
       slotCount: Math.max(0, Math.floor(finite(req.count, 0))),
       members: [],
     };
+    resetAnchorHistory(group);
     if (req.fsmPreset) {
       group.fsmEnt = { pos: group.anchor, vel: group.vel, bState: { t: 0 }, hp: 1, maxHp: 1 };
       group.fsm = createFsmRuntimeSnapshot(req.fsmPreset, {}, group.fsmEnt, { inheritedAttackProfileId: req.inheritedAttackProfileId ?? null, lifecycle: { markKill: () => {}, isKilled: () => false } });
@@ -283,6 +369,8 @@ export class EnemyGroupRegistry {
       }
       group.anchor.x += group.vel.x * dt;
       group.anchor.y += group.vel.y * dt;
+      group.historyTime += dt;
+      pushAnchorHistory(group);
     }
   }
 
@@ -291,7 +379,8 @@ export class EnemyGroupRegistry {
     if (!group || !(dt > 0)) return false;
     const member = group.members.find((m) => m.slotIndex === membership.slotIndex);
     const offset = member?.offset ?? formationOffset(group.formationId, membership.slotIndex, group.slotCount, group.params);
-    const target = { x: group.anchor.x + offset.x, y: group.anchor.y + offset.y };
+    const sample = group.followDelay > 0 ? sampleAnchorHistoryForGroup(group, membership.slotIndex * group.followDelay) : { x: group.anchor.x, y: group.anchor.y };
+    const target = { x: sample.x + offset.x, y: sample.y + offset.y };
     ent.vel = ent.vel ?? { x: 0, y: 0 };
     if (group.cohesionId === "rigid") {
       let vx = (target.x - finite(ent.pos?.x)) / dt;

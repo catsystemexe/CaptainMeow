@@ -7,7 +7,7 @@ import { cloneBasicSetup, normalizeBasicSetup, type EnemyLabBasicSetup } from ".
 
 export type FsmLabTriggerType = "never" | "time" | "screenXBelow" | "hit";
 export interface FsmLabStateRow { id: string; number: number; behaviorPresetId: string; triggerSummary: string; selected: boolean; }
-export interface FsmLabFormationOverride { shape: string; spacing: number; elasticity: number; speedMultiplier: number; }
+export interface FsmLabFormationOverride { shape: string; spacing: number; elasticity: number; followDelay: number; speedMultiplier: number; }
 export interface FsmLabSelectedStateView { id: string; number: number; behaviorPresetId: string; formation: FsmLabFormationOverride; triggerType: FsmLabTriggerType; triggerParams: Record<string, unknown>; nextStateId: string | null; isLast: boolean; }
 
 export interface FsmPresetAuthoringDraft { originalPresetId: string; preset: FsmPresetSchemaV1; selectedStateId: string | null; dirty: boolean; diagnostics: readonly ValidationIssue[]; }
@@ -34,7 +34,7 @@ export class FsmPresetAuthoringModel {
   setBasicSetup(next: EnemyLabBasicSetup): FsmAuthoringResult { const basicSetup = cloneBasicSetup(normalizeBasicSetup(next, "fsm")); return this.mutate((p) => { p.basicSetup = basicSetup; }); }
   setLabFormationOverride(stateId: string, override: FsmLabFormationOverride): FsmAuthoringResult { return this.mutate(() => { writeStateFormation(this.requireState(stateId) as any, override); }); }
   setLabFormationOverrideEnabled(stateId: string, enabled: boolean): FsmAuthoringResult { void enabled; const current = this.selectedStateViewFor(stateId)?.formation; return this.setLabFormationOverride(stateId, current ?? readStateFormation({}, this.draft?.preset.basicSetup)); }
-  setLabFormationField(stateId: string, field: "shape" | "spacing" | "elasticity" | "speedMultiplier", value: string | number): FsmAuthoringResult { const current = this.selectedStateViewFor(stateId)?.formation ?? { shape: "line.horizontal", spacing: 64, elasticity: 0, speedMultiplier: 1 }; return this.setLabFormationOverride(stateId, { ...current, [field]: field === "shape" ? String(value) : normalizeFiniteNumber(value, field === "spacing" ? 8 : field === "elasticity" ? 0 : 0.25, field === "spacing" ? 240 : field === "elasticity" ? 10 : 3, field === "spacing" ? 64 : field === "elasticity" ? 0 : 1) }); }
+  setLabFormationField(stateId: string, field: "shape" | "spacing" | "elasticity" | "followDelay" | "speedMultiplier", value: string | number): FsmAuthoringResult { const current = this.selectedStateViewFor(stateId)?.formation ?? { shape: "line.horizontal", spacing: 64, elasticity: 0, followDelay: 0, speedMultiplier: 1 }; return this.setLabFormationOverride(stateId, { ...current, [field]: field === "shape" ? String(value) : normalizeFiniteNumber(value, field === "spacing" ? 8 : 0, field === "spacing" ? 240 : field === "elasticity" ? 10 : field === "followDelay" ? 0.5 : 3, field === "spacing" ? 64 : field === "elasticity" ? 0 : field === "followDelay" ? 0 : 1) }); }
   setLabTrigger(stateId: string, type: FsmLabTriggerType, params: Record<string, unknown> = {}): FsmAuthoringResult { return this.mutate(() => { const states = this.draft?.preset.graph.states ?? []; const s = this.requireState(stateId); const index = states.findIndex((x) => String(x.id) === stateId); const next = states[index + 1]; if (type === "never" || !next) { s.transitions = []; return; } const condition = type === "time" ? { type: "timeInState", params: { seconds: Number(params.seconds ?? 1) } } : type === "screenXBelow" ? { type: "screenXBelow", params: { x: Number(params.x ?? 650) } } : { type: "hpBelow", params: { ratio: Number(params.ratio ?? 0.999) } }; s.transitions = [{ condition: condition as ConditionConfig, targetStateId: next.id }]; }); }
   normalizeSequentialTriggers(): FsmAuthoringResult { return this.mutate((p) => { p.graph.initialStateId = p.graph.states[0]?.id ?? asFsmStateId(""); for (let i = 0; i < p.graph.states.length; i++) { const s = p.graph.states[i]; const next = p.graph.states[i + 1]; if (!next) { s.transitions = []; continue; } if (s.transitions[0]) s.transitions = [{ ...s.transitions[0], targetStateId: next.id }]; } }); }
 
@@ -96,6 +96,7 @@ function readStateFormation(state: any, basicSetup: FsmPresetSchemaV1["basicSetu
     shape: String(state?.formationId ?? legacy.shape ?? basicSetup?.formationId ?? "line.horizontal"),
     spacing: Number(state?.spacing ?? legacy.spacing ?? basicSetup?.spacing ?? 64),
     elasticity: Number(state?.elasticity ?? legacy.elasticity ?? basicSetup?.elasticity ?? 0),
+    followDelay: Number(state?.followDelay ?? legacy.followDelay ?? basicSetup?.followDelay ?? 0),
     speedMultiplier: Number(state?.speedMultiplier ?? legacy.speedMultiplier ?? 1),
   };
 }
@@ -103,6 +104,7 @@ function writeStateFormation(state: any, formation: FsmLabFormationOverride): vo
   state.formationId = formation.shape;
   state.spacing = formation.spacing;
   state.elasticity = formation.elasticity;
+  state.followDelay = formation.followDelay;
   state.speedMultiplier = formation.speedMultiplier;
   delete state.formationOverride;
 }

@@ -1284,10 +1284,13 @@ export class DevSummoner {
 
     const fsmSpacingSlider = createRangeRow("ds-fsm-spacing", "Spacing", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
     const fsmElasticitySlider = createRangeRow("ds-fsm-elasticity", "Elasticity", { min: 0, max: 10, default: 0, step: 1 });
+    const fsmFollowSlider = createRangeRow("ds-fsm-follow", "Follow", ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay);
     const fsmBaseSpeedSlider = createRangeRow("ds-fsm-base-speed", "Speed", ENEMY_LAB_BASIC_SETUP_LIMITS.baseSpeed);
+    fsmFollowSlider.wrap.title = "Delay per group member in seconds. 0.00 s keeps members on the current anchor path.";
     fsmBaseSpeedSlider.wrap.title = "FSM preset base movement speed. State Speed × multiplies this value at runtime.";
     fsmBasicSection.appendChild(fsmSpacingSlider.wrap);
     fsmBasicSection.appendChild(fsmElasticitySlider.wrap);
+    fsmBasicSection.appendChild(fsmFollowSlider.wrap);
     fsmBasicSection.appendChild(fsmBaseSpeedSlider.wrap);
 
     const formationIconLabels: Record<FormationId, { icon: string; label: string }> = {
@@ -1331,6 +1334,7 @@ export class DevSummoner {
       setFsmGroupOnlyVisible(fsmFormationRow, isGroup);
       setFsmGroupOnlyVisible(fsmSpacingSlider.wrap, isGroup);
       setFsmGroupOnlyVisible(fsmElasticitySlider.wrap, isGroup);
+      setFsmGroupOnlyVisible(fsmFollowSlider.wrap, isGroup);
       refreshFsmFormationIcons();
     }
 
@@ -1594,8 +1598,10 @@ export class DevSummoner {
     const stateShapeButtons = ENEMY_GROUP_FORMATION_IDS.map((id) => { const b = document.createElement("button"); b.type = "button"; b.textContent = formationIconLabels[id].icon; b.title = id; b.setAttribute("aria-label", `State formation ${id}`); applyIconButtonStyle(b); b.addEventListener("click", () => { selectedFormationShape = id; const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverride(v.id, { ...v.formation, shape: id }); renderPresetEditor(); }); shapeButtons.appendChild(b); return { id, button: b }; });
     const stateSpacingSlider = createRangeRow("ds-fsm-state-spacing", "Spacing", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
     const stateElasticitySlider = createRangeRow("ds-fsm-state-elasticity", "Elasticity", { min: 0, max: 10, default: 0, step: 1 });
+    const stateFollowSlider = createRangeRow("ds-fsm-state-follow", "Follow", ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay);
     const stateSpeedSlider = createRangeRow("ds-fsm-state-speed", "Speed ×", { min: 0.25, max: 3, default: 1, step: 0.05 });
-    formationControls.appendChild(stateSpacingSlider.wrap); formationControls.appendChild(stateElasticitySlider.wrap); formationControls.appendChild(stateSpeedSlider.wrap); editorSection.appendChild(formationBlock);
+    stateFollowSlider.wrap.title = "Delay per group member in seconds for this state.";
+    formationControls.appendChild(stateSpacingSlider.wrap); formationControls.appendChild(stateElasticitySlider.wrap); formationControls.appendChild(stateFollowSlider.wrap); formationControls.appendChild(stateSpeedSlider.wrap); editorSection.appendChild(formationBlock);
     const triggerBlock = document.createElement("div"); triggerBlock.setAttribute("data-fsm-editor-block", "Trigger"); triggerBlock.style.cssText = "display:flex;flex-direction:column;gap:3px;border-top:1px solid rgba(255,255,255,0.10);padding-top:4px;"; triggerBlock.appendChild(Object.assign(document.createElement("div"), { textContent: "Trigger" }));
     const triggerSelect = document.createElement("select"); applyNativeSelectStyle(triggerSelect); for (const [v,l] of [["never","Never"],["time","Time"],["screenXBelow","scrX"],["hit","Hit"]] as const) appendOption(triggerSelect, v, l); triggerBlock.appendChild(triggerSelect);
     const triggerParamWrap = document.createElement("div"); triggerParamWrap.style.cssText = "display:flex;flex-direction:column;gap:3px;"; triggerBlock.appendChild(triggerParamWrap);
@@ -1671,6 +1677,7 @@ ${d.states.join(", ")}` : "No preset selected";
         if (draft.basicSetup.formationId) formationChoice.setValue(draft.basicSetup.formationId);
         fsmSpacingSlider.setValue(draft.basicSetup.spacing ?? ENEMY_LAB_BASIC_SETUP_LIMITS.spacing.default);
         fsmElasticitySlider.setValue(draft.basicSetup.elasticity ?? ENEMY_LAB_BASIC_SETUP_LIMITS.elasticity.default);
+        fsmFollowSlider.setValue(draft.basicSetup.followDelay ?? ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay.default);
         fsmBaseSpeedSlider.setValue(draft.basicSetup.baseSpeed);
         screenYControl.setValue(draft.basicSetup.spawnY);
         groupYControl.setValue(draft.basicSetup.spawnY);
@@ -1713,8 +1720,8 @@ ${d.states.join(", ")}` : "No preset selected";
       const formation = view?.formation; formationControls.style.display = "flex";
       selectedFormationShape = ((formation?.shape as FormationId) || "line.horizontal");
       for (const { id, button } of stateShapeButtons) { const active = id === selectedFormationShape; button.style.background = active ? "#2b5f8a" : "#111"; button.disabled = authoringReadOnly || !view; }
-      stateSpacingSlider.setValue(formation?.spacing ?? 64); stateElasticitySlider.setValue(formation?.elasticity ?? 0); stateSpeedSlider.setValue(formation?.speedMultiplier ?? 1);
-      for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateSpeedSlider.slider]) el.disabled = authoringReadOnly || !view;
+      stateSpacingSlider.setValue(formation?.spacing ?? 64); stateElasticitySlider.setValue(formation?.elasticity ?? 0); stateFollowSlider.setValue(formation?.followDelay ?? 0); stateSpeedSlider.setValue(formation?.speedMultiplier ?? 1);
+      for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateFollowSlider.slider, stateSpeedSlider.slider]) el.disabled = authoringReadOnly || !view;
       triggerSelect.value = view?.triggerType ?? "never"; triggerSelect.disabled = authoringReadOnly || !view || view.isLast;
       triggerParamWrap.textContent = "";
       triggerTimeStepper.setDisabled(authoringReadOnly || !view || view.isLast); triggerXStepper.setDisabled(authoringReadOnly || !view || view.isLast); triggerHitStepper.setDisabled(authoringReadOnly || !view || view.isLast);
@@ -1756,7 +1763,7 @@ ${d.states.join(", ")}` : "No preset selected";
       refreshFsmSpawnSelect(CONTENT.fsmPresets.get(presetModel.selectedId) ? presetModel.selectedId : fsmSpawnSelect.value);
     };
     editFsmBasicSetupDraft = () => {
-      presetModel.setBasicSetup({ appearanceId: enemySelect.value, count: groupCount, formationId: formationChoice.value, spacing: fsmSpacingSlider.value, elasticity: fsmElasticitySlider.value, baseSpeed: fsmBaseSpeedSlider.value, spawnY: screenYControl.value });
+      presetModel.setBasicSetup({ appearanceId: enemySelect.value, count: groupCount, formationId: formationChoice.value, spacing: fsmSpacingSlider.value, elasticity: fsmElasticitySlider.value, followDelay: fsmFollowSlider.value, baseSpeed: fsmBaseSpeedSlider.value, spawnY: screenYControl.value });
       const normalizedBasicSetup = presetModel.draft?.basicSetup;
       if (normalizedBasicSetup) authoringModel.setBasicSetup(normalizedBasicSetup);
       renderPresetEditor();
@@ -1786,13 +1793,14 @@ ${d.states.join(", ")}` : "No preset selected";
     delStateBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id && window.confirm("Delete selected FSM state?")) { authoringModel.deleteState(id, true); authoringModel.normalizeSequentialTriggers(); } renderPresetEditor(); });
     movementPresetInput.addEventListener("change", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.setMovementPreset(id, movementPresetInput.value); renderPresetEditor(); });
     runtimeDiagnosticsToggle.addEventListener("click", () => { runtimeDiagnosticsDockOpen = !runtimeDiagnosticsDockOpen; renderPresetEditor(); });
-    const editStateFormationDraft = () => { const v = authoringModel.selectedStateView(); if (v) { authoringModel.setLabFormationField(v.id, "spacing", stateSpacingSlider.value); authoringModel.setLabFormationField(v.id, "elasticity", stateElasticitySlider.value); authoringModel.setLabFormationField(v.id, "speedMultiplier", stateSpeedSlider.value); } renderPresetEditor(); };
-    for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateSpeedSlider.slider]) el.addEventListener("input", editStateFormationDraft);
+    const editStateFormationDraft = () => { const v = authoringModel.selectedStateView(); if (v) { authoringModel.setLabFormationField(v.id, "spacing", stateSpacingSlider.value); authoringModel.setLabFormationField(v.id, "elasticity", stateElasticitySlider.value); authoringModel.setLabFormationField(v.id, "followDelay", stateFollowSlider.value); authoringModel.setLabFormationField(v.id, "speedMultiplier", stateSpeedSlider.value); } renderPresetEditor(); };
+    for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateFollowSlider.slider, stateSpeedSlider.slider]) el.addEventListener("input", editStateFormationDraft);
     const editTrigger = () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, triggerSelect.value as any, {}); renderPresetEditor(); };
     triggerSelect.addEventListener("change", editTrigger);
     for (const el of [enemySelect, groupEnemySelect]) el.addEventListener("change", () => { if (enemyLabMode === "fsm") { enemySelect.value = el.value; groupEnemySelect.value = el.value; editFsmBasicSetupDraft(); } });
     fsmSpacingSlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
     fsmElasticitySlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    fsmFollowSlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
     fsmBaseSpeedSlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
     screenYControl.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
     screenYControl.valueInput.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });

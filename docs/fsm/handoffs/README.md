@@ -13,6 +13,7 @@ Každá session musí:
 Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit, že dokument odpovídá aktuálnímu stavu repozitáře.
 
 - [A2 — Authoritative FSM Speed analysis](./A2-speed-analysis.md)
+- [U1.4.9 — General group Follow delay](./U1.4.9.md)
 - [U1.4.8 — Synchronize Basic Setup into FSM authoring draft](./U1.4.8.md)
 ## Sessions
 

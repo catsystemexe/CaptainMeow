@@ -49,6 +49,9 @@ function spawnGroup(spawn: SpawnSystem, id: string, count = 2, token = 202) { sp
   assert.equal(g.stateId, "enter");
   assert.equal(g.movementPresetId, "straight.drift");
   assert.equal(g.memberCount, 2);
+  assert.equal(g.followDelay, 0);
+  assert.equal(g.historySamples, 1);
+  assert.equal(g.maxTrailDelay, 0);
   assert.equal(g.scrollX, 41, "group anchor reports actual world scrollX context before the first anchor tick");
   assert.equal(g.screenX, (g.worldX ?? 0) - 41);
   const m = bundle.member!;
@@ -128,6 +131,8 @@ function installDom(store: any, groups: any) {
   const groupBundle = { version: "A1.1" as const, primary: { kind: "group-anchor" as const, authoritative: true, presetId: "fsm.charge", stateId: "enter", movementPresetId: "straight.drift", worldX: 856, worldY: 244, scrollX: 41, screenX: 815, velocityX: -115, velocityY: 0, stateAge: 0.4, lastTransition: null, movementSuppressed: false, memberCount: 2 }, member: { kind: "group-member" as const, authoritative: false, presetId: "fsm.charge", stateId: "enter", movementPresetId: "straight.drift", worldX: 865, worldY: 244, scrollX: 41, screenX: 824, velocityX: -115, velocityY: 0, stateAge: 0.4, lastTransition: null, movementSuppressed: true } };
   const rendered = renderFsmRuntimeDiagnosticsText(groupBundle);
   assert(rendered.includes("GROUP ANCHOR — AUTHORITATIVE"));
+  assert(rendered.includes("Follow: ? s/member") || rendered.includes("Follow:"), "group diagnostics render Follow");
+  assert(rendered.includes("History samples:"), "group diagnostics render history sample count");
   assert(rendered.includes("MEMBER — NON-AUTHORITATIVE MOVEMENT"));
 }
 
