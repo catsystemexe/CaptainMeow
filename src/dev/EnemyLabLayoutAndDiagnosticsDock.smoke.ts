@@ -17,9 +17,9 @@ assert(!source.includes('fsmCountLabel.textContent = "Count"'), "visible Count l
 assert(source.includes('editFsmBasicSetupDraft?.()'), "count/type changes still mark FSM draft dirty through Basic Setup draft edit");
 assert(source.includes('runtimeDiagnosticsToggle.title = "Toggle Runtime Diagnostics"'), "diagnostics toggle icon is in STATES heading");
 assert(source.includes('let runtimeDiagnosticsDockOpen = false'), "diagnostics are hidden by default for the current Enemy Lab session");
-assert(source.includes('statesAndDiagnosticsDock.style.gridTemplateColumns = runtimeDiagnosticsDockOpen ? "minmax(0, 2fr) minmax(120px, 1fr)" : "minmax(0,1fr)"'), "diagnostics dock beside states at roughly 2:1 split when open");
+assert(source.includes('statesAndDiagnosticsDock.style.gridTemplateColumns = "minmax(0,1fr)"'), "diagnostics side panel does not resize STATES");
 assert.equal((source.match(/runtimeDiagnosticsSection\.id = "ds-fsm-runtime-diagnostics"/g) ?? []).length, 1, "only one diagnostics DOM node is defined");
 assert(source.includes('findLatestFsmRuntimeDiagnostics'), "existing diagnostics refresh source is reused");
-assert(source.includes('minmax(120px, 1fr)'), "diagnostics dock has compact responsive fallback sizing");
+assert(source.includes('positionRuntimeDiagnosticsPanel'), "diagnostics side panel repositions outside states");
 
 console.log("EnemyLabLayoutAndDiagnosticsDock smoke passed");

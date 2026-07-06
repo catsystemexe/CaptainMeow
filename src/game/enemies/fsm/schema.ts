@@ -45,6 +45,12 @@ export interface FsmStateDefinition {
   targeting: TargetingConfig;
   combat: CombatConfig;
   lifecycle?: LifecycleConfig;
+  formationId?: string;
+  spacing?: number;
+  elasticity?: number;
+  speedMultiplier?: number;
+  /** Legacy compatibility only; new authoring writes the canonical fields above. */
+  formationOverride?: { enabled?: boolean; shape?: string; spacing?: number; elasticity?: number; speedMultiplier?: number };
   transitions: TransitionConfig[];
 }
 

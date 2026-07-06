@@ -167,6 +167,35 @@ export function formationOffset(id: FormationId, slotIndex: number, slotCount: n
   return { x: (slot - (count - 1) / 2) * spacing, y: 0 };
 }
 
+
+function stateFormationParams(state: unknown): { formationId: FormationId; params: NormalizedEnemyGroupParams; cohesionId: CohesionId } | null {
+  const raw: any = state;
+  const legacy = raw?.formationOverride && typeof raw.formationOverride === "object" ? raw.formationOverride : {};
+  const formationRaw = raw?.formationId ?? legacy.shape;
+  const hasAny = formationRaw !== undefined || raw?.spacing !== undefined || legacy.spacing !== undefined || raw?.elasticity !== undefined || legacy.elasticity !== undefined;
+  if (!hasAny) return null;
+  const formationId = normalizeFormationId(String(formationRaw ?? "line.horizontal"));
+  const spacing = finite(raw?.spacing ?? legacy.spacing, ENEMY_GROUP_PARAM_LIMITS.formation.spacing.default);
+  const elasticity = clamp(Math.floor(finite(raw?.elasticity ?? legacy.elasticity, 0)), 0, 10);
+  const cohesionId: CohesionId = elasticity === 0 ? "rigid" : "elastic";
+  const catchLimits = ENEMY_GROUP_PARAM_LIMITS.cohesion.maxCatchupSpeed;
+  const responseLimits = ENEMY_GROUP_PARAM_LIMITS.cohesion.response;
+  const t = elasticity / 10;
+  const response = elasticity === 0 ? responseLimits.default : Math.round(responseLimits.max - (responseLimits.max - responseLimits.min) * t);
+  const maxCatchupSpeed = elasticity === 0 ? catchLimits.rigidDefault : Math.round((catchLimits.rigidDefault - (catchLimits.rigidDefault - catchLimits.min) * t) / catchLimits.step) * catchLimits.step;
+  const formation = formationId === "arc.forward" || formationId === "ring" ? { spacing, radius: spacing } : { spacing, depth: spacing };
+  return { formationId, cohesionId, params: normalizeEnemyGroupParams({ formation, cohesion: { response, maxCatchupSpeed } }, cohesionId) };
+}
+
+function applyStateFormation(group: Group): void {
+  if (!group.fsm) return;
+  const next = stateFormationParams(getFsmRuntimeState(group.fsm));
+  if (!next) return;
+  group.formationId = next.formationId;
+  group.cohesionId = next.cohesionId;
+  group.params = next.params;
+  for (const member of group.members) member.offset = formationOffset(group.formationId, member.slotIndex, group.slotCount, group.params);
+}
 export class EnemyGroupRegistry {
   private nextId = 1;
   private groups = new Map<GroupId, Group>();
@@ -224,6 +253,7 @@ export class EnemyGroupRegistry {
           inheritedAttackProfileId: group.inheritedAttackProfileId ?? null,
           lifecycle: { markKill: () => {}, isKilled: () => false },
         });
+        applyStateFormation(group);
         const target = executeFsmMovement(group.fsm.movement, group.fsmEnt, behaviorCtx);
         if (target && Number.isFinite(target.x) && Number.isFinite(target.y)) {
           const speed = fsmEffectiveSpeed(group.fsm.preset as any, getFsmRuntimeState(group.fsm));

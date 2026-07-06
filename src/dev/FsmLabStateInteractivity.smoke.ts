@@ -60,15 +60,15 @@ assert.equal(model.labStateRows().find((row) => row.id === "C")?.behaviorPresetI
 assert.equal(model.draft?.dirty, true, "behavior change marks dirty");
 
 model.setLabFormationOverrideEnabled("C", true);
-assert.equal(model.selectedStateView()?.formation.enabled, true, "formation override ON creates enabled override data");
+assert.equal(model.selectedStateView()?.formation.shape, "line.horizontal", "formation data is always active");
 model.setLabFormationField("C", "shape", "wedge");
 model.setLabFormationField("C", "spacing", 96);
 model.setLabFormationField("C", "elasticity", 4);
 model.setLabFormationField("C", "speedMultiplier", 1.5);
-assert.deepEqual(model.selectedStateView()?.formation, { enabled: true, shape: "wedge", spacing: 96, elasticity: 4, speedMultiplier: 1.5 }, "formation controls write draft values");
+assert.deepEqual(model.selectedStateView()?.formation, { shape: "wedge", spacing: 96, elasticity: 4, speedMultiplier: 1.5 }, "formation controls write draft values");
 model.setLabFormationOverrideEnabled("C", false);
-assert.equal((model.draft?.preset.graph.states.find((state) => state.id === "C") as any)?.formationOverride, undefined, "formation override OFF removes state override");
-assert.equal(model.selectedStateView()?.formation.shape, "line.horizontal", "formation OFF returns to Basic Setup effective values");
+assert.equal((model.draft?.preset.graph.states.find((state) => state.id === "C") as any)?.formationId, "wedge", "formation remains state-owned without override toggle");
+assert.equal(model.selectedStateView()?.formation.shape, "wedge", "formation remains active after legacy toggle call");
 
 model.selectState("B");
 model.setLabTrigger("B", "time", { seconds: 2.5 });
@@ -86,7 +86,7 @@ assert(source.includes("expandedStateId = expandedStateId === row.id ? null : ro
 assert(source.includes("if (row.id === expandedStateId) stateList.appendChild(editorSection)"), "only expanded row renders the inline editor");
 assert(source.includes("editorSection.addEventListener(\"click\", (ev) => ev.stopPropagation())"), "inner editor clicks stop propagation");
 assert(source.includes("ev.stopPropagation(); if (b.disabled) return; authoringModel.selectState(row.id);") && source.includes("expandedStateId = row.id; authoringModel.reorderState"), "Move arrows stop row bubbling and preserve expanded selected state");
-assert(source.includes("setLabFormationOverrideEnabled"), "formation override checkbox calls model toggle method");
+assert(!source.includes("formationOverrideCheck"), "formation override checkbox is absent");
 assert(!source.includes('handle.textContent = "↕"'), "drag handle is removed rather than a fake active drag affordance");
 
 console.log("FsmLabStateInteractivity smoke passed");
