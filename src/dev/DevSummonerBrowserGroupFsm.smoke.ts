@@ -99,6 +99,8 @@ function mountAndSpawnGroup(input: { enemyTypeId: string; fsmPresetId?: string }
 
   clickButtonByText(panel, "FSM");
   assert.notEqual(panel.findById("ds-fsm-preset")?.parentNode?.style.display, "none", "FSM selector remains visible in FSM presets block");
+  assert(panel.findById("ds-fsm-runtime-diagnostics"), "FSM runtime diagnostics block exists in browser path");
+  assert.equal(panel.findAll((el) => el.id === "ds-fsm-runtime-diagnostics").length, 1, "browser path has no duplicate runtime diagnostics panels");
   chooseCompact(panel, "ds-fsm-preset", input.fsmPresetId ?? "(movement preset)");
   const groupType = panel.findById("ds-enemy")!;
   groupType.value = input.enemyTypeId;

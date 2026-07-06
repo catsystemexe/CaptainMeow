@@ -10,6 +10,7 @@ export interface FsmDebugSnapshot {
   movementPresetId: string | null;
   modifierTypes: readonly string[];
   movementSuppressed: boolean;
+  lastTransition?: { from: string; to: string; reason?: string; atStateAge?: number };
 }
 
 export function getFsmDebugSnapshot(entity: unknown): FsmDebugSnapshot | null {
@@ -32,5 +33,6 @@ export function getFsmDebugSnapshot(entity: unknown): FsmDebugSnapshot | null {
     movementPresetId: typeof movement?.base?.presetId === "string" ? movement.base.presetId : null,
     modifierTypes: Object.freeze(Array.isArray(movement?.modifiers) ? movement.modifiers.map((m: any) => String(m?.type ?? "unknown")) : []),
     movementSuppressed: movement?.movementSuspended === true,
+    ...(runtime.lastTransition ? { lastTransition: { ...runtime.lastTransition } } : {}),
   };
 }

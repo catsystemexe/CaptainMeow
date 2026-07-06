@@ -40,3 +40,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [U1.3 — Basic Setup as part of all Enemy Lab presets](./U1.3.md)
 - [U1.3.1 — Preserve FSM behavior across Basic Setup changes](./U1.3.1.md)
 - [U1.3.2 — Remove preset-default Count dependency](./U1.3.2.md)
+- [A1.1 — Live FSM runtime diagnostics](./A1.1.md)

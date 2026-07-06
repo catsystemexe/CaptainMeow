@@ -58,6 +58,7 @@ type Group = {
   bState: Record<string, unknown> & { t: number };
   vel: Vec2;
   fsm?: FsmRuntimeSnapshot;
+  fsmLastScrollX?: number;
   fsmEnt?: { pos: Vec2; vel: Vec2; bState: Record<string, unknown>; hp: number; maxHp: number };
   inheritedAttackProfileId?: string | null;
   formationId: FormationId;
@@ -215,8 +216,9 @@ export class EnemyGroupRegistry {
       if (group.fsm && group.fsmEnt) {
         group.fsmEnt.pos = group.anchor;
         group.fsmEnt.vel = group.vel;
+        group.fsmLastScrollX = 0;
         updateResolvedFsm(group.fsmEnt, group.fsm, {
-          scrollX: 0,
+          scrollX: group.fsmLastScrollX,
           logicW: ctx.logicW,
           dt,
           inheritedAttackProfileId: group.inheritedAttackProfileId ?? null,

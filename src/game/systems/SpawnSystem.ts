@@ -286,6 +286,7 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
                   behaviorPresetId: "none.hold",
                   fsmPresetId: typeof p.fsmPresetId === "string" && p.fsmPresetId.length ? p.fsmPresetId : undefined,
                   spawnOrdinal: slotIndex,
+                  devManualSpawnId: typeof (p as any).devManualSpawnId === "number" ? (p as any).devManualSpawnId : undefined,
                   group: { groupId, slotIndex },
                 });
                 spawnedCount++;

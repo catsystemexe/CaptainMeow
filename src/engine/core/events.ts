@@ -68,6 +68,7 @@ export type CMEventMap = {
     fsmPresetId?: string;
     /** Dev-only FSM preview override. Normal gameplay resolves fsmPresetId/default graph ids from persisted registries. */
     resolvedFsmPresetOverride?: unknown;
+    devManualSpawnId?: number;
     spawnOrdinal?: number; // ✅ BE V1: deterministic index within wave
     spawnAgeSec?: number;  // ✅ director backlog catch-up (seconds since scheduled spawn)
   };
@@ -83,6 +84,8 @@ export type CMEventMap = {
     cohesionId: string;
     /** Explicit FSM controller preset id for the group anchor and members. */
     fsmPresetId?: string;
+    /** Dev-only correlation id for Enemy Lab runtime diagnostics. */
+    devManualSpawnId?: number;
     spacing?: number;
     params?: {
       formation?: { spacing?: number; depth?: number; radius?: number; angle?: number; facing?: string; startAngle?: number };

@@ -18,6 +18,7 @@ export interface FsmRuntimeSnapshot {
   activeCombat: ResolvedCombatSelection;
   entryCount: number;
   movement: FsmMovementRuntime;
+  lastTransition?: { from: string; to: string; reason?: string; atStateAge?: number };
 }
 
 export interface FsmRuntimeInitHooks {
@@ -199,7 +200,12 @@ export function updateResolvedFsm(ent: any, runtime: FsmRuntimeSnapshot, ctx: Fs
   // ones encoded by ConditionConfig evaluation here, e.g. timeInState uses >=.
   for (const transition of currentState.transitions) {
     if (evalResolvedCondition(transition.condition, ent, { scrollX: ctx.scrollX, logicW: ctx.logicW, age: runtime.age })) {
+      const from = currentState.id;
+      const to = transition.targetStateId;
+      const reason = transition.condition?.type;
+      const atStateAge = runtime.age;
       entry = enterResolvedFsmState(ent, runtime, transition.targetStateIndex, ctx);
+      runtime.lastTransition = { from: String(from), to: String(to), reason: String(reason ?? ""), atStateAge };
       break;
     }
   }
