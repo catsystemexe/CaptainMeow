@@ -76,7 +76,7 @@ const LABEL_WEIGHT = "800";
 const ICONS = { new: "+", edit: "✎", import: "⇧", delete: "×", restart: "↻", duplicate: "⧉", up: "↑", down: "↓", stop: "■" } as const;
 
 function applyIconButtonStyle(button: HTMLButtonElement, disabled = false): void {
-  button.style.cssText = `display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:26px;min-height:26px;padding:0;font:14px monospace;background:${disabled ? "#1a1a1a" : "#111"};color:${disabled ? "#666" : "#eee"};border:${CONTROL_BORDER};border-radius:${CONTROL_RADIUS_PX}px;cursor:${disabled ? "not-allowed" : "pointer"};box-sizing:border-box;`;
+  button.style.cssText = `display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:26px;min-height:26px;padding:0;font:14px monospace;background:${disabled ? "#1a1a1a" : "transparent"};color:${disabled ? "#666" : "#eee"};border:1px solid transparent;border-radius:${CONTROL_RADIUS_PX}px;cursor:${disabled ? "not-allowed" : "pointer"};box-sizing:border-box;`;
 }
 
 function setIconButtonDisabled(button: HTMLButtonElement, disabled: boolean): void {
@@ -738,7 +738,7 @@ export class DevSummoner {
     smartLabSection.style.cssText = "display:none;flex-direction:column;gap:6px;";
     const fsmLabSection = document.createElement("div");
     fsmLabSection.id = "ds-fsm-lab-section";
-    fsmLabSection.style.cssText = "display:none;flex-direction:column;gap:6px;";
+    fsmLabSection.style.cssText = "display:none;flex-direction:column;gap:6px;width:min(100%, 432px);max-width:100%;";
     panel.appendChild(simpleLabSection);
     panel.appendChild(smartLabSection);
     panel.appendChild(fsmLabSection);
@@ -1271,7 +1271,7 @@ export class DevSummoner {
     const fsmSpacingSlider = createRangeRow("ds-fsm-spacing", "Spacing", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
     const fsmElasticitySlider = createRangeRow("ds-fsm-elasticity", "Elasticity", { min: 0, max: 10, default: 0, step: 1 });
     const fsmBaseSpeedSlider = createRangeRow("ds-fsm-base-speed", "Speed", ENEMY_LAB_BASIC_SETUP_LIMITS.baseSpeed);
-    fsmBaseSpeedSlider.wrap.title = "Preset base speed data. U1.3 persists it; runtime movement still uses existing behavior/FSM movement speeds until U1.7 multiplier integration.";
+    fsmBaseSpeedSlider.wrap.title = "FSM preset base movement speed. State Speed × multiplies this value at runtime.";
     fsmBasicSection.appendChild(fsmSpacingSlider.wrap);
     fsmBasicSection.appendChild(fsmElasticitySlider.wrap);
     fsmBasicSection.appendChild(fsmBaseSpeedSlider.wrap);
@@ -1556,11 +1556,11 @@ export class DevSummoner {
     const movementPresetInput = document.createElement("select"); applyNativeSelectStyle(movementPresetInput); for (const id of Object.keys(EnemyBehaviorPresets).sort()) appendOption(movementPresetInput, id, id); behaviorBlock.appendChild(movementPresetInput); editorSection.appendChild(behaviorBlock);
     const formationBlock = document.createElement("div"); formationBlock.setAttribute("data-fsm-editor-block", "Formation"); formationBlock.style.cssText = "display:flex;flex-direction:column;gap:4px;border-top:1px solid rgba(255,255,255,0.10);padding-top:4px;";
     const formationOverrideLabel = document.createElement("label"); formationOverrideLabel.style.cssText = "display:flex;gap:5px;align-items:center;";
-    const formationOverrideCheck = document.createElement("input"); formationOverrideCheck.type = "checkbox"; formationOverrideLabel.appendChild(formationOverrideCheck); formationOverrideLabel.appendChild(Object.assign(document.createElement("span"), { textContent: "Override formation for this state" })); formationBlock.appendChild(formationOverrideLabel);
+    const formationOverrideCheck = document.createElement("input"); formationOverrideCheck.type = "checkbox"; formationOverrideLabel.appendChild(formationOverrideCheck); formationOverrideLabel.appendChild(Object.assign(document.createElement("span"), { textContent: "Override" })); formationBlock.appendChild(formationOverrideLabel);
     const formationControls = document.createElement("div"); formationControls.id = "ds-fsm-state-formation-controls"; formationControls.style.cssText = "display:flex;flex-direction:column;gap:4px;"; formationBlock.appendChild(formationControls);
     const shapeButtons = document.createElement("div"); shapeButtons.id = "ds-fsm-state-shape-icons"; shapeButtons.style.cssText = "display:grid;grid-template-columns:repeat(5,1fr);gap:2px;"; formationControls.appendChild(shapeButtons);
     let selectedFormationShape: FormationId = "line.horizontal";
-    const stateShapeButtons = ENEMY_GROUP_FORMATION_IDS.map((id) => { const b = document.createElement("button"); b.type = "button"; b.textContent = formationIconLabels[id].icon; b.title = id; b.setAttribute("aria-label", `State formation ${id}`); b.style.cssText = "font:13px monospace;min-height:24px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; b.addEventListener("click", () => { selectedFormationShape = id; const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverride(v.id, { ...v.formation, enabled: true, shape: id }); renderPresetEditor(); }); shapeButtons.appendChild(b); return { id, button: b }; });
+    const stateShapeButtons = ENEMY_GROUP_FORMATION_IDS.map((id) => { const b = document.createElement("button"); b.type = "button"; b.textContent = formationIconLabels[id].icon; b.title = id; b.setAttribute("aria-label", `State formation ${id}`); applyIconButtonStyle(b); b.addEventListener("click", () => { selectedFormationShape = id; const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverride(v.id, { ...v.formation, enabled: true, shape: id }); renderPresetEditor(); }); shapeButtons.appendChild(b); return { id, button: b }; });
     const stateSpacingSlider = createRangeRow("ds-fsm-state-spacing", "Spacing", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
     const stateElasticitySlider = createRangeRow("ds-fsm-state-elasticity", "Elasticity", { min: 0, max: 10, default: 0, step: 1 });
     const stateSpeedSlider = createRangeRow("ds-fsm-state-speed", "Speed ×", { min: 0.25, max: 3, default: 1, step: 0.05 });
@@ -1568,12 +1568,10 @@ export class DevSummoner {
     const triggerBlock = document.createElement("div"); triggerBlock.setAttribute("data-fsm-editor-block", "Trigger"); triggerBlock.style.cssText = "display:flex;flex-direction:column;gap:3px;border-top:1px solid rgba(255,255,255,0.10);padding-top:4px;"; triggerBlock.appendChild(Object.assign(document.createElement("div"), { textContent: "Trigger" }));
     const triggerSelect = document.createElement("select"); applyNativeSelectStyle(triggerSelect); for (const [v,l] of [["never","Never"],["time","Time"],["screenXBelow","scrX"],["hit","Hit"]] as const) appendOption(triggerSelect, v, l); triggerBlock.appendChild(triggerSelect);
     const triggerParamWrap = document.createElement("div"); triggerParamWrap.style.cssText = "display:flex;flex-direction:column;gap:3px;"; triggerBlock.appendChild(triggerParamWrap);
-    const triggerTimeInput = document.createElement("input"); triggerTimeInput.type = "number"; triggerTimeInput.step = "0.1"; triggerTimeInput.placeholder = "seconds"; applyControlBaseStyle(triggerTimeInput);
-    const triggerXInput = document.createElement("input"); triggerXInput.type = "number"; triggerXInput.step = "1"; triggerXInput.placeholder = "screen x"; applyControlBaseStyle(triggerXInput);
-    const makeTriggerStepper = (label: string, step: number, min: number, format: (n: number) => string, commit: (n: number) => void) => {
+        const makeTriggerStepper = (label: string, step: number, min: number, format: (n: number) => string, commit: (n: number) => void) => {
       let value = min;
       const wrap = document.createElement("div");
-      wrap.style.cssText = "display:grid;grid-template-columns:max-content 26px minmax(38px,1fr) 26px;gap:3px;align-items:center;";
+      wrap.style.cssText = "display:grid;grid-template-columns:40px 26px minmax(38px,1fr) 26px;gap:3px;align-items:center;";
       const labelNode = document.createElement("span"); labelNode.textContent = label; applyLabelTextStyle(labelNode, "secondary");
       const dec = document.createElement("button"); const valueNode = document.createElement("span"); const inc = document.createElement("button");
       for (const [button, text, aria] of [[dec, "−", `Decrease ${label}`], [inc, "+", `Increase ${label}`]] as const) { button.type = "button"; button.textContent = text; button.title = aria; button.setAttribute("aria-label", aria); applyIconButtonStyle(button); button.addEventListener("click", (ev) => { ev.stopPropagation(); value = Math.max(min, value + (button === dec ? -step : step)); commit(value); }); }
@@ -1581,7 +1579,7 @@ export class DevSummoner {
       wrap.appendChild(labelNode); wrap.appendChild(dec); wrap.appendChild(valueNode); wrap.appendChild(inc);
       return { wrap, setValue(next: unknown) { const n = Number(next); value = Math.max(min, Number.isFinite(n) ? n : min); valueNode.textContent = format(value); dec.disabled = value <= min; applyIconButtonStyle(dec, dec.disabled); }, setDisabled(disabled: boolean) { for (const b of [dec, inc]) setIconButtonDisabled(b, disabled || (b === dec && value <= min)); } };
     };
-    const triggerTimeStepper = makeTriggerStepper("Time", 0.25, 0, (n) => n.toFixed(2).replace(/0$/, ""), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "time", { seconds: n }); renderPresetEditor(); });
+    const triggerTimeStepper = makeTriggerStepper("Time", 1, 0, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "time", { seconds: Math.max(0, Math.round(n)) }); renderPresetEditor(); });
     const triggerXStepper = makeTriggerStepper("scrX", 10, 0, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "screenXBelow", { x: Math.round(n) }); renderPresetEditor(); });
     const triggerHitStepper = makeTriggerStepper("Hit", 1, 1, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "hit", { ratio: 0.999 }); renderPresetEditor(); });
     const triggerHint = document.createElement("div"); triggerHint.id = "ds-fsm-trigger-next-hint"; triggerHint.style.cssText = "color:#aaa;"; triggerBlock.appendChild(triggerHint); editorSection.appendChild(triggerBlock);
@@ -1598,6 +1596,7 @@ export class DevSummoner {
     const previewDiagnostics = document.createElement("div"); previewDiagnostics.id = "ds-fsm-preview-diagnostics"; previewDiagnostics.style.cssText = "white-space:pre-wrap;color:#eee;"; previewSection.appendChild(previewDiagnostics);
     const previewTrace = document.createElement("div"); previewTrace.id = "ds-fsm-preview-trace"; previewTrace.style.cssText = "white-space:pre-wrap;color:#ccc;"; previewSection.appendChild(previewTrace);
     const dirtyBadge = document.createElement("div"); dirtyBadge.id = "ds-fsm-dirty-badge"; authoringSections.appendChild(dirtyBadge);
+    authoringSections.appendChild(runtimeDiagnosticsSection);
     presetPanel.appendChild(authoringSections);
     const cm = (window as any).__CM;
     const previewSession = new FsmPreviewSession({
@@ -1637,9 +1636,8 @@ ${d.states.join(", ")}` : "No preset selected";
       for (const row of rows) {
         const stateRow = document.createElement("div");
         stateRow.setAttribute("data-fsm-state-row", String(row.number));
-        stateRow.style.cssText = `display:grid;grid-template-columns:16px 24px minmax(0,1fr) repeat(4,26px);gap:4px;align-items:center;padding:3px;border:${row.selected ? "1px solid #7cc7ff" : "1px solid rgba(255,255,255,0.12)"};background:${row.selected ? "rgba(80,170,255,0.22)" : "rgba(255,255,255,0.04)"};`;
+        stateRow.style.cssText = `display:grid;grid-template-columns:24px minmax(0,1fr) repeat(4,26px);gap:4px;align-items:center;padding:3px;border:${row.selected ? "1px solid #7cc7ff" : "1px solid rgba(255,255,255,0.12)"};background:${row.selected ? "rgba(80,170,255,0.22)" : "rgba(255,255,255,0.04)"};`;
         stateRow.addEventListener("click", () => { authoringModel.selectState(row.id); expandedStateId = expandedStateId === row.id ? null : row.id; renderPresetEditor(); });
-        const handle = document.createElement("span"); handle.textContent = "↕"; handle.title = "Use row arrows to reorder"; handle.style.cssText = "color:#aaa;text-align:center;cursor:default;"; stateRow.appendChild(handle);
         const number = document.createElement("span"); number.textContent = String(row.number); number.style.cssText = "display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#fff;color:#000;font-weight:900;border:1px solid #000;"; stateRow.appendChild(number);
         const labelWrap = document.createElement("button"); labelWrap.type = "button"; labelWrap.style.cssText = "min-width:0;text-align:left;background:transparent;color:#eee;border:0;padding:0;font:12px monospace;";
         const main = document.createElement("div"); main.textContent = row.behaviorPresetId || row.id; main.style.cssText = "font-weight:bold;overflow:hidden;text-overflow:ellipsis;"; labelWrap.appendChild(main);
@@ -1734,8 +1732,8 @@ ${d.states.join(", ")}` : "No preset selected";
     formationOverrideCheck.addEventListener("change", () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverrideEnabled(v.id, formationOverrideCheck.checked); renderPresetEditor(); });
     const editStateFormationDraft = () => { const v = authoringModel.selectedStateView(); if (v) { authoringModel.setLabFormationField(v.id, "spacing", stateSpacingSlider.value); authoringModel.setLabFormationField(v.id, "elasticity", stateElasticitySlider.value); authoringModel.setLabFormationField(v.id, "speedMultiplier", stateSpeedSlider.value); } renderPresetEditor(); };
     for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateSpeedSlider.slider]) el.addEventListener("input", editStateFormationDraft);
-    const editTrigger = () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, triggerSelect.value as any, { seconds: triggerTimeInput.value, x: triggerXInput.value }); renderPresetEditor(); };
-    triggerSelect.addEventListener("change", editTrigger); triggerTimeInput.addEventListener("change", editTrigger); triggerXInput.addEventListener("change", editTrigger);
+    const editTrigger = () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, triggerSelect.value as any, {}); renderPresetEditor(); };
+    triggerSelect.addEventListener("change", editTrigger);
     for (const el of [enemySelect, groupEnemySelect]) el.addEventListener("change", () => { if (enemyLabMode === "fsm") { enemySelect.value = el.value; groupEnemySelect.value = el.value; editFsmBasicSetupDraft(); } });
     fsmSpacingSlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
     fsmElasticitySlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });

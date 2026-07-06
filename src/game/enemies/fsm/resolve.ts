@@ -31,6 +31,7 @@ export function resolveFsmPreset(preset: FsmPresetSchemaV1, options: ValidateFsm
     combat: state.combat,
     lifecycle: state.lifecycle,
     enterActionDescriptors: Object.freeze((state.lifecycle?.enterActions ?? []).map((a) => getEnterActionDescriptor(a.type)).filter((x): x is EnterActionDescriptor => !!x)),
+    ...(state as any).formationOverride ? { formationOverride: structuredClone((state as any).formationOverride) } : {},
     transitions: state.transitions.map((t) => {
       const targetStateIndex = index.get(t.targetStateId);
       if (targetStateIndex === undefined) throw new Error(`[fsm] unresolved transition target ${String(t.targetStateId)} in ${preset.metadata.id}`);
