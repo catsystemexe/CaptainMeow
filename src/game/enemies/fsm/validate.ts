@@ -149,6 +149,10 @@ function validateState(state: unknown, path: string, issues: ValidationIssue[], 
     validateCondition(transition.condition, `${tPath}.condition`, issues, normalize);
     if (typeof transition.targetStateId !== "string" || transition.targetStateId.length === 0) issues.push(issue("error", "E_TRANSITION_TARGET", `${tPath}.targetStateId`, "Transition target must be a non-empty state ID."));
   });
+  const followDelay = (state as any).followDelay;
+  if (followDelay !== undefined && (typeof followDelay !== "number" || !Number.isFinite(followDelay) || followDelay < 0 || followDelay > 0.5)) {
+    issues.push(issue("error", "E_FOLLOW_DELAY_RANGE", `${path}.followDelay`, "State Follow must be a finite number from 0 to 0.5 seconds."));
+  }
   return true;
 }
 

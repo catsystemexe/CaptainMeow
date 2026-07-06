@@ -27,6 +27,7 @@ export interface FsmPresetSchemaV1 {
     formationId?: string;
     spacing?: number;
     elasticity?: number;
+    followDelay?: number;
     baseSpeed: number;
     spawnY: number;
   };
@@ -48,9 +49,10 @@ export interface FsmStateDefinition {
   formationId?: string;
   spacing?: number;
   elasticity?: number;
+  followDelay?: number;
   speedMultiplier?: number;
   /** Legacy compatibility only; new authoring writes the canonical fields above. */
-  formationOverride?: { enabled?: boolean; shape?: string; spacing?: number; elasticity?: number; speedMultiplier?: number };
+  formationOverride?: { enabled?: boolean; shape?: string; spacing?: number; elasticity?: number; followDelay?: number; speedMultiplier?: number };
   transitions: TransitionConfig[];
 }
 

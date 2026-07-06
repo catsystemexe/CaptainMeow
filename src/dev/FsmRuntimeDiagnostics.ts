@@ -23,6 +23,9 @@ export type FsmRuntimeDiagnosticSnapshot = {
   lastTransition?: { from: string; to: string; reason?: string } | null;
   movementSuppressed: boolean;
   memberCount?: number;
+  followDelay?: number | null;
+  historySamples?: number | null;
+  maxTrailDelay?: number | null;
   baseSpeed?: number | null;
   speedMultiplier?: number | null;
   effectiveSpeed?: number | null;
@@ -120,6 +123,9 @@ export function createGroupAnchorFsmRuntimeDiagnostic(group: any, scrollXValue?:
     lastTransition: lastTransition(group.fsm),
     movementSuppressed: false,
     memberCount: Array.isArray(group.members) ? group.members.length : 0,
+    followDelay: finite(group.followDelay),
+    historySamples: finite(group.anchorHistoryCount),
+    maxTrailDelay: finite((group.followDelay ?? 0) * Math.max(0, (Array.isArray(group.members) ? group.members.length : 0) - 1)),
     ...speedFields(group.fsm),
   });
 }
@@ -188,6 +194,7 @@ export function renderFsmRuntimeDiagnosticsText(bundle: FsmRuntimeDiagnosticsBun
     `Suppressed: ${primary.movementSuppressed ? "yes" : "no"}`,
   ];
   if (typeof primary.memberCount === "number") lines.push(`Member count: ${primary.memberCount}`);
+  if (primary.kind === "group-anchor") lines.push(`Follow: ${fmt(primary.followDelay, 2)} s/member`, `History samples: ${fmt(primary.historySamples)}`, `Max trail delay: ${fmt(primary.maxTrailDelay, 2)} s`);
   if (bundle.member) {
     const m = bundle.member;
     lines.push("", "MEMBER — NON-AUTHORITATIVE MOVEMENT", `Preset: ${m.presetId ?? "none"}`, `State: ${m.stateId ?? "none"}`, `Movement: ${m.movementPresetId ?? "none"}`, `Member X world/screen: ${fmt(m.worldX)} / ${fmt(m.screenX)}`, `Velocity: ${fmt(m.velocityX, 1)}, ${fmt(m.velocityY, 1)}`, `Suppressed: ${m.movementSuppressed ? "yes" : "no"}`);

@@ -10,6 +10,7 @@ export interface EnemyLabBasicSetup {
   formationId?: FormationId;
   spacing?: number;
   elasticity?: number;
+  followDelay?: number;
   baseSpeed: number;
   spawnY: number;
 }
@@ -34,6 +35,7 @@ export const ENEMY_LAB_BASIC_SETUP_LIMITS = Object.freeze({
   count: { min: 1, max: 10, default: 1, step: 1 },
   spacing: { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, default: 18, step: 2 },
   elasticity: { min: 0, max: 10, default: 0, step: 1 },
+  followDelay: { min: 0, max: 0.5, default: 0, step: 0.01 },
   baseSpeed: { min: 0, max: 720, default: 115, step: 5 },
   spawnY: { min: 0, max: 504, default: 260, step: 1 },
 });
@@ -68,6 +70,7 @@ export function defaultBasicSetupForMode(mode: EnemyLabMode): EnemyLabBasicSetup
     formationId: "line.horizontal",
     spacing: ENEMY_LAB_BASIC_SETUP_LIMITS.spacing.default,
     elasticity: ENEMY_LAB_BASIC_SETUP_LIMITS.elasticity.default,
+    followDelay: ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay.default,
     baseSpeed: DEFAULT_BEHAVIOR_SPEED_BY_MODE[mode],
     spawnY: ENEMY_LAB_BASIC_SETUP_LIMITS.spawnY.default,
   };
@@ -85,6 +88,7 @@ export function normalizeBasicSetup(input: unknown, mode: EnemyLabMode): EnemyLa
     formationId,
     spacing: clamp(src.spacing, ENEMY_LAB_BASIC_SETUP_LIMITS.spacing.min, ENEMY_LAB_BASIC_SETUP_LIMITS.spacing.max, defaults.spacing ?? ENEMY_LAB_BASIC_SETUP_LIMITS.spacing.default),
     elasticity: clamp(src.elasticity, ENEMY_LAB_BASIC_SETUP_LIMITS.elasticity.min, ENEMY_LAB_BASIC_SETUP_LIMITS.elasticity.max, defaults.elasticity ?? 0, true),
+    followDelay: clamp(src.followDelay, ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay.min, ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay.max, defaults.followDelay ?? 0),
     baseSpeed: clamp(src.baseSpeed, ENEMY_LAB_BASIC_SETUP_LIMITS.baseSpeed.min, ENEMY_LAB_BASIC_SETUP_LIMITS.baseSpeed.max, defaults.baseSpeed),
     spawnY: clamp(src.spawnY, ENEMY_LAB_BASIC_SETUP_LIMITS.spawnY.min, ENEMY_LAB_BASIC_SETUP_LIMITS.spawnY.max, defaults.spawnY),
   };
@@ -101,6 +105,7 @@ export function validateBasicSetup(setup: EnemyLabBasicSetup): EnemyLabBasicSetu
   if (setup.count > 1 && (!setup.formationId || !(ENEMY_GROUP_FORMATION_IDS as readonly string[]).includes(setup.formationId))) issues.push({ severity: "error", code: "E_FORMATION_UNKNOWN", path: "basicSetup.formationId", message: "Formation is required and must be valid when Count is above 1." });
   if (setup.spacing !== undefined && (!Number.isFinite(setup.spacing) || setup.spacing < ENEMY_LAB_BASIC_SETUP_LIMITS.spacing.min || setup.spacing > ENEMY_LAB_BASIC_SETUP_LIMITS.spacing.max)) issues.push({ severity: "error", code: "E_SPACING_RANGE", path: "basicSetup.spacing", message: "Spacing is outside the allowed range." });
   if (setup.elasticity !== undefined && (!Number.isInteger(setup.elasticity) || setup.elasticity < 0 || setup.elasticity > 10)) issues.push({ severity: "error", code: "E_ELASTICITY_RANGE", path: "basicSetup.elasticity", message: "Elasticity must be an integer in 0..10." });
+  if (setup.followDelay !== undefined && (!Number.isFinite(setup.followDelay) || setup.followDelay < ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay.min || setup.followDelay > ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay.max)) issues.push({ severity: "error", code: "E_FOLLOW_DELAY_RANGE", path: "basicSetup.followDelay", message: "Follow must be finite and in range." });
   if (!Number.isFinite(setup.baseSpeed) || setup.baseSpeed < ENEMY_LAB_BASIC_SETUP_LIMITS.baseSpeed.min || setup.baseSpeed > ENEMY_LAB_BASIC_SETUP_LIMITS.baseSpeed.max) issues.push({ severity: "error", code: "E_BASE_SPEED_RANGE", path: "basicSetup.baseSpeed", message: "Base Speed must be finite and in range." });
   if (!Number.isFinite(setup.spawnY) || setup.spawnY < ENEMY_LAB_BASIC_SETUP_LIMITS.spawnY.min || setup.spawnY > ENEMY_LAB_BASIC_SETUP_LIMITS.spawnY.max) issues.push({ severity: "error", code: "E_SPAWN_Y_RANGE", path: "basicSetup.spawnY", message: "Spawn Y is outside the logical screen range." });
   return issues;

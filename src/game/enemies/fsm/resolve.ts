@@ -21,6 +21,7 @@ function resolveStateFormationFields(state: any): Record<string, unknown> {
   if (state?.formationId !== undefined || legacy.shape !== undefined) out.formationId = String(state?.formationId ?? legacy.shape);
   if (state?.spacing !== undefined || legacy.spacing !== undefined) out.spacing = Number(state?.spacing ?? legacy.spacing);
   if (state?.elasticity !== undefined || legacy.elasticity !== undefined) out.elasticity = Number(state?.elasticity ?? legacy.elasticity);
+  if (state?.followDelay !== undefined || legacy.followDelay !== undefined) out.followDelay = Number(state?.followDelay ?? legacy.followDelay);
   if (state?.speedMultiplier !== undefined || legacy.speedMultiplier !== undefined) out.speedMultiplier = Number(state?.speedMultiplier ?? legacy.speedMultiplier);
   return out;
 }
