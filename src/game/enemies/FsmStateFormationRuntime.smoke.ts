@@ -53,8 +53,8 @@ close(mag(tickSingle(200, 1).vel), 200);
 close(mag(tickSingle(100, 0.5).vel), 50);
 close(mag((tickGroup(200, 1).groups.get(1) as any).vel), 200);
 close(mag((tickGroup(100, 0.5).groups.get(1) as any).vel), 50);
-close(mag(tickSingle(120, 1, "sine.soft").vel), 120);
-close(mag((tickGroup(120, 1, "sine.soft").groups.get(1) as any).vel), 120);
+close(Math.abs(tickSingle(120, 1, "sine.soft").vel.x), 120);
+close(Math.abs((tickGroup(120, 1, "sine.soft").groups.get(1) as any).vel.x), 120);
 close(mag(tickSingle(100, 0.5, "straight.basic", true).vel), 50);
 assert(tickSingle(100, 1).vel.x < 0, "direction remains leftward");
 

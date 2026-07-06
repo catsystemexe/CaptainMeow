@@ -3,7 +3,7 @@ import type { EntityStore } from "../../engine/ecs/EntityStore";
 import { EnemyBehaviorDB } from "./EnemyBehaviorDB";
 import { EnemyBehaviorPresets } from "./EnemyBehaviorPresets";
 import { resolveMovementCullReferenceX } from "./EnemyCullReference";
-import { createFsmRuntimeSnapshot, executeFsmMovement, fsmEffectiveSpeed, getFsmMovementCullReferenceX, getFsmRuntimeState, updateResolvedFsm, velocityFromFsmTarget, type FsmRuntimeSnapshot } from "./fsm";
+import { createFsmRuntimeSnapshot, executeFsmMovement, fsmBaseSpeed, fsmEffectiveSpeed, fsmMovementReferenceSpeed, fsmSpeedMultiplier, getFsmMovementCullReferenceX, getFsmRuntimeState, updateResolvedFsm, velocityFromFsmTarget, type FsmRuntimeSnapshot } from "./fsm";
 import type { ResolvedFsmPreset } from "./fsm/resolve";
 
 type Vec2 = { x: number; y: number };
@@ -256,8 +256,12 @@ export class EnemyGroupRegistry {
         applyStateFormation(group);
         const target = executeFsmMovement(group.fsm.movement, group.fsmEnt, behaviorCtx);
         if (target && Number.isFinite(target.x) && Number.isFinite(target.y)) {
-          const speed = fsmEffectiveSpeed(group.fsm.preset as any, getFsmRuntimeState(group.fsm));
-          const vel = velocityFromFsmTarget(group.fsmEnt, target, dt, speed);
+          const state = getFsmRuntimeState(group.fsm);
+          const speed = fsmEffectiveSpeed(group.fsm.preset as any, state);
+          const referenceSpeed = fsmMovementReferenceSpeed(group.fsm.movement);
+          const rawVel = velocityFromFsmTarget(group.fsmEnt, target, dt, null);
+          const vel = velocityFromFsmTarget(group.fsmEnt, target, dt, speed, referenceSpeed);
+          (group.fsm as any).speedDiagnostics = { baseSpeed: fsmBaseSpeed(group.fsm.preset as any), speedMultiplier: fsmSpeedMultiplier(state), effectiveSpeed: speed, movementPresetReferenceSpeed: referenceSpeed, rawVelocityX: rawVel.x, rawVelocityY: rawVel.y, finalVelocityX: vel.x, finalVelocityY: vel.y, integratedDeltaX: vel.x * dt, integratedDeltaY: vel.y * dt };
           group.vel.x = vel.x;
           group.vel.y = vel.y;
         } else {

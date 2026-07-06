@@ -382,7 +382,7 @@ function createCompactSelect(id: string): {
     "border-radius:2px",
     "box-shadow:0 3px 8px rgba(0,0,0,0.45)",
   ].join(";");
-  root.appendChild(list);
+  document.body.appendChild(list);
 
   let options: CompactSelectOption[] = [];
   let value = "";
@@ -503,6 +503,7 @@ function createCompactSelect(id: string): {
       document.removeEventListener("click", handleDocumentClick);
       document.removeEventListener("keydown", handleDocumentKeydown);
       if (typeof window.removeEventListener === "function") window.removeEventListener("resize", handleWindowResize);
+      list.remove();
     },
   };
 }
@@ -1884,7 +1885,7 @@ ${d.states.join(", ")}` : "No preset selected";
   }
 
   private refreshEnemyLab(): void {
-    const runtimeOut = this.panel?.querySelector("#ds-fsm-runtime-diagnostics-body") as HTMLElement | null;
+    const runtimeOut = document.getElementById("ds-fsm-runtime-diagnostics-body") as HTMLElement | null;
     if (runtimeOut) {
       const cm = (window as any).__CM;
       const bundle = findLatestFsmRuntimeDiagnostics({
