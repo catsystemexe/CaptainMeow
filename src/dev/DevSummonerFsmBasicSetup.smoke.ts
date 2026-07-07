@@ -125,11 +125,11 @@ assert(panel.findById("ds-fsm-preset"), "preset dropdown remains present");
 const toolbar = panel.findById("ds-fsm-preset-toolbar")!;
 const iconButtons = toolbar.children.filter((el) => el.tagName === "BUTTON");
 assert.equal(iconButtons.length, 6, "top preset toolbar has exactly six preset actions");
-const iconText = (button: any) => button.textContent || button.children.map((child: any) => child.textContent).join("");
-for (const icon of ["+", "✎", "⧉", "↻", "✓", "🗑"]) assert(iconButtons.some((button) => iconText(button) === icon), `toolbar contains ${icon} icon action`);
-assert(!iconButtons.some((button) => iconText(button) === "⇧"), "toolbar omits extra import/up-arrow action");
+const iconLabels = iconButtons.map((button: any) => button.getAttribute("aria-label"));
+assert.deepEqual(iconLabels, ["New preset", "Edit preset name", "Duplicate preset", "Reset preset", "Save preset", "Delete preset"], "toolbar contains six Lucide-labeled actions in order");
+assert(!iconLabels.includes("Import preset"), "toolbar omits extra import/up-arrow action");
 for (const button of iconButtons) {
-  assert(["+", "✎", "⧉", "↻", "✓", "🗑"].includes(iconText(button)), "icon action is icon-only");
+  assert.equal(button.textContent || "", "", "Lucide toolbar action has no Unicode text glyph");
   assert(button.getAttribute("aria-label") || button.getAttribute("title"), "icon action has accessible label");
 }
 assert.equal(panel.findById("ds-fsm-preview-section"), null, "legacy Preview controls are not mounted in FSM mode");

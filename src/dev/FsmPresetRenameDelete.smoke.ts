@@ -46,8 +46,9 @@ assert.equal(store.registry().sourceOf(model.selectedId), "builtin", "delete fal
 const source = readFileSync("src/dev/DevSummoner.ts", "utf8");
 assert(source.includes("setIconButtonDisabled(topRenameBtn, readOnly)"), "rename control disabled for built-ins");
 assert(source.includes("setIconButtonDisabled(topDeleteBtn, readOnly)"), "delete control disabled for built-ins");
-assert(source.includes("window.prompt(\"Rename FSM user preset\", draft.label)"), "rename prompt pre-fills current name");
+assert(source.includes("input.value = draft.label"), "rename dialog pre-fills current name");
+assert(source.includes("openDevDialog") && !source.includes("window.prompt(\"Rename FSM user preset"), "rename uses in-app dialog instead of prompt");
 assert(source.includes("Delete preset \"${draft.label}\"?"), "delete confirmation identifies preset name");
-assert(source.includes("This preset has unsaved draft changes. Delete anyway?"), "delete confirmation warns about dirty drafts");
-assert(source.includes("ICONS.edit") && source.includes("ICONS.trash"), "compact edit/trash icons are used");
+assert(source.includes("This preset has unsaved draft changes."), "delete confirmation warns about dirty drafts");
+assert(source.includes("makeIconBtn(Pencil, \"Pencil\"") && source.includes("makeIconBtn(Trash2, \"Trash2\""), "compact edit/trash Lucide icons are used");
 console.log("[SMOKE] FsmPresetRenameDelete OK ✅");
