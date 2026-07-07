@@ -62,3 +62,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 
 - [U1.4.12 — Trigger time live UI synchronization](U1.4.12.md)
 - [U1.4.13 — User preset rename and delete](U1.4.13.md)
+- [U1.4.14 — Preset toolbar audit and repair](U1.4.14.md)
