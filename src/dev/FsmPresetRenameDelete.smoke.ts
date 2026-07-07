@@ -44,8 +44,8 @@ assert.equal(model.selectedId, "fsm.user.ui-1", "delete falls back to previous u
 assert.equal(model.delete("fsm.user.ui-1", true).ok, true, "delete last user succeeds");
 assert.equal(store.registry().sourceOf(model.selectedId), "builtin", "delete falls back to first built-in when no users remain");
 const source = readFileSync("src/dev/DevSummoner.ts", "utf8");
-assert(source.includes("topRenameBtn.style.display = readOnly ? \"none\""), "rename control hidden for built-ins");
-assert(source.includes("topDeleteBtn.style.display = readOnly ? \"none\""), "delete control hidden for built-ins");
+assert(source.includes("setIconButtonDisabled(topRenameBtn, readOnly)"), "rename control disabled for built-ins");
+assert(source.includes("setIconButtonDisabled(topDeleteBtn, readOnly)"), "delete control disabled for built-ins");
 assert(source.includes("window.prompt(\"Rename FSM user preset\", draft.label)"), "rename prompt pre-fills current name");
 assert(source.includes("Delete preset \"${draft.label}\"?"), "delete confirmation identifies preset name");
 assert(source.includes("This preset has unsaved draft changes. Delete anyway?"), "delete confirmation warns about dirty drafts");

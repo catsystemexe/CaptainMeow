@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const source = readFileSync("src/dev/DevSummoner.ts", "utf8");
+const makeIconBlock = source.slice(source.indexOf('const makeIconBtn = (icon: string'), source.indexOf('const topNewBtn = makeIconBtn'));
+const toolbarBlock = source.slice(source.indexOf('fsmPresetToolbar.id = "ds-fsm-preset-toolbar"'), source.indexOf('fsmPresetSection.appendChild(fsmPresetHeading)'));
+assert(toolbarBlock.includes('grid-template-columns:repeat(6,26px)'), "toolbar reserves exactly six equal 26px button slots");
+assert(makeIconBlock.includes('data-preset-toolbar-action'), "each toolbar button has an explicit action id");
+assert(makeIconBlock.includes('className = "preset-toolbar-icon"'), "each toolbar glyph uses shared icon-box class");
+assert(makeIconBlock.includes('width:18px;height:18px;font-size:14px;line-height:1'), "icon boxes share the same visual size contract");
+const styleBlock = source.slice(source.indexOf('function applyIconButtonStyle'), source.indexOf('function setIconButtonDisabled'));
+for (const token of ['className = "preset-toolbar-button"', 'width:26px', 'height:26px', 'min-width:26px', 'min-height:26px', 'padding:0', 'font:14px/1 monospace', 'align-items:center', 'justify-content:center']) assert(styleBlock.includes(token), `shared button style contains ${token}`);
+const labels = [...source.matchAll(/makeIconBtn\([^\n]+"(New preset|Edit preset name|Duplicate preset|Reset preset|Save preset|Delete preset)"/g)].map((m) => m[1]);
+assert.deepEqual(labels, ["New preset", "Edit preset name", "Duplicate preset", "Reset preset", "Save preset", "Delete preset"], "toolbar labels and order match contract");
+assert(!makeIconBlock.includes('style.fontSize') && !makeIconBlock.includes('ICONS.trash') && !makeIconBlock.includes('topDeleteBtn') , "trash is not uniquely styled larger than other icons");
+console.log("[SMOKE] FsmPresetToolbarVisualContract OK ✅");
