@@ -123,10 +123,11 @@ assert(fsm.children.indexOf(basic) < fsm.children.indexOf(panel.findById("ds-fsm
 assert.equal(presets.findAll((el) => el.textContent === "Preset").length, 0, "PRESETS has no visible redundant Preset row label");
 assert(panel.findById("ds-fsm-preset"), "preset dropdown remains present");
 const toolbar = panel.findById("ds-fsm-preset-toolbar")!;
-const iconButtons = toolbar.children.filter((el) => el.tagName === "BUTTON" && ["+", "✎", "⇧", "×"].includes(el.textContent));
-assert.equal(iconButtons.length, 4, "top preset toolbar has exactly four icon actions");
+const iconButtons = toolbar.children.filter((el) => el.tagName === "BUTTON");
+assert.equal(iconButtons.length, 7, "top preset toolbar has seven icon actions including user rename/delete");
+for (const icon of ["+", "✎", "⧉", "⇧", "↻", "✓", "🗑"]) assert(iconButtons.some((button) => button.textContent === icon), `toolbar contains ${icon} icon action`);
 for (const button of iconButtons) {
-  assert(["+", "✎", "⇧", "×"].includes(button.textContent), "icon action is icon-only");
+  assert(["+", "✎", "⧉", "⇧", "↻", "✓", "🗑"].includes(button.textContent), "icon action is icon-only");
   assert(button.getAttribute("aria-label") || button.getAttribute("title"), "icon action has accessible label");
 }
 assert.equal(panel.findById("ds-fsm-preview-section"), null, "legacy Preview controls are not mounted in FSM mode");
