@@ -1573,6 +1573,7 @@ export class DevSummoner {
     stateList.id = "ds-fsm-state-list";
     stateList.style.cssText = "display:flex;flex-direction:column;gap:3px;";
     statesSection.appendChild(stateList);
+    const stateTriggerSummaryNodes = new Map<string, HTMLElement>();
     const stateButtons = document.createElement("div");
     stateButtons.style.cssText = "display:none;grid-template-columns:1fr 1fr 1fr;gap:3px;";
     statesSection.appendChild(stateButtons);
@@ -1611,7 +1612,7 @@ export class DevSummoner {
       wrap.style.cssText = "display:grid;grid-template-columns:40px 26px minmax(38px,1fr) 26px;gap:3px;align-items:center;";
       const labelNode = document.createElement("span"); labelNode.textContent = label; applyLabelTextStyle(labelNode, "secondary");
       const dec = document.createElement("button"); const valueNode = document.createElement("span"); const inc = document.createElement("button");
-      for (const [button, text, aria] of [[dec, "−", `Decrease ${label}`], [inc, "+", `Increase ${label}`]] as const) { button.type = "button"; button.textContent = text; button.title = aria; button.setAttribute("aria-label", aria); applyIconButtonStyle(button); button.addEventListener("click", (ev) => { ev.stopPropagation(); value = Math.max(min, value + (button === dec ? -step : step)); commit(value); }); }
+      for (const [button, text, aria] of [[dec, "−", `Decrease ${label}`], [inc, "+", `Increase ${label}`]] as const) { button.type = "button"; button.textContent = text; button.title = aria; button.setAttribute("aria-label", aria); applyIconButtonStyle(button); button.addEventListener("click", (ev) => { ev.stopPropagation(); value = Math.max(min, value + (button === dec ? -step : step)); commit(value); valueNode.textContent = format(value); dec.disabled = value <= min; applyIconButtonStyle(dec, dec.disabled); }); }
       valueNode.style.cssText = "display:flex;align-items:center;justify-content:center;min-height:26px;border:1px solid rgba(255,255,255,0.18);background:#090909;color:#eee;box-sizing:border-box;";
       wrap.appendChild(labelNode); wrap.appendChild(dec); wrap.appendChild(valueNode); wrap.appendChild(inc);
       return { wrap, setValue(next: unknown) { const n = Number(next); value = Math.max(min, Number.isFinite(n) ? n : min); valueNode.textContent = format(value); dec.disabled = value <= min; applyIconButtonStyle(dec, dec.disabled); }, setDisabled(disabled: boolean) { for (const b of [dec, inc]) setIconButtonDisabled(b, disabled || (b === dec && value <= min)); } };
@@ -1658,6 +1659,10 @@ export class DevSummoner {
     const handleRuntimeDiagnosticsKeydown = (ev: KeyboardEvent) => { if (ev.key === "Escape" && runtimeDiagnosticsDockOpen) { runtimeDiagnosticsDockOpen = false; renderPresetEditor(); } };
     const updateStateEditorLiveStatus = () => {
       const ad = authoringModel.draft;
+      for (const row of authoringModel.labStateRows()) {
+        const summary = stateTriggerSummaryNodes.get(row.id);
+        if (summary) summary.textContent = row.triggerSummary;
+      }
       dirtyBadge.textContent = authoringModel.readOnly ? "BUILT-IN / READ ONLY" : (ad?.dirty ? "DIRTY" : "Saved");
       authoringDiagnostics.textContent = ad?.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code} ${x.path}: ${x.message}`).join("\n") ?? "";
       const d = presetModel.details();
@@ -1698,6 +1703,7 @@ ${d.states.join(", ")}` : "No preset selected";
       }
       const ad = authoringModel.draft; const selected = ad?.preset.graph.states.find((state) => state.id === ad.selectedStateId) ?? ad?.preset.graph.states[0]; const authoringReadOnly = authoringModel.readOnly;
       stateList.textContent = "";
+      stateTriggerSummaryNodes.clear();
       const rows = authoringModel.labStateRows();
       if (expandedStateId && !rows.some((row) => row.id === expandedStateId)) expandedStateId = null;
       for (const row of rows) {
@@ -1708,7 +1714,7 @@ ${d.states.join(", ")}` : "No preset selected";
         const number = document.createElement("span"); number.textContent = String(row.number); number.style.cssText = "display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#fff;color:#000;font-weight:900;border:1px solid #000;"; stateRow.appendChild(number);
         const labelWrap = document.createElement("button"); labelWrap.type = "button"; labelWrap.style.cssText = "min-width:0;text-align:left;background:transparent;color:#eee;border:0;padding:0;font:12px monospace;";
         const main = document.createElement("div"); main.textContent = row.behaviorPresetId || row.id; main.style.cssText = "font-weight:bold;overflow:hidden;text-overflow:ellipsis;"; labelWrap.appendChild(main);
-        const sub = document.createElement("div"); sub.textContent = row.triggerSummary; sub.style.cssText = "font-size:10px;color:#bbb;overflow:hidden;text-overflow:ellipsis;"; labelWrap.appendChild(sub); stateRow.appendChild(labelWrap);
+        const sub = document.createElement("div"); sub.textContent = row.triggerSummary; sub.setAttribute("data-fsm-state-trigger-summary", row.id); stateTriggerSummaryNodes.set(row.id, sub); sub.style.cssText = "font-size:10px;color:#bbb;overflow:hidden;text-overflow:ellipsis;"; labelWrap.appendChild(sub); stateRow.appendChild(labelWrap);
         const rowIndex = row.number - 1;
         const rowIcon = (icon: string, label: string, disabled: boolean, action: () => void) => { const b = document.createElement("button"); b.type = "button"; b.textContent = icon; b.title = label; b.setAttribute("aria-label", `${label}: ${row.id}`); setIconButtonDisabled(b, disabled); b.addEventListener("click", (ev) => { ev.stopPropagation(); if (b.disabled) return; authoringModel.selectState(row.id); action(); renderPresetEditor(); }); stateRow.appendChild(b); return b; };
         rowIcon(ICONS.duplicate, "Duplicate state", authoringReadOnly, () => { authoringModel.duplicateState(row.id); expandedStateId = authoringModel.draft?.selectedStateId ?? null; });
