@@ -12,6 +12,10 @@ import { ENEMY_GROUP_COHESION_IDS, ENEMY_GROUP_FORMATION_IDS, ENEMY_GROUP_PARAM_
 import type { CohesionId, FormationId } from "../game/enemies/EnemyGroups";
 import { ENEMY_LAB_BASIC_SETUP_LIMITS } from "./EnemyLabPresetModel";
 import { findLatestFsmRuntimeDiagnostics, renderFsmRuntimeDiagnosticsText } from "./FsmRuntimeDiagnostics";
+import { Copy, Pencil, Plus, RotateCcw, Save, Trash2, TriangleAlert } from "lucide";
+import { createDevIconButton, setDevIconButtonDisabled } from "./ui/iconButton";
+import { createLucideIcon } from "./ui/lucideIcon";
+import { openDevDialog } from "./ui/devDialog";
 
 export const DEV_SUMMONER_PANEL_ID = "dev-summoner";
 export const FSM_PRESET_EDITOR_ID = "ds-fsm-preset-editor";
@@ -81,6 +85,10 @@ function applyIconButtonStyle(button: HTMLButtonElement, disabled = false): void
 }
 
 function setIconButtonDisabled(button: HTMLButtonElement, disabled: boolean): void {
+  if (button.getAttribute("data-preset-toolbar-action")) {
+    setDevIconButtonDisabled(button, disabled);
+    return;
+  }
   button.disabled = disabled;
   applyIconButtonStyle(button, disabled);
 }
@@ -1247,7 +1255,7 @@ export class DevSummoner {
     fsmPresetHeading.style.cssText = "font-weight:800;letter-spacing:1px;opacity:0.95;";
     const fsmPresetToolbar = document.createElement("div");
     fsmPresetToolbar.id = "ds-fsm-preset-toolbar";
-    fsmPresetToolbar.style.cssText = "display:grid;grid-template-columns:repeat(6,26px);gap:2px;align-items:center;";
+    fsmPresetToolbar.style.cssText = "display:grid;grid-template-columns:repeat(6,30px);gap:2px;align-items:center;";
     fsmPresetSection.appendChild(fsmPresetHeading);
     fsmPresetSection.appendChild(fsmPresetToolbar);
 
@@ -1527,28 +1535,17 @@ export class DevSummoner {
     const buttons = document.createElement("div"); buttons.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:3px;";
     const makeBtn = (text: string) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.style.cssText = "font:12px monospace;min-height:24px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; buttons.appendChild(b); return b; };
     const newBtn = makeBtn("New"); const dupBtn = makeBtn("Duplicate"); const saveBtn = makeBtn("Save"); const cancelBtn = makeBtn("Cancel"); const delBtn = makeBtn("Delete"); const importBtn = makeBtn("Import"); const exportBtn = makeBtn("Export selected"); const exportAllBtn = makeBtn("Export users"); const rawBtn = makeBtn("Copy raw"); const clearBtn = makeBtn("Clear users");
-    const makeIconBtn = (icon: string, label: string, actionId: string) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.title = label;
-      b.setAttribute("aria-label", label);
-      b.setAttribute("data-preset-toolbar-action", actionId);
-      const iconBox = document.createElement("span");
-      iconBox.className = "preset-toolbar-icon";
-      iconBox.setAttribute("aria-hidden", "true");
-      iconBox.textContent = icon;
-      iconBox.style.cssText = "display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;font-size:14px;line-height:1;";
-      b.appendChild(iconBox);
-      applyIconButtonStyle(b);
+    const makeIconBtn = (icon: Parameters<typeof createDevIconButton>[0]["icon"], iconName: Parameters<typeof createDevIconButton>[0]["iconName"], label: string, actionId: string) => {
+      const b = createDevIconButton({ action: actionId, label, icon, iconName });
       fsmPresetToolbar.appendChild(b);
       return b;
     };
-    const topNewBtn = makeIconBtn(ICONS.new, "New preset", "new");
-    const topRenameBtn = makeIconBtn(ICONS.edit, "Edit preset name", "edit-name");
-    const topDuplicateBtn = makeIconBtn(ICONS.duplicate, "Duplicate preset", "duplicate");
-    const topResetBtn = makeIconBtn(ICONS.reset, "Reset preset", "reset");
-    const topSaveBtn = makeIconBtn(ICONS.save, "Save preset", "save");
-    const topDeleteBtn = makeIconBtn(ICONS.trash, "Delete preset", "delete");
+    const topNewBtn = makeIconBtn(Plus, "Plus", "New preset", "new");
+    const topRenameBtn = makeIconBtn(Pencil, "Pencil", "Edit preset name", "edit-name");
+    const topDuplicateBtn = makeIconBtn(Copy, "Copy", "Duplicate preset", "duplicate");
+    const topResetBtn = makeIconBtn(RotateCcw, "RotateCcw", "Reset preset", "reset");
+    const topSaveBtn = makeIconBtn(Save, "Save", "Save preset", "save");
+    const topDeleteBtn = makeIconBtn(Trash2, "Trash2", "Delete preset", "delete");
     fsmPresetSection.appendChild(fsmSpawnSelect.root);
     // Legacy full preset-management controls remain wired below for model/debug continuity but are not mounted in the normal FSM layout.
     void details; void diagBox; void importText; void exportText; void collisionSelect;
@@ -1813,22 +1810,63 @@ ${d.states.join(", ")}` : "No preset selected";
     topRenameBtn.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); if (topRenameBtn.disabled) return;
       const draft = presetModel.draft;
       if (!draft || draft.source !== "user") return;
-      const nextName = window.prompt("Rename FSM user preset", draft.label);
-      if (nextName === null) { renderPresetEditor(); return; }
-      presetModel.renameSelected(nextName);
-      renderPresetEditor();
+      const content = document.createElement("div");
+      content.style.cssText = "display:flex;flex-direction:column;gap:6px;";
+      const input = document.createElement("input");
+      input.value = draft.label;
+      input.setAttribute("aria-label", "Preset name");
+      applyControlBaseStyle(input);
+      const error = document.createElement("div");
+      error.setAttribute("data-dev-dialog-error", "true");
+      error.style.cssText = "min-height:14px;color:#ff9b9b;";
+      content.append(input, error);
+      openDevDialog({
+        title: "Edit preset name",
+        content,
+        confirmLabel: "Rename",
+        opener: topRenameBtn,
+        onConfirm: () => {
+          const nextName = input.value.trim();
+          if (!nextName) { error.textContent = "Preset name is required."; input.focus(); return false; }
+          if (nextName === draft.label) { renderPresetEditor(); return; }
+          presetModel.renameSelected(nextName);
+          renderPresetEditor();
+        },
+        onCancel: renderPresetEditor,
+      });
+      input.focus();
+      input.select();
     });
     topDuplicateBtn.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); presetModel.duplicate(); authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId); renderPresetEditor(); });
     topResetBtn.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); authoringModel.cancel(); presetModel.cancel(); renderPresetEditor(); });
     topDeleteBtn.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); if (topDeleteBtn.disabled) return;
       const draft = presetModel.draft;
       if (draft?.source !== "user") { renderPresetEditor(); return; }
-      const dirtySuffix = authoringModel.draft?.dirty ? "\n\nThis preset has unsaved draft changes. Delete anyway?" : "";
-      if (window.confirm(`Delete preset "${draft.label}"?${dirtySuffix}`)) {
-        presetModel.delete(presetModel.selectedId, true);
-        authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId);
+      const content = document.createElement("div");
+      content.style.cssText = "display:flex;flex-direction:column;gap:8px;line-height:1.35;";
+      const message = document.createElement("div");
+      message.textContent = `Delete preset "${draft.label}"?`;
+      content.appendChild(message);
+      if (authoringModel.draft?.dirty) {
+        const warning = document.createElement("div");
+        warning.setAttribute("data-dev-dialog-warning", "dirty");
+        warning.style.cssText = "display:flex;gap:6px;align-items:center;color:#ffd27a;";
+        warning.append(createLucideIcon({ icon: TriangleAlert, name: "TriangleAlert" }), document.createTextNode("This preset has unsaved draft changes."));
+        content.appendChild(warning);
       }
-      renderPresetEditor();
+      openDevDialog({
+        title: "Delete preset",
+        content,
+        confirmLabel: "Delete",
+        danger: true,
+        opener: topDeleteBtn,
+        onConfirm: () => {
+          presetModel.delete(presetModel.selectedId, true);
+          authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId);
+          renderPresetEditor();
+        },
+        onCancel: renderPresetEditor,
+      });
     });
     addStateBtn.addEventListener("click", () => { authoringModel.addState(); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); });
     dupStateBtn.addEventListener("click", () => { authoringModel.duplicateState(); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); });
