@@ -50,6 +50,22 @@ export type EnemyGroupSpawnRequest = {
 };
 
 type Member = { ref: EntityRef; slotIndex: number; offset: Vec2 };
+export type EnemyGroupMemberCohesionDiagnostics = {
+  groupId: number;
+  slotIndex: number;
+  followDelay: number;
+  targetX: number;
+  targetY: number;
+  distanceToTarget: number;
+  correctionVelocityX: number;
+  correctionVelocityY: number;
+  correctionSpeed: number;
+  catchUpCap: number;
+  saturated: boolean;
+  overshootPrevented: boolean;
+  anchorSpeed: number;
+  responseTime: number;
+};
 type Group = {
   id: GroupId;
   anchor: Vec2;
@@ -73,6 +89,14 @@ type Group = {
   anchorHistoryCapacity: number;
   slotCount: number;
   members: Member[];
+  cohesionDiagnostics?: {
+    anchorSpeed: number;
+    maxMemberTargetDistance: number;
+    maxMemberCorrectionSpeed: number;
+    saturatedMembersCount: number;
+    followDelay: number;
+    elasticity: number;
+  };
 };
 
 export const ENEMY_GROUP_FORMATION_IDS = ["line.horizontal", "wedge", "column.vertical", "arc.forward", "ring"] as const;
@@ -255,6 +279,29 @@ function pushAnchorHistory(group: Group): void {
   group.anchorHistoryStart = (group.anchorHistoryStart + 1) % group.anchorHistoryCapacity;
 }
 
+function cohesionElasticity(group: Group): number {
+  if (group.cohesionId === "rigid") return 0;
+  const cap = group.params.cohesion.maxCatchupSpeed;
+  const limits = ENEMY_GROUP_PARAM_LIMITS.cohesion.maxCatchupSpeed;
+  const span = Math.max(1, limits.rigidDefault - limits.min);
+  return clamp(Math.round((limits.rigidDefault - cap) / span * 10), 0, 10);
+}
+
+function memberResponseTime(group: Group): number {
+  const elasticity = cohesionElasticity(group);
+  return 0.08 + (elasticity / 10) * 0.22;
+}
+
+function dynamicCatchUpCap(group: Group, distance: number): { cap: number; responseTime: number; anchorSpeed: number } {
+  const responseTime = memberResponseTime(group);
+  const anchorSpeed = Math.hypot(finite(group.vel?.x), finite(group.vel?.y));
+  const minimumCatchUpSpeed = group.params.cohesion.maxCatchupSpeed;
+  const anchorSpeedFactor = 1.35;
+  const distanceSpeed = distance / Math.max(0.001, responseTime);
+  const cap = Math.min(2400, Math.max(minimumCatchUpSpeed, anchorSpeed * anchorSpeedFactor, distanceSpeed));
+  return { cap, responseTime, anchorSpeed };
+}
+
 export function sampleAnchorHistoryForGroup(group: any, delaySeconds: number): Vec2 & { sampleAge: number } {
   const count = group.anchorHistoryCount;
   if (count <= 0) return { x: group.anchor.x, y: group.anchor.y, sampleAge: 0 };
@@ -303,6 +350,7 @@ export class EnemyGroupRegistry {
       anchorHistoryCapacity: 0,
       slotCount: Math.max(0, Math.floor(finite(req.count, 0))),
       members: [],
+      cohesionDiagnostics: { anchorSpeed: 0, maxMemberTargetDistance: 0, maxMemberCorrectionSpeed: 0, saturatedMembersCount: 0, followDelay: 0, elasticity: 0 },
     };
     resetAnchorHistory(group);
     if (req.fsmPreset) {
@@ -327,6 +375,7 @@ export class EnemyGroupRegistry {
   updateAnchors(dt: number, ctx: { playerPos: Vec2 | null; logicW: number; logicH: number; scrollX: number }): void {
     if (!(dt > 0)) return;
     for (const group of this.groups.values()) {
+      group.cohesionDiagnostics = { anchorSpeed: Math.hypot(finite(group.vel?.x), finite(group.vel?.y)), maxMemberTargetDistance: 0, maxMemberCorrectionSpeed: 0, saturatedMembersCount: 0, followDelay: group.followDelay, elasticity: cohesionElasticity(group) };
       const behaviorCtx = { dt, playerPos: ctx.playerPos, logicW: ctx.logicW, logicH: ctx.logicH };
       if (group.fsm && group.fsmEnt) {
         group.fsmEnt.pos = group.anchor;
@@ -347,7 +396,11 @@ export class EnemyGroupRegistry {
           const referenceSpeed = fsmMovementReferenceSpeed(group.fsm.movement);
           const rawVel = velocityFromFsmTarget(group.fsmEnt, target, dt, null);
           const vel = velocityFromFsmTarget(group.fsmEnt, target, dt, speed, referenceSpeed);
-          (group.fsm as any).speedDiagnostics = { baseSpeed: fsmBaseSpeed(group.fsm.preset as any), speedMultiplier: fsmSpeedMultiplier(state), effectiveSpeed: speed, movementPresetReferenceSpeed: referenceSpeed, rawVelocityX: rawVel.x, rawVelocityY: rawVel.y, finalVelocityX: vel.x, finalVelocityY: vel.y, integratedDeltaX: vel.x * dt, integratedDeltaY: vel.y * dt };
+          const integratedDeltaX = vel.x * dt;
+          const integratedDeltaY = vel.y * dt;
+          const scrollDeltaX = group.fsmLastScrollX - finite((group.fsm as any).lastDiagnosticsScrollX, group.fsmLastScrollX);
+          (group.fsm as any).lastDiagnosticsScrollX = group.fsmLastScrollX;
+          (group.fsm as any).speedDiagnostics = { baseSpeed: fsmBaseSpeed(group.fsm.preset as any), speedMultiplier: fsmSpeedMultiplier(state), effectiveSpeed: speed, movementPresetReferenceSpeed: referenceSpeed, rawVelocityX: rawVel.x, rawVelocityY: rawVel.y, finalVelocityX: vel.x, finalVelocityY: vel.y, integratedDeltaX, integratedDeltaY, worldSpeedMagnitude: Math.hypot(vel.x, vel.y), screenVelocityX: vel.x - (scrollDeltaX / dt), screenVelocityY: vel.y, screenDeltaX: integratedDeltaX - scrollDeltaX, screenDeltaY: integratedDeltaY, screenSpeedMagnitude: Math.hypot(vel.x - (scrollDeltaX / dt), vel.y) };
           group.vel.x = vel.x;
           group.vel.y = vel.y;
         } else {
@@ -382,29 +435,30 @@ export class EnemyGroupRegistry {
     const sample = group.followDelay > 0 ? sampleAnchorHistoryForGroup(group, membership.slotIndex * group.followDelay) : { x: group.anchor.x, y: group.anchor.y };
     const target = { x: sample.x + offset.x, y: sample.y + offset.y };
     ent.vel = ent.vel ?? { x: 0, y: 0 };
-    if (group.cohesionId === "rigid") {
-      let vx = (target.x - finite(ent.pos?.x)) / dt;
-      let vy = (target.y - finite(ent.pos?.y)) / dt;
-      const speed = Math.hypot(vx, vy);
-      const maxSpeed = group.params.cohesion.maxCatchupSpeed;
-      if (speed > maxSpeed) {
-        vx = vx / speed * maxSpeed;
-        vy = vy / speed * maxSpeed;
-      }
-      ent.vel.x = vx;
-      ent.vel.y = vy;
-      return true;
-    }
-    const maxSpeed = group.params.cohesion.maxCatchupSpeed;
-    const response = group.params.cohesion.response;
     const dx = target.x - finite(ent.pos?.x);
     const dy = target.y - finite(ent.pos?.y);
-    let vx = dx * response;
-    let vy = dy * response;
-    const speed = Math.hypot(vx, vy);
-    if (speed > maxSpeed) { vx = vx / speed * maxSpeed; vy = vy / speed * maxSpeed; }
+    const distance = Math.hypot(dx, dy);
+    const { cap, responseTime, anchorSpeed } = dynamicCatchUpCap(group, distance);
+    const desiredSpeed = distance / dt;
+    const correctionSpeed = Math.min(desiredSpeed, cap);
+    const overshootPrevented = desiredSpeed > cap ? false : distance > 0;
+    const scale = distance > 0.000001 ? correctionSpeed / distance : 0;
+    const vx = dx * scale;
+    const vy = dy * scale;
     ent.vel.x = vx;
     ent.vel.y = vy;
+    const actualCorrectionSpeed = Math.hypot(vx, vy);
+    const saturated = desiredSpeed > cap + 0.000001;
+    const diag: EnemyGroupMemberCohesionDiagnostics = { groupId: group.id, slotIndex: membership.slotIndex, followDelay: group.followDelay, targetX: target.x, targetY: target.y, distanceToTarget: distance, correctionVelocityX: vx, correctionVelocityY: vy, correctionSpeed: actualCorrectionSpeed, catchUpCap: cap, saturated, overshootPrevented, anchorSpeed, responseTime };
+    ent.groupCohesionDiagnostics = diag;
+    const summary = group.cohesionDiagnostics ?? { anchorSpeed: 0, maxMemberTargetDistance: 0, maxMemberCorrectionSpeed: 0, saturatedMembersCount: 0, followDelay: group.followDelay, elasticity: cohesionElasticity(group) };
+    summary.anchorSpeed = anchorSpeed;
+    summary.maxMemberTargetDistance = Math.max(summary.maxMemberTargetDistance, distance);
+    summary.maxMemberCorrectionSpeed = Math.max(summary.maxMemberCorrectionSpeed, actualCorrectionSpeed);
+    summary.saturatedMembersCount += saturated ? 1 : 0;
+    summary.followDelay = group.followDelay;
+    summary.elasticity = cohesionElasticity(group);
+    group.cohesionDiagnostics = summary;
     return true;
   }
 

@@ -147,7 +147,11 @@ export class EnemySystem {
             const referenceSpeed = fsmMovementReferenceSpeed(movement);
             const rawVel = velocityFromFsmTarget(e, target, dt, null);
             const vel = velocityFromFsmTarget(e, target, dt, speed, referenceSpeed);
-            (e.fsm as any).speedDiagnostics = { baseSpeed: fsmBaseSpeed(fsmRuntime.preset as any), speedMultiplier: fsmSpeedMultiplier(fsmResult.state), effectiveSpeed: speed, movementPresetReferenceSpeed: referenceSpeed, rawVelocityX: rawVel.x, rawVelocityY: rawVel.y, finalVelocityX: vel.x, finalVelocityY: vel.y, integratedDeltaX: vel.x * dt, integratedDeltaY: vel.y * dt };
+            const integratedDeltaX = vel.x * dt;
+            const integratedDeltaY = vel.y * dt;
+            const scrollDeltaX = scrollX - safeNum((e.fsm as any).lastDiagnosticsScrollX, scrollX);
+            (e.fsm as any).lastDiagnosticsScrollX = scrollX;
+            (e.fsm as any).speedDiagnostics = { baseSpeed: fsmBaseSpeed(fsmRuntime.preset as any), speedMultiplier: fsmSpeedMultiplier(fsmResult.state), effectiveSpeed: speed, movementPresetReferenceSpeed: referenceSpeed, rawVelocityX: rawVel.x, rawVelocityY: rawVel.y, finalVelocityX: vel.x, finalVelocityY: vel.y, integratedDeltaX, integratedDeltaY, worldSpeedMagnitude: Math.hypot(vel.x, vel.y), screenVelocityX: vel.x - (scrollDeltaX / dt), screenVelocityY: vel.y, screenDeltaX: integratedDeltaX - scrollDeltaX, screenDeltaY: integratedDeltaY, screenSpeedMagnitude: Math.hypot(vel.x - (scrollDeltaX / dt), vel.y) };
             e.vel.x = vel.x;
             e.vel.y = vel.y;
           }

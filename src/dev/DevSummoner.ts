@@ -1616,9 +1616,9 @@ export class DevSummoner {
       wrap.appendChild(labelNode); wrap.appendChild(dec); wrap.appendChild(valueNode); wrap.appendChild(inc);
       return { wrap, setValue(next: unknown) { const n = Number(next); value = Math.max(min, Number.isFinite(n) ? n : min); valueNode.textContent = format(value); dec.disabled = value <= min; applyIconButtonStyle(dec, dec.disabled); }, setDisabled(disabled: boolean) { for (const b of [dec, inc]) setIconButtonDisabled(b, disabled || (b === dec && value <= min)); } };
     };
-    const triggerTimeStepper = makeTriggerStepper("Time", 1, 0, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "time", { seconds: Math.max(0, Math.round(n)) }); renderPresetEditor(); });
-    const triggerXStepper = makeTriggerStepper("scrX", 10, 0, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "screenXBelow", { x: Math.round(n) }); renderPresetEditor(); });
-    const triggerHitStepper = makeTriggerStepper("Hit", 1, 1, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "hit", { ratio: 0.999 }); renderPresetEditor(); });
+    const triggerTimeStepper = makeTriggerStepper("Time", 1, 0, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "time", { seconds: Math.max(0, Math.round(n)) }); updateStateEditorLiveStatus(); });
+    const triggerXStepper = makeTriggerStepper("scrX", 10, 0, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "screenXBelow", { x: Math.round(n) }); updateStateEditorLiveStatus(); });
+    const triggerHitStepper = makeTriggerStepper("Hit", 1, 1, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "hit", { ratio: 0.999 }); updateStateEditorLiveStatus(); });
     const triggerHint = document.createElement("div"); triggerHint.id = "ds-fsm-trigger-next-hint"; triggerHint.style.cssText = "color:#aaa;"; triggerBlock.appendChild(triggerHint); editorSection.appendChild(triggerBlock);
     const advancedSection = document.createElement("details"); advancedSection.id = "ds-fsm-advanced"; advancedSection.setAttribute("data-fsm-editor-block", "Advanced"); advancedSection.style.cssText = "border-top:1px solid rgba(255,255,255,0.10);padding-top:4px;"; const advancedSummary = document.createElement("summary"); advancedSummary.textContent = "Advanced"; advancedSummary.style.cssText = "cursor:pointer;font-weight:bold;color:#fff;"; advancedSection.appendChild(advancedSummary);
     const advancedBody = document.createElement("div"); advancedBody.id = "ds-fsm-advanced-body"; advancedBody.style.cssText = "display:flex;flex-direction:column;gap:3px;padding-top:4px;color:#ccc;white-space:pre-wrap;"; advancedSection.appendChild(advancedBody); editorSection.appendChild(advancedSection);
@@ -1656,6 +1656,19 @@ export class DevSummoner {
       runtimeDiagnosticsSection.setAttribute("data-side", leftCandidate >= margin ? "left" : "right");
     };
     const handleRuntimeDiagnosticsKeydown = (ev: KeyboardEvent) => { if (ev.key === "Escape" && runtimeDiagnosticsDockOpen) { runtimeDiagnosticsDockOpen = false; renderPresetEditor(); } };
+    const updateStateEditorLiveStatus = () => {
+      const ad = authoringModel.draft;
+      dirtyBadge.textContent = authoringModel.readOnly ? "BUILT-IN / READ ONLY" : (ad?.dirty ? "DIRTY" : "Saved");
+      authoringDiagnostics.textContent = ad?.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code} ${x.path}: ${x.message}`).join("\n") ?? "";
+      const d = presetModel.details();
+      details.textContent = d ? `Source: ${d.source.toUpperCase()} | Schema: ${d.schemaVersion} | States: ${d.stateCount}
+Initial: ${d.initialState} | Validation: ${d.validationStatus}
+${d.states.join(", ")}` : "No preset selected";
+      const draft = presetModel.draft;
+      saveBtn.disabled = !draft || draft.source === "builtin" || (!draft.dirty && !authoringModel.canSave);
+      topSaveBtn.disabled = saveBtn.disabled;
+    };
+    const commitStateEditorLiveEdit = () => { updateStateEditorLiveStatus(); renderPresetEditor(); };
     const handleRuntimeDiagnosticsResize = () => { if (runtimeDiagnosticsDockOpen) positionRuntimeDiagnosticsPanel(); };
     document.addEventListener("keydown", handleRuntimeDiagnosticsKeydown);
     if (typeof window.addEventListener === "function") window.addEventListener("resize", handleRuntimeDiagnosticsResize);
@@ -1793,10 +1806,17 @@ ${d.states.join(", ")}` : "No preset selected";
     delStateBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id && window.confirm("Delete selected FSM state?")) { authoringModel.deleteState(id, true); authoringModel.normalizeSequentialTriggers(); } renderPresetEditor(); });
     movementPresetInput.addEventListener("change", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.setMovementPreset(id, movementPresetInput.value); renderPresetEditor(); });
     runtimeDiagnosticsToggle.addEventListener("click", () => { runtimeDiagnosticsDockOpen = !runtimeDiagnosticsDockOpen; renderPresetEditor(); });
-    const editStateFormationDraft = () => { const v = authoringModel.selectedStateView(); if (v) { authoringModel.setLabFormationField(v.id, "spacing", stateSpacingSlider.value); authoringModel.setLabFormationField(v.id, "elasticity", stateElasticitySlider.value); authoringModel.setLabFormationField(v.id, "followDelay", stateFollowSlider.value); authoringModel.setLabFormationField(v.id, "speedMultiplier", stateSpeedSlider.value); } renderPresetEditor(); };
-    for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateFollowSlider.slider, stateSpeedSlider.slider]) el.addEventListener("input", editStateFormationDraft);
+    const editStateFormationDraftLive = () => { const v = authoringModel.selectedStateView(); if (v) { authoringModel.setLabFormationField(v.id, "spacing", stateSpacingSlider.value); authoringModel.setLabFormationField(v.id, "elasticity", stateElasticitySlider.value); authoringModel.setLabFormationField(v.id, "followDelay", stateFollowSlider.value); authoringModel.setLabFormationField(v.id, "speedMultiplier", stateSpeedSlider.value); } updateStateEditorLiveStatus(); };
+    for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateFollowSlider.slider, stateSpeedSlider.slider]) {
+      el.addEventListener("input", editStateFormationDraftLive);
+      el.addEventListener("change", commitStateEditorLiveEdit);
+      el.addEventListener("pointerup", commitStateEditorLiveEdit);
+      el.addEventListener("blur", commitStateEditorLiveEdit);
+    }
     const editTrigger = () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, triggerSelect.value as any, {}); renderPresetEditor(); };
     triggerSelect.addEventListener("change", editTrigger);
+    triggerParamWrap.addEventListener("change", commitStateEditorLiveEdit);
+    triggerParamWrap.addEventListener("blur", commitStateEditorLiveEdit);
     for (const el of [enemySelect, groupEnemySelect]) el.addEventListener("change", () => { if (enemyLabMode === "fsm") { enemySelect.value = el.value; groupEnemySelect.value = el.value; editFsmBasicSetupDraft(); } });
     fsmSpacingSlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
     fsmElasticitySlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });

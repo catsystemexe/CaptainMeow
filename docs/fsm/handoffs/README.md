@@ -1,5 +1,7 @@
 # FSM implementation handoffs
 
+- [A4 — Preset loss and state Speed instability analysis](./A4-preset-loss-state-speed-analysis.md)
+
 Tento adresář obsahuje verzované výstupy jednotlivých implementačních sessions FSM projektu.
 
 Každá session musí:
@@ -13,6 +15,7 @@ Každá session musí:
 Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit, že dokument odpovídá aktuálnímu stavu repozitáře.
 
 - [A2 — Authoritative FSM Speed analysis](./A2-speed-analysis.md)
+- [U1.4.10 — Stable state editing and high-speed follow](./U1.4.10.md)
 - [U1.4.9 — General group Follow delay](./U1.4.9.md)
 - [U1.4.8 — Synchronize Basic Setup into FSM authoring draft](./U1.4.8.md)
 ## Sessions
