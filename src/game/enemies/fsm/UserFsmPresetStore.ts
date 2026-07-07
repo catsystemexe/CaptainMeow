@@ -181,11 +181,32 @@ export class UserFsmPresetStore {
     return this.commit(next, accepted.diagnostics);
   }
 
-  delete(id: string): UserFsmPresetMutationResult {
+  renameUserPreset(id: string, nextName: string): UserFsmPresetMutationResult {
+    if (this.builtinRegistry.has(id)) return this.remember({ ok: false, diagnostics: [diag("error", "E_BUILTIN_READONLY", `FSM preset ID ${id} is built-in and cannot be renamed.`, { presetId: id })] });
+    const trimmed = nextName.trim();
+    if (!trimmed) return this.remember({ ok: false, diagnostics: [diag("error", "E_RENAME_EMPTY_NAME", "FSM user preset name cannot be empty.", { presetId: id })] });
+    const existing = this.userPresets.get(id);
+    if (!existing) return this.remember({ ok: false, diagnostics: [diag("error", "E_RENAME_UNKNOWN_ID", `FSM user preset ID ${id} does not exist.`, { presetId: id })] });
+    if (existing.metadata.name === trimmed) return this.remember({ ok: true, diagnostics: [] });
+    const next = new Map(this.userPresets);
+    const candidate = clonePlain(existing);
+    candidate.metadata = { ...candidate.metadata, name: trimmed, source: "user", schemaVersion: FSM_SCHEMA_VERSION };
+    const accepted = this.acceptPreset(candidate, next, "replace-user");
+    if (!accepted.ok || !accepted.preset) return this.remember({ ok: false, diagnostics: accepted.diagnostics });
+    next.set(id, accepted.preset);
+    return this.commit(next, accepted.diagnostics);
+  }
+
+  deleteUserPreset(id: string): UserFsmPresetMutationResult {
     if (this.builtinRegistry.has(id)) return this.remember({ ok: false, diagnostics: [diag("error", "E_BUILTIN_READONLY", `FSM preset ID ${id} is built-in and cannot be deleted.`, { presetId: id })] });
+    if (!this.userPresets.has(id)) return this.remember({ ok: false, diagnostics: [diag("error", "E_DELETE_UNKNOWN_ID", `FSM user preset ID ${id} does not exist.`, { presetId: id })] });
     const next = new Map(this.userPresets);
     next.delete(id);
     return this.commit(next, []);
+  }
+
+  delete(id: string): UserFsmPresetMutationResult {
+    return this.deleteUserPreset(id);
   }
 
   clear(): UserFsmPresetMutationResult {

@@ -60,17 +60,28 @@ export class FsmPresetEditorModel {
     const next = clone(preset) as FsmPresetSchemaV1;
     next.metadata = { ...next.metadata, id: d.id.trim(), name: d.label.trim(), source: "user", schemaVersion: FSM_SCHEMA_VERSION };
     next.basicSetup = cloneBasicSetup(d.basicSetup);
-    const renamed = d.id.trim() !== d.originalId ? this.store.delete(d.originalId) : { ok: true, diagnostics: [] };
+    const trimmedId = d.id.trim();
+    const renamed = trimmedId !== d.originalId ? this.store.rename(d.originalId, trimmedId, d.label.trim()) : { ok: true, diagnostics: [] };
     if (!renamed.ok) return this.afterMutation(renamed, d.originalId);
-    return this.afterMutation(this.store.upsert(next), d.id.trim());
+    return this.afterMutation(this.store.upsert(next), trimmedId);
+  }
+
+  renameSelected(nextName: string): FsmPresetOperationResult {
+    const d = this.draft;
+    if (!d) return this.fail("E_RENAME_NO_SELECTION", "No FSM preset is selected.");
+    if (d.source === "builtin") return this.fail("E_BUILTIN_READONLY", "Built-in presets cannot be renamed.", d.originalId);
+    const trimmed = nextName.trim();
+    if (!trimmed) return this.fail("E_RENAME_EMPTY_NAME", "FSM user preset name cannot be empty.", d.originalId);
+    if (trimmed === this.currentLabel(d.originalId)) return this.ok();
+    return this.afterMutation(this.store.renameUserPreset(d.originalId, trimmed), d.originalId);
   }
 
   delete(id = this.selectedId, confirmed = false): FsmPresetOperationResult {
     if (!confirmed) return this.fail("E_DELETE_CONFIRM_REQUIRED", "Deleting a user preset requires confirmation.", id);
     if (this.store.registry().sourceOf(id) === "builtin") return this.fail("E_BUILTIN_READONLY", "Built-in presets cannot be deleted.", id);
     const before = this.list(); const index = before.findIndex((x) => x.id === id);
-    const fallback = before[index - 1]?.id || before.find((x) => x.source === "builtin")?.id || "";
-    return this.afterMutation(this.store.delete(id), fallback);
+    const fallback = before.slice(index + 1).find((x) => x.source === "user")?.id || before.slice(0, index).reverse().find((x) => x.source === "user")?.id || before.find((x) => x.source === "builtin")?.id || "";
+    return this.afterMutation(this.store.deleteUserPreset(id), fallback);
   }
 
   importJson(text: string, collisionPolicy: ImportCollisionPolicy): FsmPresetOperationResult { const r = this.store.importJson(text, { collisionPolicy }); return this.afterMutation(r, r.importedIds[0] || this.selectedId, { importedIds: r.importedIds }); }

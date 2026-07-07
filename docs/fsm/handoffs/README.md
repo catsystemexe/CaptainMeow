@@ -61,3 +61,4 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [A3 — Speed, high-speed stutter, and silent reset analysis](./A3-speed-stutter-reset-analysis.md)
 
 - [U1.4.12 — Trigger time live UI synchronization](U1.4.12.md)
+- [U1.4.13 — User preset rename and delete](U1.4.13.md)
