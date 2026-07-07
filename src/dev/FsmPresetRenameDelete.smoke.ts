@@ -1,0 +1,54 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { CONTENT } from "../game/content/CONTENT";
+import { createUserFsmPresetStore, FSM_SCHEMA_VERSION, asFsmStateId, type FsmPresetSchemaV1, type KeyValueStorage } from "../game/enemies/fsm";
+import { FsmPresetAuthoringModel } from "./FsmPresetAuthoringModel";
+import { FsmPresetEditorModel } from "./FsmPresetEditorModel";
+
+class MemoryStorage implements KeyValueStorage { data = new Map<string, string>(); getItem(k: string) { return this.data.get(k) ?? null; } setItem(k: string, v: string) { this.data.set(k, v); } removeItem(k: string) { this.data.delete(k); } }
+function preset(id: string, name: string): FsmPresetSchemaV1 { return { schemaVersion: FSM_SCHEMA_VERSION, metadata: { id, name, source: "user", schemaVersion: FSM_SCHEMA_VERSION }, graph: { initialStateId: asFsmStateId("idle"), states: [{ id: asFsmStateId("idle"), label: "Idle", movement: { base: { type: "movementPreset", params: { presetId: "none.hold" } }, modifiers: [] }, targeting: { type: "forward" }, combat: { mode: "disabled" }, lifecycle: { enterActions: [] }, transitions: [] }] } }; }
+
+const store = createUserFsmPresetStore({ builtinRegistry: CONTENT.builtinFsmPresets, storage: new MemoryStorage(), nowIso: () => "2026-07-07T00:00:00.000Z" });
+for (let i = 1; i <= 3; i++) assert.equal(store.upsert(preset(`fsm.user.ui-${i}`, `UI User ${i}`)).ok, true);
+const builtinId = CONTENT.builtinFsmPresets.list()[0]!.id;
+const model = new FsmPresetEditorModel(store, builtinId);
+assert.equal(model.draft?.source, "builtin", "built-in selection is read-only");
+assert.equal(model.renameSelected("Nope").ok, false, "built-in rename rejected");
+assert.equal(model.delete(builtinId, true).ok, false, "built-in delete rejected");
+assert.equal(model.select("fsm.user.ui-2").ok, true, "user preset selected");
+const beforeGraph = JSON.stringify(store.get("fsm.user.ui-2")!.graph);
+assert.equal(model.renameSelected("  UI User Two  ").ok, true, "user rename confirmed");
+assert.equal(model.selectedId, "fsm.user.ui-2", "rename keeps same selection ID");
+assert.equal(model.draft?.label, "UI User Two", "current label refreshes immediately");
+assert.equal(model.list().find((x) => x.id === "fsm.user.ui-2")?.label, "UI User Two", "list label refreshes immediately");
+assert.equal(JSON.stringify(store.get("fsm.user.ui-2")!.graph), beforeGraph, "rename preserves graph content");
+assert.equal(model.renameSelected("   ").ok, false, "whitespace rename rejected");
+assert.equal(model.draft?.label, "UI User Two", "invalid rename preserves current label");
+const authoring = new FsmPresetAuthoringModel(store, "fsm.user.ui-2");
+assert.equal(authoring.setPresetDescription("dirty draft").ok, true, "draft made dirty");
+assert.equal(authoring.draft?.dirty, true, "dirty draft remains dirty before rename");
+assert.equal(model.renameSelected("Dirty Name Persisted").ok, true, "rename persists while content draft is dirty");
+assert.equal(authoring.draft?.dirty, true, "rename does not save dirty draft content");
+assert.equal(authoring.draft?.preset.metadata.description, "dirty draft", "dirty draft content remains in memory");
+const countBeforeCancel = model.list().filter((x) => x.source === "user").length;
+assert.equal(model.delete("fsm.user.ui-2", false).ok, false, "delete requires confirmation/cancel leaves model unchanged");
+assert.equal(model.selectedId, "fsm.user.ui-2", "delete cancel preserves selection");
+assert.equal(model.list().filter((x) => x.source === "user").length, countBeforeCancel, "delete cancel preserves user count");
+assert.equal(model.delete("fsm.user.ui-2", true).ok, true, "confirmed delete succeeds");
+assert.equal(store.get("fsm.user.ui-2"), undefined, "confirmed delete removes selected preset");
+assert.equal(model.selectedId, "fsm.user.ui-3", "delete falls back to next user preset");
+assert(model.draft, "fallback draft loaded");
+assert.equal(model.draft?.source, "user", "fallback editor loads selected user preset");
+assert.equal(model.delete("fsm.user.ui-3", true).ok, true, "delete next user succeeds");
+assert.equal(model.selectedId, "fsm.user.ui-1", "delete falls back to previous user preset when no next user exists");
+assert.equal(model.delete("fsm.user.ui-1", true).ok, true, "delete last user succeeds");
+assert.equal(store.registry().sourceOf(model.selectedId), "builtin", "delete falls back to first built-in when no users remain");
+const source = readFileSync("src/dev/DevSummoner.ts", "utf8");
+assert(source.includes("setIconButtonDisabled(topRenameBtn, readOnly)"), "rename control disabled for built-ins");
+assert(source.includes("setIconButtonDisabled(topDeleteBtn, readOnly)"), "delete control disabled for built-ins");
+assert(source.includes("input.value = draft.label"), "rename dialog pre-fills current name");
+assert(source.includes("openDevDialog") && !source.includes("window.prompt(\"Rename FSM user preset"), "rename uses in-app dialog instead of prompt");
+assert(source.includes("Delete preset \"${selectedLabel}\"?"), "delete confirmation identifies preset name");
+assert(source.includes("This preset has unsaved changes."), "delete confirmation warns about dirty drafts");
+assert(source.includes("makeIconBtn(Pencil, \"Pencil\"") && source.includes("makeIconBtn(Trash2, \"Trash2\""), "compact edit/trash Lucide icons are used");
+console.log("[SMOKE] FsmPresetRenameDelete OK ✅");

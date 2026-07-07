@@ -2,18 +2,65 @@ import type { EventBus } from "../engine/core/EventBus";
 import { EventType, type CMEventMap } from "../engine/core/events";
 import type { WorldState } from "../game/data/WorldState";
 import { ENEMY_DEFS } from "../game/defs/EnemyDefs";
+import { CONTENT } from "../game/content/CONTENT";
+import { FsmPresetEditorModel } from "./FsmPresetEditorModel";
+import { FsmPresetAuthoringModel } from "./FsmPresetAuthoringModel";
+import { FsmPreviewSession, resolveEphemeralFsmPreset } from "./FsmPreviewSession";
 import { EnemyBehaviorPresets } from "../game/enemies/EnemyBehaviorPresets";
-import { BEHAVIOR_GRAPHS } from "../game/content/CONTENT";
+import { getFsmDebugSnapshot, type FsmDebugSnapshot } from "../game/enemies/fsm";
 import { ENEMY_GROUP_COHESION_IDS, ENEMY_GROUP_FORMATION_IDS, ENEMY_GROUP_PARAM_LIMITS, normalizeEnemyGroupParams, normalizeGroupFormationStartAngle } from "../game/enemies/EnemyGroups";
 import type { CohesionId, FormationId } from "../game/enemies/EnemyGroups";
+import { ENEMY_LAB_BASIC_SETUP_LIMITS } from "./EnemyLabPresetModel";
+import { findLatestFsmRuntimeDiagnostics, renderFsmRuntimeDiagnosticsText } from "./FsmRuntimeDiagnostics";
+import { Copy, Pencil, Plus, RotateCcw, Save, Trash2, TriangleAlert } from "lucide";
+import { createDevIconButton, setDevIconButtonDisabled } from "./ui/iconButton";
+import { createLucideIcon } from "./ui/lucideIcon";
+import { openDevDialog } from "./ui/devDialog";
 
+export const DEV_SUMMONER_PANEL_ID = "dev-summoner";
+export const FSM_PRESET_EDITOR_ID = "ds-fsm-preset-editor";
+export const ENEMY_LAB_DEBUG_PANEL_ID = "ds-enemy-lab-debug";
 const EMPTY_ENEMY_LAB = "No FSM enemy selected/spawned.";
 type MovementClassId = "dumb" | "smart";
 type SpawnMode = "enemy" | "group";
+type EnemyLabMode = "simple" | "smart" | "fsm";
+type FsmElasticitySettings = {
+  cohesionId: CohesionId;
+  response: number;
+  maxCatchupSpeed: number;
+};
 
 type MovementGroups = Record<MovementClassId, Record<string, string[]>>;
+type RetainedFsmInspectionStatus = "live" | "ended";
+type RetainedFsmInspectionEndReason = "despawned" | "removed";
+
+export interface RetainedFsmInspection {
+  readonly graph: readonly unknown[];
+  readonly runtime: FsmDebugSnapshot;
+  readonly status: RetainedFsmInspectionStatus;
+  readonly endReason?: RetainedFsmInspectionEndReason;
+  readonly typeId?: string;
+  readonly hpLabel?: string;
+  readonly position?: ReturnType<typeof getEnemyPositionDebug>;
+}
 
 type CompactSelectOption = { value: string; label: string; disabled?: boolean };
+
+export function createDevSummonerPanelStyle(): string {
+  return [
+    "position:fixed", "top:8px", "right:8px", "z-index:9999",
+    "background:rgba(0,0,0,0.75)", "border:1px solid #444",
+    "color:#eee", "font:12px monospace", "padding:3px",
+    "border-radius:2px", "display:flex", "flex-direction:column", "gap:5px",
+    "width:clamp(220px, 32vw, 264px)",
+    "min-width:min(220px, calc(100vw - 16px))",
+    "max-width:min(264px, calc(100vw - 16px))",
+    "max-height:calc(100vh - 16px)",
+    "box-sizing:border-box",
+    "overflow-x:hidden",
+    "overflow-y:auto",
+  ].join(";");
+}
 
 export function groupFormationSelectOptions(): Array<{ value: FormationId; label: string }> {
   const formationLabel = (id: FormationId) => id === "line.horizontal" ? "Line"
@@ -30,6 +77,22 @@ const CONTROL_FONT = "12px monospace";
 const CONTROL_BG = "#111";
 const CONTROL_BORDER = "1px solid rgba(255,255,255,0.24)";
 const LABEL_WEIGHT = "800";
+const ICONS = { new: "+", edit: "✎", save: "✓", delete: "×", trash: "🗑", reset: "↻", duplicate: "⧉", up: "↑", down: "↓", stop: "■" } as const;
+
+function applyIconButtonStyle(button: HTMLButtonElement, disabled = false): void {
+  button.className = "preset-toolbar-button";
+  button.style.cssText = `display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:26px;min-height:26px;padding:0;font:14px/1 monospace;background:${disabled ? "#1a1a1a" : "transparent"};color:${disabled ? "#666" : "#eee"};border:1px solid transparent;border-radius:${CONTROL_RADIUS_PX}px;cursor:${disabled ? "not-allowed" : "pointer"};box-sizing:border-box;vertical-align:middle;`;
+}
+
+function setIconButtonDisabled(button: HTMLButtonElement, disabled: boolean): void {
+  if (button.getAttribute("data-preset-toolbar-action")) {
+    setDevIconButtonDisabled(button, disabled);
+    return;
+  }
+  button.disabled = disabled;
+  applyIconButtonStyle(button, disabled);
+}
+
 
 function applyControlBaseStyle(el: HTMLElement): void {
   el.style.boxSizing = "border-box";
@@ -111,49 +174,52 @@ function esc(v: unknown): string {
 }
 
 
-function describeTrigger(trigger: any): string {
-  if (!trigger) return "none";
-  if (trigger.kind === "xLessThan") return `screenX < ${formatNum(trigger.x)}`;
-  if (trigger.kind === "timeInState") return `timeInState > ${formatNum(trigger.seconds)}s`;
-  if (trigger.kind === "hpBelow") return `hp < ${formatNum(Number(trigger.ratio) * 100)}%`;
-  if (trigger.kind === "offscreen") return `offscreen ${String(trigger.side ?? "?")}`;
-  return String(trigger.kind ?? "unknown");
+
+function describeResolvedCondition(condition: any): string {
+  if (!condition) return "none";
+  if (condition.type === "screenXBelow") return `screenX < ${formatNum(condition.params?.x)}`;
+  if (condition.type === "timeInState") return `timeInState ≥ ${formatNum(condition.params?.seconds)}s`;
+  if (condition.type === "hpBelow") return `hp < ${formatNum(Number(condition.params?.ratio) * 100)}%`;
+  if (condition.type === "offscreen") return `offscreen ${String(condition.params?.side ?? "?")}`;
+  if (condition.type === "distanceToPlayer") return `distance ${String(condition.params?.op ?? "?")} ${formatNum(condition.params?.px)}`;
+  return String(condition.type ?? "unknown");
 }
 
 function describeNextTransition(state: any): string {
-  return describeTrigger(state?.transitions?.[0]?.when);
+  const transitions = state?.transitions;
+  if (!Array.isArray(transitions) || transitions.length === 0) return "none";
+  return transitions.map((t: any) => describeResolvedCondition(t?.condition)).join(" | ");
 }
 
 function describeStateMovement(state: any): string {
-  return String(state?.movementPresetId ?? "none");
+  const base = state?.movement?.base;
+  if (base?.type === "movementPreset") return String(base.params?.presetId ?? "none");
+  return String(base?.type ?? "none");
 }
 
 function describeStateAttack(state: any): string {
-  return String(state?.attackProfileId ?? "none");
+  const combat = state?.combat;
+  if (combat?.mode === "profile") return String(combat.profileId ?? "none");
+  return String(combat?.mode ?? "disabled");
 }
 
-function renderFsmGraphView(graphId: string, currentStateId: string): string {
-  const graph = graphId ? BEHAVIOR_GRAPHS[graphId] : undefined;
-  if (!graph?.states) return `<div><b>FSM Graph</b><br>none</div>`;
+function renderFsmGraphView(runtime: FsmDebugSnapshot, states: readonly any[]): string {
+  if (!states.length) return `<div><b>FSM Graph</b><br>none</div>`;
 
-  const blocks: string[] = [`<div style="margin-top:6px;font-weight:bold;font-size:12px;">FSM Graph</div>`];
+  const blocks: string[] = [`<div style="margin-top:6px;font-weight:bold;font-size:12px;">FSM Preset ${esc(runtime.presetId)}</div>`];
 
-  for (const [stateId, state] of Object.entries(graph.states)) {
-    const active = stateId === currentStateId;
-    const title = `${active ? "▶ " : ""}${esc(stateId)}`;
-
-    const transitions = (state as any)?.transitions;
-    const next = Array.isArray(transitions) && transitions.length > 0
-    ? transitions.map((t: any) => describeTrigger(t?.when)).join(" | ")
-    : "none";
+  states.forEach((state, index) => {
+    const active = index === runtime.stateIndex;
+    const title = `${active ? "▶ " : ""}${esc(state?.label || state?.id || index)}`;
 
     blocks.push(`<div style="margin-top:3px;padding:3px 5px;background:rgba(255,255,255,0.08);border-radius:3px;font-size:11px;line-height:1.15;">
 <div style="font-weight:bold;background:rgba(255,255,255,0.10);padding:1px 3px;margin:-1px -3px 2px -3px;border-radius:2px;">${title}</div>
+<div><b>id:</b> ${esc(state?.id ?? index)}</div>
 <div><b>mov:</b> ${esc(describeStateMovement(state))}</div>
 <div><b>atk:</b> ${esc(describeStateAttack(state))}</div>
-<div><b>next:</b> ${esc(next)}</div>
+<div><b>next:</b> ${esc(describeNextTransition(state))}</div>
 </div>`);
-  }
+  });
 
   return blocks.join("");
 }
@@ -175,20 +241,67 @@ function getEnemyPositionDebug(enemy: any, scrollX: number) {
   };
 }
 
-function getFsmRuntimeDebug(enemy: any) {
-  const def = ENEMY_DEFS[String(enemy?.typeId)];
-  const graphId = def?.behaviorGraphId ?? "";
-  const graph = graphId ? BEHAVIOR_GRAPHS[graphId] : undefined;
-  const stateId = String(enemy?.fsm?.current ?? graph?.initial ?? "?");
-  const state = graph?.states?.[stateId];
-  return {
-    graphId,
-    stateId,
-    age: Number(enemy?.fsm?.age ?? 0),
-    next: describeNextTransition(state),
-    movement: String(state?.movementPresetId ?? "none"),
-    attack: String(state?.attackProfileId ?? "none"),
-  };
+function getFsmRuntimeDebug(enemy: any): FsmDebugSnapshot | null {
+  return getFsmDebugSnapshot(enemy);
+}
+
+function cloneFsmRuntimeDebug(runtime: FsmDebugSnapshot): FsmDebugSnapshot {
+  return Object.freeze({
+    ...runtime,
+    modifierTypes: Object.freeze([...runtime.modifierTypes]),
+  });
+}
+
+function cloneFsmGraphViewStates(states: readonly unknown[]): readonly unknown[] {
+  return Object.freeze(states.map((state: any) => Object.freeze({
+    id: state?.id,
+    label: state?.label,
+    movement: state?.movement ? Object.freeze({
+      base: state.movement.base ? Object.freeze({
+        type: state.movement.base.type,
+        params: Object.freeze({ ...(state.movement.base.params ?? {}) }),
+      }) : undefined,
+      modifiers: Object.freeze([...(state.movement.modifiers ?? [])].map((modifier: any) => Object.freeze({
+        type: modifier?.type,
+        params: Object.freeze({ ...(modifier?.params ?? {}) }),
+      }))),
+    }) : undefined,
+    combat: state?.combat ? Object.freeze({ ...state.combat }) : undefined,
+    transitions: Object.freeze([...(state?.transitions ?? [])].map((transition: any) => Object.freeze({
+      condition: transition?.condition ? Object.freeze({
+        type: transition.condition.type,
+        params: Object.freeze({ ...(transition.condition.params ?? {}) }),
+      }) : undefined,
+      targetStateIndex: transition?.targetStateIndex,
+      targetStateId: transition?.targetStateId,
+    }))),
+  })));
+}
+
+export function createLiveFsmInspection(enemy: any, scrollX = 0): RetainedFsmInspection | null {
+  const runtime = getFsmRuntimeDebug(enemy);
+  const states = enemy?.fsm?.preset?.states;
+  if (!runtime || !Array.isArray(states)) return null;
+  return Object.freeze({
+    graph: cloneFsmGraphViewStates(states),
+    runtime: cloneFsmRuntimeDebug(runtime),
+    status: "live" as const,
+    typeId: typeof enemy?.typeId === "string" ? enemy.typeId : undefined,
+    hpLabel: getEnemyHpLabel(enemy),
+    position: Object.freeze(getEnemyPositionDebug(enemy, scrollX)),
+  });
+}
+
+export function endFsmInspection(previous: RetainedFsmInspection | null, endReason: RetainedFsmInspectionEndReason = "removed"): RetainedFsmInspection | null {
+  if (!previous) return null;
+  return Object.freeze({
+    ...previous,
+    status: "ended" as const,
+    endReason,
+    runtime: cloneFsmRuntimeDebug(previous.runtime),
+    graph: cloneFsmGraphViewStates(previous.graph),
+    position: previous.position ? Object.freeze({ ...previous.position }) : undefined,
+  });
 }
 
 function createSelectLabel(text: string, prominence: "primary" | "secondary" = "primary"): HTMLLabelElement {
@@ -267,19 +380,18 @@ function createCompactSelect(id: string): {
   list.setAttribute("role", "listbox");
   list.style.cssText = [
     "display:none",
-    "position:absolute",
+    "position:fixed",
     "left:0",
-    "right:0",
-    "top:100%",
+    "top:0",
     "z-index:10000",
-    "max-height:132px",
+    "max-height:min(520px, calc(100vh - 16px))",
     "overflow:auto",
     "background:#111",
     "border:1px solid #666",
     "border-radius:2px",
     "box-shadow:0 3px 8px rgba(0,0,0,0.45)",
   ].join(";");
-  root.appendChild(list);
+  document.body.appendChild(list);
 
   let options: CompactSelectOption[] = [];
   let value = "";
@@ -289,12 +401,27 @@ function createCompactSelect(id: string): {
     list.style.display = "none";
     button.setAttribute("aria-expanded", "false");
   };
+  const positionList = () => {
+    const r = button.getBoundingClientRect();
+    const listWidth = Math.max(180, Math.round(r.width));
+    const margin = 8;
+    const rightLeft = r.right + margin;
+    const leftLeft = r.left - listWidth - margin;
+    const fitsRight = rightLeft + listWidth <= window.innerWidth - margin;
+    const left = fitsRight ? rightLeft : Math.max(margin, leftLeft);
+    list.style.left = `${left}px`;
+    list.style.top = `${Math.min(Math.max(margin, r.top), Math.max(margin, window.innerHeight - 150))}px`;
+    list.style.width = `${Math.min(listWidth, Math.max(120, window.innerWidth - margin * 2))}px`;
+    list.setAttribute("data-side", fitsRight ? "right" : "left");
+  };
   const open = () => {
     if (button.disabled) return;
+    positionList();
     list.style.display = "block";
     button.setAttribute("aria-expanded", "true");
   };
   const selectedLabel = () => options.find((option) => option.value === value)?.label ?? "(none)";
+  const isOpen = () => list.style.display !== "none";
 
   const choose = (nextValue: string) => {
     if (value === nextValue) {
@@ -334,7 +461,8 @@ function createCompactSelect(id: string): {
     }
   };
 
-  button.addEventListener("click", () => {
+  button.addEventListener("click", (ev) => {
+    ev.stopPropagation();
     if (list.style.display === "none") open();
     else close();
   });
@@ -356,9 +484,13 @@ function createCompactSelect(id: string): {
     choose(enabled[(currentIndex + delta + enabled.length) % enabled.length].value);
   });
   const handleDocumentClick = (ev: MouseEvent) => {
-    if (!root.contains(ev.target as Node)) close();
+    if (!root.contains(ev.target as Node) && !list.contains(ev.target as Node)) close();
   };
+  const handleDocumentKeydown = (ev: KeyboardEvent) => { if (ev.key === "Escape") close(); };
+  const handleWindowResize = () => { if (list.style.display !== "none") positionList(); };
   document.addEventListener("click", handleDocumentClick);
+  document.addEventListener("keydown", handleDocumentKeydown);
+  if (typeof window.addEventListener === "function") window.addEventListener("resize", handleWindowResize);
 
   return {
     root,
@@ -371,14 +503,24 @@ function createCompactSelect(id: string): {
       value = nextValue && options.some((option) => option.value === nextValue) ? nextValue : (options.find((option) => !option.disabled)?.value ?? options[0]?.value ?? "");
       button.disabled = options.length === 0 || options.every((option) => option.disabled);
       button.textContent = selectedLabel();
+      const wasOpen = isOpen();
       renderOptions();
-      close();
+      if (wasOpen) {
+        positionList();
+        list.style.display = "block";
+        button.setAttribute("aria-expanded", "true");
+      } else {
+        close();
+      }
     },
     addEventListener(_type: "change", listener: () => void) {
       listeners.push(listener);
     },
     destroy() {
       document.removeEventListener("click", handleDocumentClick);
+      document.removeEventListener("keydown", handleDocumentKeydown);
+      if (typeof window.removeEventListener === "function") window.removeEventListener("resize", handleWindowResize);
+      list.remove();
     },
   };
 }
@@ -393,13 +535,17 @@ export function createDevSummonerSpawnPayload(input: {
   typeId: string;
   spawnX: number;
   spawnY: number;
-  behaviorPresetId: string;
+  behaviorPresetId?: string;
+  fsmPresetId?: string;
+  resolvedFsmPresetOverride?: CMEventMap[typeof EventType.SPAWN_ENEMY]["resolvedFsmPresetOverride"];
   devManualSpawnId: number;
 }) {
   return {
     typeId: input.typeId,
     spawn: { x: input.spawnX, y: input.spawnY },
-    behaviorPresetId: input.behaviorPresetId,
+    ...(input.behaviorPresetId ? { behaviorPresetId: input.behaviorPresetId } : {}),
+    ...(input.fsmPresetId ? { fsmPresetId: input.fsmPresetId } : {}),
+    ...(input.resolvedFsmPresetOverride ? { resolvedFsmPresetOverride: input.resolvedFsmPresetOverride } : {}),
     devManualSpawnId: input.devManualSpawnId,
   };
 }
@@ -412,6 +558,58 @@ export function normalizeGroupCount(value: unknown): number {
 
 export function stepGroupCount(value: unknown, delta: -1 | 1): number {
   return normalizeGroupCount(normalizeGroupCount(value) + delta);
+}
+
+export function normalizeFsmSpawnCount(value: unknown): number {
+  const raw = Number(value);
+  const n = Number.isFinite(raw) ? Math.floor(raw) : 1;
+  return Math.min(10, Math.max(1, n));
+}
+
+export function stepFsmSpawnCount(value: unknown, delta: -1 | 1): number {
+  return normalizeFsmSpawnCount(normalizeFsmSpawnCount(value) + delta);
+}
+
+export function normalizeFsmElasticity(value: unknown): number {
+  const raw = Number(value);
+  const n = Number.isFinite(raw) ? Math.floor(raw) : 0;
+  return Math.min(10, Math.max(0, n));
+}
+
+export function mapElasticityToGroupSettings(value: unknown): FsmElasticitySettings {
+  const elasticity = normalizeFsmElasticity(value);
+  const catchLimits = ENEMY_GROUP_PARAM_LIMITS.cohesion.maxCatchupSpeed;
+  const responseLimits = ENEMY_GROUP_PARAM_LIMITS.cohesion.response;
+  if (elasticity === 0) {
+    return {
+      cohesionId: "rigid",
+      response: responseLimits.default,
+      maxCatchupSpeed: catchLimits.rigidDefault,
+    };
+  }
+  const t = elasticity / 10;
+  // U1.2 keeps the existing group runtime contract and maps one UI slider onto
+  // the existing elastic response/catch-up fields deterministically. Higher
+  // elasticity means softer response and slower catch-up within current limits.
+  return {
+    cohesionId: "elastic",
+    response: Math.round(responseLimits.max - (responseLimits.max - responseLimits.min) * t),
+    maxCatchupSpeed: Math.round((catchLimits.rigidDefault - (catchLimits.rigidDefault - catchLimits.min) * t) / catchLimits.step) * catchLimits.step,
+  };
+}
+
+export function mapUiSpawnYToRuntimeY(value: unknown, logicH: number): number {
+  const maxY = Math.max(0, logicH);
+  const raw = Number(value);
+  const uiY = Number.isFinite(raw) ? Math.min(maxY, Math.max(0, raw)) : 260;
+  return maxY - uiY;
+}
+
+export function mapFsmSpacingToFormationParams(formationId: FormationId, spacing: unknown): { spacing: number; radius?: number } {
+  const normalizedSpacing = normalizeGroupStepperValue("spacing", spacing);
+  return formationId === "arc.forward" || formationId === "ring"
+    ? { spacing: normalizedSpacing, radius: normalizedSpacing }
+    : { spacing: normalizedSpacing };
 }
 
 type GroupParamKey = "spacing" | "depth" | "radius" | "angle" | "startAngle" | "response" | "maxCatchupSpeed";
@@ -475,6 +673,9 @@ export function createDevSummonerGroupSpawnPayload(input: {
   formationId: string;
   movementPresetId: string;
   cohesionId: string;
+  fsmPresetId?: string;
+  devManualSpawnId?: number;
+  resolvedFsmPresetOverride?: CMEventMap[typeof EventType.SPAWN_ENEMY_GROUP]["resolvedFsmPresetOverride"];
   params?: CMEventMap[typeof EventType.SPAWN_ENEMY_GROUP]["params"];
 }): CMEventMap[typeof EventType.SPAWN_ENEMY_GROUP] | null {
   if (!isValidEnemyTypeId(input.enemyTypeId)) return null;
@@ -490,6 +691,9 @@ export function createDevSummonerGroupSpawnPayload(input: {
     formationId: input.formationId,
     movementPresetId: input.movementPresetId,
     cohesionId: input.cohesionId,
+    ...(input.fsmPresetId ? { fsmPresetId: input.fsmPresetId } : {}),
+    ...(input.resolvedFsmPresetOverride ? { resolvedFsmPresetOverride: input.resolvedFsmPresetOverride } : {}),
+    ...(typeof input.devManualSpawnId === "number" ? { devManualSpawnId: input.devManualSpawnId } : {}),
     params,
   };
 }
@@ -515,6 +719,7 @@ export class DevSummoner {
   private panel: HTMLElement | null = null;
   private latestManualSpawnId = 0;
   private refreshTimer: number | null = null;
+  private retainedFsmInspection: RetainedFsmInspection | null = null;
   private readonly cleanupHandlers: Array<() => void> = [];
 
   constructor(
@@ -527,27 +732,68 @@ export class DevSummoner {
   init(): void {
     if (this.panel) return;
     const panel = document.createElement("div");
-    panel.id = "dev-summoner";
-    panel.style.cssText = [
-      "position:fixed","top:8px","right:8px","z-index:9999",
-      "background:rgba(0,0,0,0.75)","border:1px solid #444",
-      "color:#eee","font:12px monospace","padding:3px",
-      "border-radius:2px","display:flex","flex-direction:column","gap:5px",
-      "width:220px",
-      "min-width:220px",
-      "max-width:220px",
-      "box-sizing:border-box",
-      "overflow:hidden",
-    ].join(";");
+    panel.id = DEV_SUMMONER_PANEL_ID;
+    panel.style.cssText = createDevSummonerPanelStyle();
 
     const title = document.createElement("pre");
     title.textContent = "Enemy Lab\n────────────";
     title.style.cssText = "font-weight:bold;letter-spacing:1px;margin:0 0 2px 0;";
     panel.appendChild(title);
 
+    let enemyLabMode: EnemyLabMode = "simple";
+    let editFsmBasicSetupDraft: (() => void) | undefined;
+
+    const labModeRow = document.createElement("div");
+    labModeRow.id = "ds-enemy-lab-mode-row";
+    labModeRow.style.cssText = "display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;";
+    panel.appendChild(labModeRow);
+    const styleLabModeButton = (button: HTMLButtonElement, active: boolean) => {
+      button.style.cssText = [
+        "font:12px monospace",
+        "min-height:26px",
+        "padding:2px 4px",
+        "border:1px solid rgba(255,255,255,0.28)",
+        "background:" + (active ? "#365173" : "#111"),
+        "color:" + (active ? "#fff" : "#bbb"),
+        "cursor:pointer",
+        "box-sizing:border-box",
+        "font-weight:" + (active ? "800" : "400"),
+      ].join(";");
+    };
+    const simpleModeButton = document.createElement("button");
+    const smartModeButton = document.createElement("button");
+    const fsmModeButton = document.createElement("button");
+    for (const [button, text] of [[simpleModeButton, "SIMPLE"], [smartModeButton, "SMART"], [fsmModeButton, "FSM"]] as const) {
+      button.type = "button";
+      button.textContent = text;
+      labModeRow.appendChild(button);
+    }
+
+    const simpleLabSection = document.createElement("div");
+    simpleLabSection.id = "ds-simple-lab-section";
+    simpleLabSection.style.cssText = "display:flex;flex-direction:column;gap:6px;";
+    const smartLabSection = document.createElement("div");
+    smartLabSection.id = "ds-smart-lab-section";
+    smartLabSection.style.cssText = "display:none;flex-direction:column;gap:6px;";
+    const fsmLabSection = document.createElement("div");
+    fsmLabSection.id = "ds-fsm-lab-section";
+    fsmLabSection.style.cssText = "display:none;flex-direction:column;gap:6px;width:100%;max-width:100%;";
+    panel.appendChild(simpleLabSection);
+    panel.appendChild(smartLabSection);
+    panel.appendChild(fsmLabSection);
+
+    const simpleLabTitle = document.createElement("div");
+    simpleLabTitle.textContent = "SIMPLE LAB";
+    simpleLabTitle.style.cssText = "font-weight:800;opacity:0.95;";
+    simpleLabSection.appendChild(simpleLabTitle);
+    const smartLabTitle = document.createElement("div");
+    smartLabTitle.textContent = "SMART LAB";
+    smartLabTitle.style.cssText = "font-weight:800;opacity:0.95;";
+    smartLabSection.appendChild(smartLabTitle);
     const spawnSection = document.createElement("div");
+    spawnSection.id = "ds-shared-spawn-section";
     spawnSection.style.cssText = "display:flex;flex-direction:column;gap:6px;";
-    panel.appendChild(spawnSection);
+    simpleLabSection.appendChild(spawnSection);
 
     const spawnTitle = document.createElement("div");
     spawnTitle.textContent = "Spawn";
@@ -642,14 +888,15 @@ export class DevSummoner {
       applyInlineStepperButtonStyle(button);
     };
     const refreshGroupCount = () => {
-      groupCount = normalizeGroupCount(groupCount);
+      groupCount = enemyLabMode === "fsm" ? normalizeFsmSpawnCount(groupCount) : normalizeGroupCount(groupCount);
       countValue.textContent = String(groupCount);
-      countSegment.setAttribute("aria-valuemin", "2");
+      countSegment.setAttribute("aria-valuemin", enemyLabMode === "fsm" ? "1" : "2");
       countSegment.setAttribute("aria-valuemax", "10");
       countSegment.setAttribute("aria-valuenow", String(groupCount));
+      countDecButton.disabled = groupCount <= (enemyLabMode === "fsm" ? 1 : 2);
     };
-    countDecButton.addEventListener("click", () => { groupCount = stepGroupCount(groupCount, -1); refreshGroupCount(); });
-    countIncButton.addEventListener("click", () => { groupCount = stepGroupCount(groupCount, 1); refreshGroupCount(); });
+    countDecButton.addEventListener("click", () => { groupCount = enemyLabMode === "fsm" ? stepFsmSpawnCount(groupCount, -1) : stepGroupCount(groupCount, -1); refreshGroupCount(); refreshFsmBasicSetupVisibility?.(); if (enemyLabMode === "fsm") editFsmBasicSetupDraft?.(); });
+    countIncButton.addEventListener("click", () => { groupCount = enemyLabMode === "fsm" ? stepFsmSpawnCount(groupCount, 1) : stepGroupCount(groupCount, 1); refreshGroupCount(); refreshFsmBasicSetupVisibility?.(); if (enemyLabMode === "fsm") editFsmBasicSetupDraft?.(); });
     styleCountButton(countDecButton);
     styleCountButton(countIncButton);
     countSegment.appendChild(countDecButton);
@@ -668,7 +915,12 @@ export class DevSummoner {
       select.setOptions([...options], defaultValue);
       this.cleanupHandlers.push(() => select.destroy());
       wrap.appendChild(select.root);
-      return { wrap, get value() { return select.value as T; }, addEventListener(listener: () => void) { select.addEventListener("change", listener); } };
+      return {
+        wrap,
+        get value() { return select.value as T; },
+        setValue(next: T) { select.setOptions([...options], next); },
+        addEventListener(listener: () => void) { select.addEventListener("change", listener); },
+      };
     };
     const makeSegmentedChoice = <T extends string>(label: string, ariaLabel: string, options: ReadonlyArray<{ value: T; label: string }>, defaultValue: T) => {
       let value = defaultValue;
@@ -835,6 +1087,10 @@ export class DevSummoner {
       const dumbButton = document.createElement("button");
       const smartButton = document.createElement("button");
       let movementClass: MovementClassId = "dumb";
+      const rememberedMovement = new Map<MovementClassId, { primitive: string; preset: string }>();
+      const rememberMovementSelection = () => {
+        rememberedMovement.set(movementClass, { primitive: primitiveSelect.value, preset: presetSelect.value });
+      };
       const primitiveWrap = createSelectLabel(primitiveLabel, "secondary");
       const presetWrap = createSelectLabel("Preset", "secondary");
       primitiveWrap.appendChild(primitiveSelect.root);
@@ -870,8 +1126,10 @@ export class DevSummoner {
           presetSelect.setOptions([{ value: "", label: "(none)", disabled: true }]);
           return;
         }
-        const preferredPreset = prefix === "ds-group" && presets.includes("straight.basic") ? "straight.basic" : presetSelect.value;
+        const rememberedPreset = rememberedMovement.get(movementClass)?.preset;
+        const preferredPreset = rememberedPreset && presets.includes(rememberedPreset) ? rememberedPreset : prefix === "ds-group" && presets.includes("straight.basic") ? "straight.basic" : presetSelect.value;
         presetSelect.setOptions(presets.map((presetId) => ({ value: presetId, label: presetId })), preferredPreset);
+        rememberMovementSelection();
       };
       const repopulatePrimitiveSelect = () => {
         const primitives = sortPrimitiveIds(Object.keys(movementGroups[movementClass] ?? {}));
@@ -880,20 +1138,23 @@ export class DevSummoner {
           repopulatePresetSelect();
           return;
         }
-        const preferredPrimitive = prefix === "ds-group" && primitives.includes("straight") ? "straight" : primitiveSelect.value;
+        const rememberedPrimitive = rememberedMovement.get(movementClass)?.primitive;
+        const preferredPrimitive = rememberedPrimitive && primitives.includes(rememberedPrimitive) ? rememberedPrimitive : prefix === "ds-group" && primitives.includes("straight") ? "straight" : primitiveSelect.value;
         primitiveSelect.setOptions(primitives.map((primitive) => ({ value: primitive, label: formatPrimitiveLabel(primitive) })), preferredPrimitive);
         repopulatePresetSelect();
       };
       const setMovementClass = (next: MovementClassId) => {
         if (next === "dumb" && !hasDumbPresets) return;
         if (next === "smart" && !hasSmartPresets) return;
+        rememberMovementSelection();
         movementClass = next;
         refreshMovementClassButtons();
         repopulatePrimitiveSelect();
       };
       dumbButton.addEventListener("click", () => setMovementClass("dumb"));
       smartButton.addEventListener("click", () => setMovementClass("smart"));
-      primitiveSelect.addEventListener("change", repopulatePresetSelect);
+      primitiveSelect.addEventListener("change", () => { repopulatePresetSelect(); rememberMovementSelection(); });
+      presetSelect.addEventListener("change", rememberMovementSelection);
       refreshMovementClassButtons();
       repopulatePrimitiveSelect();
       return { movementClassRow, movementPresetRow, presetSelect, setMovementClass };
@@ -902,7 +1163,16 @@ export class DevSummoner {
     const enemyMovement = makeMovementControls("ds", "Movement");
     enemyControls.appendChild(enemyMovement.movementClassRow);
     enemyControls.appendChild(enemyMovement.movementPresetRow);
-    enemyControls.appendChild(createSectionGap());
+    const fsmSpawnWrap = createSelectLabel("FSM", "secondary");
+    const fsmSpawnSelect = createCompactSelect("ds-fsm-preset");
+    this.cleanupHandlers.push(() => fsmSpawnSelect.destroy());
+    const refreshFsmSpawnSelect = (preferred?: string) => {
+      fsmSpawnSelect.setOptions([{ value: "", label: "(movement preset)" }, ...CONTENT.userFsmPresets.registry().list().map((preset) => ({ value: preset.id, label: `${CONTENT.userFsmPresets.registry().sourceOf(preset.id) === "user" ? "USER" : "BUILT-IN"} ${preset.definition.metadata.name}` }))], preferred ?? fsmSpawnSelect.value);
+    };
+    refreshFsmSpawnSelect();
+    fsmSpawnWrap.appendChild(fsmSpawnSelect.root);
+    spawnSection.appendChild(fsmSpawnWrap);
+    spawnSection.appendChild(createSectionGap());
     const groupMovement = makeMovementControls("ds-group", "Move", "Prim");
     groupControls.appendChild(groupMovement.movementClassRow);
     groupControls.appendChild(groupMovement.movementPresetRow);
@@ -952,9 +1222,170 @@ export class DevSummoner {
     const groupYControl = createSpawnYControl("ds-group");
     groupControls.appendChild(groupYControl.wrap);
 
+    const createRangeRow = (id: string, labelText: string, limits: { min: number; max: number; default: number; step: number }) => {
+      let value = limits.default;
+      const wrap = document.createElement("label");
+      wrap.id = `${id}-row`;
+      wrap.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr) 38px;gap:6px;align-items:center;min-width:0;";
+      const label = document.createElement("span");
+      label.textContent = labelText;
+      applyLabelTextStyle(label);
+      const slider = document.createElement("input");
+      slider.id = id;
+      slider.type = "range";
+      slider.min = String(limits.min);
+      slider.max = String(limits.max);
+      slider.step = String(limits.step);
+      slider.value = String(limits.default);
+      slider.style.cssText = "width:100%;min-width:0;box-sizing:border-box;accent-color:#6f8fc0;";
+      const valueLabel = document.createElement("span");
+      valueLabel.style.cssText = "font-weight:800;text-align:right;color:#eee;";
+      const setValue = (next: unknown) => {
+        const raw = Number(next);
+        const clamped = Number.isFinite(raw) ? Math.min(limits.max, Math.max(limits.min, raw)) : limits.default;
+        value = clamped;
+        slider.value = String(clamped);
+        valueLabel.textContent = String(clamped);
+      };
+      slider.addEventListener("input", () => setValue(slider.value));
+      wrap.appendChild(label);
+      wrap.appendChild(slider);
+      wrap.appendChild(valueLabel);
+      setValue(value);
+      return { wrap, slider, setValue, get value() { return value; } };
+    };
+
+    const fsmPresetSection = document.createElement("div");
+    fsmPresetSection.id = "ds-fsm-preset-section";
+    fsmPresetSection.style.cssText = "display:flex;flex-direction:column;gap:4px;padding-top:2px;border-top:1px solid rgba(255,255,255,0.12);";
+    const fsmPresetHeading = document.createElement("div");
+    fsmPresetHeading.textContent = "PRESETS";
+    fsmPresetHeading.style.cssText = "font-weight:800;letter-spacing:1px;opacity:0.95;";
+    const fsmPresetToolbar = document.createElement("div");
+    fsmPresetToolbar.id = "ds-fsm-preset-toolbar";
+    fsmPresetToolbar.style.cssText = "display:grid;grid-template-columns:repeat(6,30px);gap:2px;align-items:center;";
+    fsmPresetSection.appendChild(fsmPresetHeading);
+    fsmPresetSection.appendChild(fsmPresetToolbar);
+
+    const fsmBasicSection = document.createElement("div");
+    fsmBasicSection.id = "ds-fsm-basic-setup";
+    fsmBasicSection.style.cssText = "display:flex;flex-direction:column;gap:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.12);";
+    const fsmBasicHeading = document.createElement("div");
+    fsmBasicHeading.textContent = "BASIC SETUP";
+    fsmBasicHeading.style.cssText = "font-weight:800;letter-spacing:1px;opacity:0.95;";
+    fsmBasicSection.appendChild(fsmBasicHeading);
+
+    const fsmTypeRow = document.createElement("label");
+    fsmTypeRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center;min-width:0;";
+    const fsmTypeLabel = document.createElement("span");
+    fsmTypeLabel.textContent = "Type";
+    applyLabelTextStyle(fsmTypeLabel);
+    fsmTypeRow.appendChild(fsmTypeLabel);
+    fsmTypeRow.appendChild(countSegment);
+    fsmBasicSection.appendChild(fsmTypeRow);
+
+    const fsmFormationRow = document.createElement("div");
+    fsmFormationRow.id = "ds-fsm-formation-row";
+    fsmFormationRow.style.cssText = "display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;";
+    const fsmFormationLabel = document.createElement("span");
+    fsmFormationLabel.textContent = "Form";
+    applyLabelTextStyle(fsmFormationLabel);
+    const fsmFormationButtons = document.createElement("div");
+    fsmFormationButtons.id = "ds-fsm-formation-icons";
+    fsmFormationButtons.setAttribute("role", "radiogroup");
+    fsmFormationButtons.setAttribute("aria-label", "FSM group formation");
+    fsmFormationButtons.style.cssText = "display:grid;grid-template-columns:repeat(5,1fr);gap:2px;";
+    fsmFormationRow.appendChild(fsmFormationLabel);
+    fsmFormationRow.appendChild(fsmFormationButtons);
+    fsmBasicSection.appendChild(fsmFormationRow);
+
+    const fsmSpacingSlider = createRangeRow("ds-fsm-spacing", "Spacing", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
+    const fsmElasticitySlider = createRangeRow("ds-fsm-elasticity", "Elasticity", { min: 0, max: 10, default: 0, step: 1 });
+    const fsmFollowSlider = createRangeRow("ds-fsm-follow", "Follow", ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay);
+    const fsmBaseSpeedSlider = createRangeRow("ds-fsm-base-speed", "Speed", ENEMY_LAB_BASIC_SETUP_LIMITS.baseSpeed);
+    fsmFollowSlider.wrap.title = "Delay per group member in seconds. 0.00 s keeps members on the current anchor path.";
+    fsmBaseSpeedSlider.wrap.title = "FSM preset base movement speed. State Speed × multiplies this value at runtime.";
+    fsmBasicSection.appendChild(fsmSpacingSlider.wrap);
+    fsmBasicSection.appendChild(fsmElasticitySlider.wrap);
+    fsmBasicSection.appendChild(fsmFollowSlider.wrap);
+    fsmBasicSection.appendChild(fsmBaseSpeedSlider.wrap);
+
+    const formationIconLabels: Record<FormationId, { icon: string; label: string }> = {
+      "line.horizontal": { icon: "━", label: "Line formation" },
+      "wedge": { icon: "⌃", label: "Wedge formation" },
+      "column.vertical": { icon: "┃", label: "Column formation" },
+      "arc.forward": { icon: "◜", label: "Arc formation" },
+      "ring": { icon: "○", label: "Ring formation" },
+    };
+    const fsmFormationIconButtons = ENEMY_GROUP_FORMATION_IDS.map((id) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = formationIconLabels[id].icon;
+      button.title = formationIconLabels[id].label;
+      button.setAttribute("aria-label", formationIconLabels[id].label);
+      button.addEventListener("click", () => {
+        formationChoice.setValue(id);
+        refreshFsmBasicSetupVisibility();
+        if (enemyLabMode === "fsm") editFsmBasicSetupDraft?.();
+      });
+      fsmFormationButtons.appendChild(button);
+      return { id, button };
+    });
+
+    const refreshFsmFormationIcons = () => {
+      for (const { id, button } of fsmFormationIconButtons) {
+        const active = formationChoice.value === id;
+        button.setAttribute("aria-pressed", String(active));
+        button.setAttribute("aria-checked", String(active));
+        styleSegmentButton(button, active);
+      }
+    };
+
+    const setFsmGroupOnlyVisible = (el: HTMLElement, visible: boolean) => {
+      el.style.display = visible ? (el.tagName === "LABEL" ? "grid" : el.id === "ds-fsm-formation-row" ? "grid" : "flex") : "none";
+      el.setAttribute("aria-hidden", String(!visible));
+    };
+
+    function refreshFsmBasicSetupVisibility(): void {
+      const isGroup = normalizeFsmSpawnCount(groupCount) > 1;
+      setFsmGroupOnlyVisible(fsmFormationRow, isGroup);
+      setFsmGroupOnlyVisible(fsmSpacingSlider.wrap, isGroup);
+      setFsmGroupOnlyVisible(fsmElasticitySlider.wrap, isGroup);
+      setFsmGroupOnlyVisible(fsmFollowSlider.wrap, isGroup);
+      refreshFsmFormationIcons();
+    }
+
+    const setLabSectionFocusable = (section: HTMLElement, visible: boolean) => {
+      for (const el of Array.from(section.querySelectorAll("button,input,select,textarea"))) {
+        (el as HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).tabIndex = visible ? 0 : -1;
+      }
+    };
+
+
+    const runtimeDiagnosticsSection = document.createElement("div");
+    runtimeDiagnosticsSection.id = "ds-fsm-runtime-diagnostics";
+    runtimeDiagnosticsSection.style.cssText = "display:none;position:fixed;z-index:10001;flex-direction:column;gap:4px;max-height:calc(100vh - 16px);overflow-y:auto;width:280px;padding:6px;background:#111;border:1px solid rgba(150,210,255,0.28);box-shadow:0 3px 8px rgba(0,0,0,0.45);";
+    const runtimeDiagnosticsHeading = document.createElement("div");
+    runtimeDiagnosticsHeading.textContent = "RUNTIME DIAGNOSTICS";
+    runtimeDiagnosticsHeading.style.cssText = "font-weight:800;letter-spacing:1px;opacity:0.95;";
+    const runtimeDiagnosticsBody = document.createElement("pre");
+    runtimeDiagnosticsBody.id = "ds-fsm-runtime-diagnostics-body";
+    runtimeDiagnosticsBody.style.cssText = "margin:0;white-space:pre-wrap;font:11px monospace;line-height:1.25;color:#dff3ff;background:rgba(90,150,210,0.10);border:1px solid rgba(150,210,255,0.18);padding:4px;border-radius:2px;";
+    runtimeDiagnosticsBody.textContent = "Diagnostics version: A1.1\nNo FSM runtime spawned";
+    runtimeDiagnosticsSection.appendChild(runtimeDiagnosticsHeading);
+    runtimeDiagnosticsSection.appendChild(runtimeDiagnosticsBody);
+
+    const spawnActionRow = document.createElement("div");
+    spawnActionRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) 26px;gap:4px;align-items:center;";
     const btn = document.createElement("button");
     btn.textContent = "RELEASE";
     btn.style.cssText = "cursor:pointer;margin-top:2px;font:12px monospace;font-weight:800;min-height:28px;background:#26384f;color:#fff;border:1px solid rgba(255,255,255,0.28);border-radius:2px;";
+    const stopLatestSpawnBtn = document.createElement("button");
+    stopLatestSpawnBtn.type = "button";
+    stopLatestSpawnBtn.textContent = ICONS.stop;
+    stopLatestSpawnBtn.title = "Stop latest manual Enemy Lab spawn";
+    stopLatestSpawnBtn.setAttribute("aria-label", "Stop latest manual Enemy Lab spawn");
+    applyIconButtonStyle(stopLatestSpawnBtn);
     const refreshModeButtons = () => {
       enemyModeButton.type = "button";
       groupModeButton.type = "button";
@@ -969,13 +1400,85 @@ export class DevSummoner {
       groupModeButton.style.borderRadius = "0 2px 2px 0";
       enemyControls.style.display = spawnMode === "enemy" ? "flex" : "none";
       groupControls.style.display = spawnMode === "group" ? "flex" : "none";
-      btn.textContent = spawnMode === "enemy" ? "RELEASE" : "Spawn Group";
+      btn.textContent = enemyLabMode === "fsm" ? "SPAWN" : (spawnMode === "enemy" ? "RELEASE" : "Spawn Group");
     };
     enemyModeButton.addEventListener("click", () => { spawnMode = "enemy"; refreshModeButtons(); });
     groupModeButton.addEventListener("click", () => { spawnMode = "group"; refreshModeButtons(); });
     refreshModeButtons();
+    const currentDraftFsmOverride = () => {
+      const draft = authoringModel?.draft?.preset;
+      return draft && !authoringModel.hasErrors() ? resolveEphemeralFsmPreset(draft) : null;
+    };
+    const stopLatestManualSpawn = () => {
+      const token = this.latestManualSpawnId;
+      const cm = (window as any).__CM;
+      const store = cm?.store;
+      if (!token || !store || typeof store.debugForEachAlive !== "function" || typeof store.markKill !== "function") return;
+      const groupIds = new Set<number>();
+      store.debugForEachAlive((ref: any, ent: any) => {
+        if (!ent || ent.kind !== "enemy" || ent.pendingKill || ent.devManualSpawnId !== token) return;
+        if (typeof ent.group?.groupId === "number") groupIds.add(ent.group.groupId);
+        store.markKill(ref);
+      });
+      for (const id of groupIds) cm?.enemyGroups?.remove?.(id);
+    };
+    stopLatestSpawnBtn.addEventListener("click", (ev) => { ev.stopPropagation(); stopLatestManualSpawn(); });
     btn.addEventListener("click", () => {
       this.latestManualSpawnId += 1;
+      if (enemyLabMode === "fsm") {
+        const draftOverride = currentDraftFsmOverride();
+        if (draftOverride && !draftOverride.ok) { console.warn("[DevSummoner] invalid FSM draft spawn", draftOverride.diagnostics); return; }
+        const resolvedFsmPresetOverride = draftOverride?.ok ? draftOverride.preset : undefined;
+        const currentDraftPresetId = (resolvedFsmPresetOverride?.id ?? fsmSpawnSelect.value) || undefined;
+        const fsmCount = normalizeFsmSpawnCount(groupCount);
+        groupCount = fsmCount;
+        refreshGroupCount();
+        if (fsmCount > 1) {
+          const elasticity = mapElasticityToGroupSettings(fsmElasticitySlider.value);
+          const fsmFormationParams = mapFsmSpacingToFormationParams(formationChoice.value, fsmSpacingSlider.value);
+          const payload = createDevSummonerGroupSpawnPayload({
+            enemyTypeId: enemySelect.value,
+            count: fsmCount,
+            anchorX: this.logicW - 40,
+            anchorY: mapUiSpawnYToRuntimeY(screenYControl.value, this.logicH),
+            formationId: formationChoice.value,
+            movementPresetId: "none.hold",
+            cohesionId: elasticity.cohesionId,
+            fsmPresetId: currentDraftPresetId,
+            resolvedFsmPresetOverride,
+            devManualSpawnId: this.latestManualSpawnId,
+            params: {
+              formation: {
+                ...fsmFormationParams,
+                depth: depthStepper.value,
+                radius: fsmFormationParams.radius ?? radiusStepper.value,
+                angle: angleStepper.value,
+                facing: formationChoice.value === "arc.forward" ? arcFacingChoice.value : formationChoice.value === "wedge" ? wedgeFacingChoice.value : undefined,
+                startAngle: formationChoice.value === "ring" ? startAngleStepper.value : undefined,
+              },
+              cohesion: {
+                response: elasticity.response,
+                maxCatchupSpeed: elasticity.maxCatchupSpeed,
+              },
+            },
+          });
+          if (!payload) {
+            console.warn("[DevSummoner] invalid FSM group spawn payload");
+            return;
+          }
+          this.bus.emitNext(EventType.SPAWN_ENEMY_GROUP, payload);
+          return;
+        }
+        this.bus.emitNext(EventType.SPAWN_ENEMY, createDevSummonerSpawnPayload({
+          typeId: enemySelect.value,
+          spawnX: this.logicW - 40,
+          spawnY: mapUiSpawnYToRuntimeY(screenYControl.value, this.logicH),
+          fsmPresetId: currentDraftPresetId,
+          resolvedFsmPresetOverride,
+          devManualSpawnId: this.latestManualSpawnId,
+        }) as any);
+        return;
+      }
       if (spawnMode === "group") {
         const anchorY = groupYControl.value;
         const payload = createDevSummonerGroupSpawnPayload({
@@ -1019,11 +1522,400 @@ export class DevSummoner {
         devManualSpawnId: this.latestManualSpawnId,
       }) as any);
     });
-    spawnSection.appendChild(btn);
-    panel.appendChild(createSectionGap());
+    spawnActionRow.appendChild(btn);
+    spawnActionRow.appendChild(stopLatestSpawnBtn);
+    spawnSection.appendChild(spawnActionRow);
+
+    const presetModel = new FsmPresetEditorModel(CONTENT.userFsmPresets);
+    let authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId);
+    const presetPanel = document.createElement("div");
+    presetPanel.id = FSM_PRESET_EDITOR_ID;
+    presetPanel.style.cssText = "display:flex;flex-direction:column;gap:4px;padding:4px;background:rgba(255,255,255,0.05);font:12px monospace;";
+    const presetList = document.createElement("select");
+    applyNativeSelectStyle(presetList);
+    const idInput = document.createElement("input"); idInput.placeholder = "preset id"; applyControlBaseStyle(idInput); idInput.style.width = "100%";
+    const labelInput = document.createElement("input"); labelInput.placeholder = "label"; applyControlBaseStyle(labelInput); labelInput.style.width = "100%";
+    const details = document.createElement("div"); details.style.cssText = "color:#ccc;line-height:1.35;white-space:pre-wrap;";
+    const diagBox = document.createElement("div"); diagBox.style.cssText = "color:#ffd27a;line-height:1.35;white-space:pre-wrap;";
+    const importText = document.createElement("textarea"); importText.placeholder = "Paste FSM preset JSON"; importText.rows = 3; applyControlBaseStyle(importText); importText.style.width = "100%";
+    const exportText = document.createElement("textarea"); exportText.placeholder = "Export output / raw storage"; exportText.rows = 3; exportText.readOnly = true; applyControlBaseStyle(exportText); exportText.style.width = "100%";
+    const collisionSelect = document.createElement("select"); applyNativeSelectStyle(collisionSelect); for (const [value, label] of [["reject", "Reject"], ["replace-user", "Replace user"], ["rename", "Rename"]] as const) appendOption(collisionSelect, value, label);
+    const buttons = document.createElement("div"); buttons.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:3px;";
+    const makeBtn = (text: string) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.style.cssText = "font:12px monospace;min-height:24px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; buttons.appendChild(b); return b; };
+    const newBtn = makeBtn("New"); const dupBtn = makeBtn("Duplicate"); const saveBtn = makeBtn("Save"); const cancelBtn = makeBtn("Cancel"); const delBtn = makeBtn("Delete"); const importBtn = makeBtn("Import"); const exportBtn = makeBtn("Export selected"); const exportAllBtn = makeBtn("Export users"); const rawBtn = makeBtn("Copy raw"); const clearBtn = makeBtn("Clear users");
+    const makeIconBtn = (icon: Parameters<typeof createDevIconButton>[0]["icon"], iconName: Parameters<typeof createDevIconButton>[0]["iconName"], label: string, actionId: string) => {
+      const b = createDevIconButton({ action: actionId, label, icon, iconName });
+      fsmPresetToolbar.appendChild(b);
+      return b;
+    };
+    const topNewBtn = makeIconBtn(Plus, "Plus", "New preset", "new");
+    const topRenameBtn = makeIconBtn(Pencil, "Pencil", "Edit preset name", "edit-name");
+    const topDuplicateBtn = makeIconBtn(Copy, "Copy", "Duplicate preset", "duplicate");
+    const topResetBtn = makeIconBtn(RotateCcw, "RotateCcw", "Reset preset", "reset");
+    const topSaveBtn = makeIconBtn(Save, "Save", "Save preset", "save");
+    const topDeleteBtn = makeIconBtn(Trash2, "Trash2", "Delete preset", "delete");
+    fsmPresetSection.appendChild(fsmSpawnSelect.root);
+    // Legacy full preset-management controls remain wired below for model/debug continuity but are not mounted in the normal FSM layout.
+    void details; void diagBox; void importText; void exportText; void collisionSelect;
+    const authoringSections = document.createElement("div");
+    authoringSections.id = "ds-fsm-authoring-sections";
+    authoringSections.style.cssText = "display:flex;flex-direction:column;gap:6px;border-top:1px solid rgba(255,255,255,0.18);padding-top:5px;";
+    const addAuthoringSection = (title: string): HTMLDivElement => { const section = document.createElement("div"); section.setAttribute("data-fsm-authoring-section", title); section.style.cssText = "display:flex;flex-direction:column;gap:4px;"; const h = document.createElement("div"); h.textContent = title; h.style.cssText = "font-weight:bold;color:#fff;letter-spacing:0.6px;"; section.appendChild(h); authoringSections.appendChild(section); return section; };
+    let runtimeDiagnosticsDockOpen = false;
+    const statesAndDiagnosticsDock = document.createElement("div");
+    statesAndDiagnosticsDock.id = "ds-fsm-states-diagnostics-dock";
+    statesAndDiagnosticsDock.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr);gap:6px;align-items:start;";
+    authoringSections.appendChild(statesAndDiagnosticsDock);
+    const statesSection = document.createElement("div");
+    statesSection.setAttribute("data-fsm-authoring-section", "STATES");
+    statesSection.style.cssText = "display:flex;flex-direction:column;gap:4px;min-width:0;";
+    const statesHeading = document.createElement("div");
+    statesHeading.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:6px;font-weight:bold;color:#fff;letter-spacing:0.6px;";
+    statesHeading.appendChild(Object.assign(document.createElement("span"), { textContent: "STATES" }));
+    const runtimeDiagnosticsToggle = document.createElement("button");
+    runtimeDiagnosticsToggle.type = "button";
+    runtimeDiagnosticsToggle.textContent = "◫";
+    runtimeDiagnosticsToggle.title = "Toggle Runtime Diagnostics";
+    runtimeDiagnosticsToggle.setAttribute("aria-label", "Toggle Runtime Diagnostics");
+    applyIconButtonStyle(runtimeDiagnosticsToggle);
+    statesHeading.appendChild(runtimeDiagnosticsToggle);
+    statesSection.appendChild(statesHeading);
+    statesAndDiagnosticsDock.appendChild(statesSection);
+    const stateList = document.createElement("div");
+    stateList.id = "ds-fsm-state-list";
+    stateList.style.cssText = "display:flex;flex-direction:column;gap:3px;";
+    statesSection.appendChild(stateList);
+    const stateTriggerSummaryNodes = new Map<string, HTMLElement>();
+    const stateButtons = document.createElement("div");
+    stateButtons.style.cssText = "display:none;grid-template-columns:1fr 1fr 1fr;gap:3px;";
+    statesSection.appendChild(stateButtons);
+    const stateBtn = (text: string) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.style.cssText = "font:12px monospace;min-height:24px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; stateButtons.appendChild(b); return b; };
+    const addStateBtn = stateBtn("Add state"); const dupStateBtn = stateBtn("Duplicate"); const delStateBtn = stateBtn("Delete");
+    const editorSection = document.createElement("div");
+    editorSection.id = "ds-fsm-selected-state-editor";
+    editorSection.style.cssText = "display:flex;flex-direction:column;gap:4px;width:100%;box-sizing:border-box;margin:2px 0 4px 0;padding:5px;border-left:2px solid #7cc7ff;background:rgba(80,170,255,0.10);";
+    editorSection.addEventListener("click", (ev) => ev.stopPropagation());
+    editorSection.addEventListener("input", (ev) => ev.stopPropagation());
+    editorSection.addEventListener("change", (ev) => ev.stopPropagation());
+    const selectedStateTitle = document.createElement("div");
+    selectedStateTitle.id = "ds-fsm-selected-state-title";
+    selectedStateTitle.style.cssText = "color:#bfe3ff;font-weight:bold;";
+    void selectedStateTitle;
+    const behaviorBlock = document.createElement("div"); behaviorBlock.setAttribute("data-fsm-editor-block", "Behavior"); behaviorBlock.style.cssText = "display:flex;flex-direction:column;gap:3px;";
+    behaviorBlock.appendChild(Object.assign(document.createElement("div"), { textContent: "Behavior" }));
+    const movementPresetInput = document.createElement("select"); applyNativeSelectStyle(movementPresetInput); for (const id of Object.keys(EnemyBehaviorPresets).sort()) appendOption(movementPresetInput, id, id); behaviorBlock.appendChild(movementPresetInput); editorSection.appendChild(behaviorBlock);
+    const formationBlock = document.createElement("div"); formationBlock.setAttribute("data-fsm-editor-block", "Formation"); formationBlock.style.cssText = "display:flex;flex-direction:column;gap:4px;border-top:1px solid rgba(255,255,255,0.10);padding-top:4px;";
+    const formationControls = document.createElement("div"); formationControls.id = "ds-fsm-state-formation-controls"; formationControls.style.cssText = "display:flex;flex-direction:column;gap:4px;"; formationBlock.appendChild(formationControls);
+    const shapeButtons = document.createElement("div"); shapeButtons.id = "ds-fsm-state-shape-icons"; shapeButtons.style.cssText = "display:grid;grid-template-columns:repeat(5,1fr);gap:2px;"; formationControls.appendChild(shapeButtons);
+    let selectedFormationShape: FormationId = "line.horizontal";
+    const stateShapeButtons = ENEMY_GROUP_FORMATION_IDS.map((id) => { const b = document.createElement("button"); b.type = "button"; b.textContent = formationIconLabels[id].icon; b.title = id; b.setAttribute("aria-label", `State formation ${id}`); applyIconButtonStyle(b); b.addEventListener("click", () => { selectedFormationShape = id; const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverride(v.id, { ...v.formation, shape: id }); renderPresetEditor(); }); shapeButtons.appendChild(b); return { id, button: b }; });
+    const stateSpacingSlider = createRangeRow("ds-fsm-state-spacing", "Spacing", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
+    const stateElasticitySlider = createRangeRow("ds-fsm-state-elasticity", "Elasticity", { min: 0, max: 10, default: 0, step: 1 });
+    const stateFollowSlider = createRangeRow("ds-fsm-state-follow", "Follow", ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay);
+    const stateSpeedSlider = createRangeRow("ds-fsm-state-speed", "Speed ×", { min: 0.25, max: 3, default: 1, step: 0.05 });
+    stateFollowSlider.wrap.title = "Delay per group member in seconds for this state.";
+    formationControls.appendChild(stateSpacingSlider.wrap); formationControls.appendChild(stateElasticitySlider.wrap); formationControls.appendChild(stateFollowSlider.wrap); formationControls.appendChild(stateSpeedSlider.wrap); editorSection.appendChild(formationBlock);
+    const triggerBlock = document.createElement("div"); triggerBlock.setAttribute("data-fsm-editor-block", "Trigger"); triggerBlock.style.cssText = "display:flex;flex-direction:column;gap:3px;border-top:1px solid rgba(255,255,255,0.10);padding-top:4px;"; triggerBlock.appendChild(Object.assign(document.createElement("div"), { textContent: "Trigger" }));
+    const triggerSelect = document.createElement("select"); applyNativeSelectStyle(triggerSelect); for (const [v,l] of [["never","Never"],["time","Time"],["screenXBelow","scrX"],["hit","Hit"]] as const) appendOption(triggerSelect, v, l); triggerBlock.appendChild(triggerSelect);
+    const triggerParamWrap = document.createElement("div"); triggerParamWrap.style.cssText = "display:flex;flex-direction:column;gap:3px;"; triggerBlock.appendChild(triggerParamWrap);
+        const makeTriggerStepper = (label: string, step: number, min: number, format: (n: number) => string, commit: (n: number) => void) => {
+      let value = min;
+      const wrap = document.createElement("div");
+      wrap.style.cssText = "display:grid;grid-template-columns:40px 26px minmax(38px,1fr) 26px;gap:3px;align-items:center;";
+      const labelNode = document.createElement("span"); labelNode.textContent = label; applyLabelTextStyle(labelNode, "secondary");
+      const dec = document.createElement("button"); const valueNode = document.createElement("span"); const inc = document.createElement("button");
+      for (const [button, text, aria] of [[dec, "−", `Decrease ${label}`], [inc, "+", `Increase ${label}`]] as const) { button.type = "button"; button.textContent = text; button.title = aria; button.setAttribute("aria-label", aria); applyIconButtonStyle(button); button.addEventListener("click", (ev) => { ev.stopPropagation(); value = Math.max(min, value + (button === dec ? -step : step)); commit(value); valueNode.textContent = format(value); dec.disabled = value <= min; applyIconButtonStyle(dec, dec.disabled); }); }
+      valueNode.style.cssText = "display:flex;align-items:center;justify-content:center;min-height:26px;border:1px solid rgba(255,255,255,0.18);background:#090909;color:#eee;box-sizing:border-box;";
+      wrap.appendChild(labelNode); wrap.appendChild(dec); wrap.appendChild(valueNode); wrap.appendChild(inc);
+      return { wrap, setValue(next: unknown) { const n = Number(next); value = Math.max(min, Number.isFinite(n) ? n : min); valueNode.textContent = format(value); dec.disabled = value <= min; applyIconButtonStyle(dec, dec.disabled); }, setDisabled(disabled: boolean) { for (const b of [dec, inc]) setIconButtonDisabled(b, disabled || (b === dec && value <= min)); } };
+    };
+    const triggerTimeStepper = makeTriggerStepper("Time", 1, 0, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "time", { seconds: Math.max(0, Math.round(n)) }); updateStateEditorLiveStatus(); });
+    const triggerXStepper = makeTriggerStepper("scrX", 10, 0, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "screenXBelow", { x: Math.round(n) }); updateStateEditorLiveStatus(); });
+    const triggerHitStepper = makeTriggerStepper("Hit", 1, 1, (n) => String(Math.round(n)), (n) => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, "hit", { ratio: 0.999 }); updateStateEditorLiveStatus(); });
+    const triggerHint = document.createElement("div"); triggerHint.id = "ds-fsm-trigger-next-hint"; triggerHint.style.cssText = "color:#aaa;"; triggerBlock.appendChild(triggerHint); editorSection.appendChild(triggerBlock);
+    const advancedSection = document.createElement("details"); advancedSection.id = "ds-fsm-advanced"; advancedSection.setAttribute("data-fsm-editor-block", "Advanced"); advancedSection.style.cssText = "border-top:1px solid rgba(255,255,255,0.10);padding-top:4px;"; const advancedSummary = document.createElement("summary"); advancedSummary.textContent = "Advanced"; advancedSummary.style.cssText = "cursor:pointer;font-weight:bold;color:#fff;"; advancedSection.appendChild(advancedSummary);
+    const advancedBody = document.createElement("div"); advancedBody.id = "ds-fsm-advanced-body"; advancedBody.style.cssText = "display:flex;flex-direction:column;gap:3px;padding-top:4px;color:#ccc;white-space:pre-wrap;"; advancedSection.appendChild(advancedBody); editorSection.appendChild(advancedSection);
+    const diagnosticsSection = addAuthoringSection("Diagnostics"); const authoringDiagnostics = document.createElement("div"); authoringDiagnostics.style.cssText = "white-space:pre-wrap;color:#ffd27a;"; diagnosticsSection.appendChild(authoringDiagnostics);
+    const previewSection = document.createElement("div");
+    previewSection.id = "ds-fsm-preview-section";
+    previewSection.style.display = "none";
+    const previewButtons = document.createElement("div"); previewButtons.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:3px;"; previewSection.appendChild(previewButtons);
+    const previewBtn = (text: string) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.style.cssText = "font:12px monospace;min-height:24px;background:#111;color:#eee;border:1px solid rgba(255,255,255,0.24);"; previewButtons.appendChild(b); return b; };
+    const previewDraftBtn = previewBtn("Preview Draft"); const previewSavedBtn = previewBtn("Preview Saved"); const previewRestartBtn = previewBtn("Restart"); const previewStopBtn = previewBtn("Stop");
+    const previewStatus = document.createElement("div"); previewStatus.id = "ds-fsm-preview-status"; previewStatus.style.cssText = "white-space:pre-wrap;color:#bfe3ff;"; previewSection.appendChild(previewStatus);
+    const previewDiagnostics = document.createElement("div"); previewDiagnostics.id = "ds-fsm-preview-diagnostics"; previewDiagnostics.style.cssText = "white-space:pre-wrap;color:#eee;"; previewSection.appendChild(previewDiagnostics);
+    const previewTrace = document.createElement("div"); previewTrace.id = "ds-fsm-preview-trace"; previewTrace.style.cssText = "white-space:pre-wrap;color:#ccc;"; previewSection.appendChild(previewTrace);
+    const dirtyBadge = document.createElement("div"); dirtyBadge.id = "ds-fsm-dirty-badge"; authoringSections.appendChild(dirtyBadge);
+    document.body.appendChild(runtimeDiagnosticsSection);
+    presetPanel.appendChild(authoringSections);
+    const cm = (window as any).__CM;
+    const previewSession = new FsmPreviewSession({
+      store: cm?.store,
+      spawnPreviewEnemy: (input) => cm?.game?.spawn?.spawnPreviewEnemy(input),
+      getTick: () => Number(cm?.game?.loop?.tick ?? 0),
+      previewX: this.logicW - 140,
+      previewY: Math.round(this.logicH * 0.5),
+    });
+    let expandedStateId: string | null = authoringModel.draft?.selectedStateId ?? null;
+
+    const positionRuntimeDiagnosticsPanel = () => {
+      const r = statesAndDiagnosticsDock.getBoundingClientRect();
+      const margin = 8;
+      const width = 280;
+      const leftCandidate = r.left - width - margin;
+      const left = leftCandidate >= margin ? leftCandidate : Math.min(window.innerWidth - width - margin, r.right + margin);
+      runtimeDiagnosticsSection.style.left = `${Math.max(margin, left)}px`;
+      runtimeDiagnosticsSection.style.top = `${Math.min(Math.max(margin, r.top), Math.max(margin, window.innerHeight - 120))}px`;
+      runtimeDiagnosticsSection.setAttribute("data-side", leftCandidate >= margin ? "left" : "right");
+    };
+    const handleRuntimeDiagnosticsKeydown = (ev: KeyboardEvent) => { if (ev.key === "Escape" && runtimeDiagnosticsDockOpen) { runtimeDiagnosticsDockOpen = false; renderPresetEditor(); } };
+    const updateStateEditorLiveStatus = () => {
+      const ad = authoringModel.draft;
+      for (const row of authoringModel.labStateRows()) {
+        const summary = stateTriggerSummaryNodes.get(row.id);
+        if (summary) summary.textContent = row.triggerSummary;
+      }
+      dirtyBadge.textContent = authoringModel.readOnly ? "BUILT-IN / READ ONLY" : (ad?.dirty ? "DIRTY" : "Saved");
+      authoringDiagnostics.textContent = ad?.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code} ${x.path}: ${x.message}`).join("\n") ?? "";
+      const d = presetModel.details();
+      details.textContent = d ? `Source: ${d.source.toUpperCase()} | Schema: ${d.schemaVersion} | States: ${d.stateCount}
+Initial: ${d.initialState} | Validation: ${d.validationStatus}
+${d.states.join(", ")}` : "No preset selected";
+      const draft = presetModel.draft;
+      saveBtn.disabled = !draft || draft.source === "builtin" || (!draft.dirty && !authoringModel.canSave);
+      setIconButtonDisabled(topSaveBtn, saveBtn.disabled);
+    };
+    const commitStateEditorLiveEdit = () => { updateStateEditorLiveStatus(); renderPresetEditor(); };
+    const handleRuntimeDiagnosticsResize = () => { if (runtimeDiagnosticsDockOpen) positionRuntimeDiagnosticsPanel(); };
+    document.addEventListener("keydown", handleRuntimeDiagnosticsKeydown);
+    if (typeof window.addEventListener === "function") window.addEventListener("resize", handleRuntimeDiagnosticsResize);
+    this.cleanupHandlers.push(() => { document.removeEventListener("keydown", handleRuntimeDiagnosticsKeydown); if (typeof window.removeEventListener === "function") window.removeEventListener("resize", handleRuntimeDiagnosticsResize); runtimeDiagnosticsSection.remove(); });
+
+    const renderPresetEditor = () => {
+      const items = presetModel.list(); presetList.textContent = ""; for (const item of items) appendOption(presetList, item.id, `${item.source === "user" ? "USER" : "BUILT-IN"} ${item.label}`); presetList.value = presetModel.selectedId;
+      const draft = presetModel.draft; idInput.value = draft?.id ?? ""; labelInput.value = draft?.label ?? ""; const readOnly = !draft || draft.source === "builtin"; idInput.disabled = readOnly; labelInput.disabled = readOnly; saveBtn.disabled = readOnly || !draft.dirty; delBtn.disabled = readOnly; setIconButtonDisabled(topRenameBtn, readOnly); setIconButtonDisabled(topDeleteBtn, readOnly); setIconButtonDisabled(topSaveBtn, readOnly || (!draft.dirty && !authoringModel.canSave));
+      const d = presetModel.details(); details.textContent = d ? `Source: ${d.source.toUpperCase()} | Schema: ${d.schemaVersion} | States: ${d.stateCount}
+Initial: ${d.initialState} | Validation: ${d.validationStatus}
+${d.states.join(", ")}` : "No preset selected";
+      diagBox.textContent = presetModel.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.presetId ? x.presetId + ": " : ""}${x.message}`).join("\n");
+      if (authoringModel.draft?.originalPresetId !== presetModel.selectedId) authoringModel.load(presetModel.selectedId);
+      if (draft) {
+        enemySelect.value = draft.basicSetup.appearanceId;
+        groupEnemySelect.value = draft.basicSetup.appearanceId;
+        groupCount = normalizeFsmSpawnCount(draft.basicSetup.count);
+        refreshGroupCount();
+        if (draft.basicSetup.formationId) formationChoice.setValue(draft.basicSetup.formationId);
+        fsmSpacingSlider.setValue(draft.basicSetup.spacing ?? ENEMY_LAB_BASIC_SETUP_LIMITS.spacing.default);
+        fsmElasticitySlider.setValue(draft.basicSetup.elasticity ?? ENEMY_LAB_BASIC_SETUP_LIMITS.elasticity.default);
+        fsmFollowSlider.setValue(draft.basicSetup.followDelay ?? ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay.default);
+        fsmBaseSpeedSlider.setValue(draft.basicSetup.baseSpeed);
+        screenYControl.setValue(draft.basicSetup.spawnY);
+        groupYControl.setValue(draft.basicSetup.spawnY);
+        refreshFsmBasicSetupVisibility();
+      }
+      const ad = authoringModel.draft; const selected = ad?.preset.graph.states.find((state) => state.id === ad.selectedStateId) ?? ad?.preset.graph.states[0]; const authoringReadOnly = authoringModel.readOnly;
+      stateList.textContent = "";
+      stateTriggerSummaryNodes.clear();
+      const rows = authoringModel.labStateRows();
+      if (expandedStateId && !rows.some((row) => row.id === expandedStateId)) expandedStateId = null;
+      for (const row of rows) {
+        const stateRow = document.createElement("div");
+        stateRow.setAttribute("data-fsm-state-row", String(row.number));
+        stateRow.style.cssText = `display:grid;grid-template-columns:24px minmax(0,1fr) repeat(4,26px);gap:4px;align-items:center;padding:3px;border:${row.selected ? "1px solid #7cc7ff" : "1px solid rgba(255,255,255,0.12)"};background:${row.selected ? "rgba(80,170,255,0.22)" : "rgba(255,255,255,0.04)"};`;
+        stateRow.addEventListener("click", () => { authoringModel.selectState(row.id); expandedStateId = expandedStateId === row.id ? null : row.id; renderPresetEditor(); });
+        const number = document.createElement("span"); number.textContent = String(row.number); number.style.cssText = "display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#fff;color:#000;font-weight:900;border:1px solid #000;"; stateRow.appendChild(number);
+        const labelWrap = document.createElement("button"); labelWrap.type = "button"; labelWrap.style.cssText = "min-width:0;text-align:left;background:transparent;color:#eee;border:0;padding:0;font:12px monospace;";
+        const main = document.createElement("div"); main.textContent = row.behaviorPresetId || row.id; main.style.cssText = "font-weight:bold;overflow:hidden;text-overflow:ellipsis;"; labelWrap.appendChild(main);
+        const sub = document.createElement("div"); sub.textContent = row.triggerSummary; sub.setAttribute("data-fsm-state-trigger-summary", row.id); stateTriggerSummaryNodes.set(row.id, sub); sub.style.cssText = "font-size:10px;color:#bbb;overflow:hidden;text-overflow:ellipsis;"; labelWrap.appendChild(sub); stateRow.appendChild(labelWrap);
+        const rowIndex = row.number - 1;
+        const rowIcon = (icon: string, label: string, disabled: boolean, action: () => void) => { const b = document.createElement("button"); b.type = "button"; b.textContent = icon; b.title = label; b.setAttribute("aria-label", `${label}: ${row.id}`); setIconButtonDisabled(b, disabled); b.addEventListener("click", (ev) => { ev.stopPropagation(); if (b.disabled) return; authoringModel.selectState(row.id); action(); renderPresetEditor(); }); stateRow.appendChild(b); return b; };
+        rowIcon(ICONS.duplicate, "Duplicate state", authoringReadOnly, () => { authoringModel.duplicateState(row.id); expandedStateId = authoringModel.draft?.selectedStateId ?? null; });
+        rowIcon(ICONS.delete, "Delete state", authoringReadOnly || rows.length <= 1, () => { authoringModel.deleteState(row.id, true); authoringModel.normalizeSequentialTriggers(); expandedStateId = authoringModel.draft?.selectedStateId ?? null; });
+        rowIcon(ICONS.up, "Move state up", authoringReadOnly || rowIndex === 0, () => { const states = authoringModel.draft?.preset.graph.states ?? []; expandedStateId = row.id; authoringModel.reorderState(row.id, states.findIndex((state) => String(state.id) === row.id) - 1); authoringModel.normalizeSequentialTriggers(); });
+        rowIcon(ICONS.down, "Move state down", authoringReadOnly || rowIndex === rows.length - 1, () => { const states = authoringModel.draft?.preset.graph.states ?? []; expandedStateId = row.id; authoringModel.reorderState(row.id, states.findIndex((state) => String(state.id) === row.id) + 1); authoringModel.normalizeSequentialTriggers(); });
+        stateList.appendChild(stateRow);
+        if (row.id === expandedStateId) stateList.appendChild(editorSection);
+      }
+      const inlineNewStateBtn = document.createElement("button");
+      inlineNewStateBtn.type = "button";
+      inlineNewStateBtn.textContent = "+ New state";
+      inlineNewStateBtn.title = "Add new FSM state";
+      inlineNewStateBtn.setAttribute("aria-label", "Add new FSM state");
+      inlineNewStateBtn.disabled = authoringReadOnly;
+      inlineNewStateBtn.style.cssText = `font:12px monospace;min-height:26px;text-align:left;background:${authoringReadOnly ? "#1a1a1a" : "#111"};color:${authoringReadOnly ? "#666" : "#eee"};border:1px dashed rgba(255,255,255,0.28);border-radius:2px;cursor:${authoringReadOnly ? "not-allowed" : "pointer"};`;
+      inlineNewStateBtn.addEventListener("click", (ev) => { ev.stopPropagation(); authoringModel.addState(); authoringModel.normalizeSequentialTriggers(); expandedStateId = authoringModel.draft?.selectedStateId ?? null; renderPresetEditor(); });
+      stateList.appendChild(inlineNewStateBtn);
+      const view = authoringModel.selectedStateView();
+      selectedStateTitle.textContent = "";
+      movementPresetInput.value = view?.behaviorPresetId ?? "none.hold"; movementPresetInput.disabled = authoringReadOnly || !view;
+      const formation = view?.formation; formationControls.style.display = "flex";
+      selectedFormationShape = ((formation?.shape as FormationId) || "line.horizontal");
+      for (const { id, button } of stateShapeButtons) { const active = id === selectedFormationShape; button.style.background = active ? "#2b5f8a" : "#111"; button.disabled = authoringReadOnly || !view; }
+      stateSpacingSlider.setValue(formation?.spacing ?? 64); stateElasticitySlider.setValue(formation?.elasticity ?? 0); stateFollowSlider.setValue(formation?.followDelay ?? 0); stateSpeedSlider.setValue(formation?.speedMultiplier ?? 1);
+      for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateFollowSlider.slider, stateSpeedSlider.slider]) el.disabled = authoringReadOnly || !view;
+      triggerSelect.value = view?.triggerType ?? "never"; triggerSelect.disabled = authoringReadOnly || !view || view.isLast;
+      triggerParamWrap.textContent = "";
+      triggerTimeStepper.setDisabled(authoringReadOnly || !view || view.isLast); triggerXStepper.setDisabled(authoringReadOnly || !view || view.isLast); triggerHitStepper.setDisabled(authoringReadOnly || !view || view.isLast);
+      if (triggerSelect.value === "time") { triggerTimeStepper.setValue(view?.triggerParams.seconds ?? 1); triggerParamWrap.appendChild(triggerTimeStepper.wrap); }
+      else if (triggerSelect.value === "screenXBelow") { triggerXStepper.setValue(view?.triggerParams.x ?? 650); triggerParamWrap.appendChild(triggerXStepper.wrap); }
+      else if (triggerSelect.value === "hit") { triggerHitStepper.setValue(1); triggerParamWrap.appendChild(triggerHitStepper.wrap); }
+      triggerHint.textContent = view?.nextStateId ? "" : "Last/only state: no next target; Never is valid.";
+      advancedBody.textContent = selected ? [`State id: ${selected.id}`, `Label: ${selected.label}`, `Targeting: ${selected.targeting.type}`, `Combat: ${selected.combat.mode}${(selected.combat as any).profileId ? ` ${(selected.combat as any).profileId}` : ""}`, `Modifiers: ${(selected.movement.modifiers ?? []).map((m) => m.type).join(", ") || "none"}`, `Lifecycle: ${(selected.lifecycle?.enterActions ?? []).map((a) => a.type).join(", ") || "none"}`].join("\n") : "Advanced combat, targeting, modifier, and lifecycle details appear here.";
+      authoringDiagnostics.textContent = ad?.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code} ${x.path}: ${x.message}`).join("\n") ?? "";
+      runtimeDiagnosticsSection.style.display = runtimeDiagnosticsDockOpen ? "flex" : "none";
+      runtimeDiagnosticsToggle.setAttribute("aria-pressed", String(runtimeDiagnosticsDockOpen));
+      runtimeDiagnosticsToggle.style.background = runtimeDiagnosticsDockOpen ? "#2b5f8a" : "transparent";
+      statesAndDiagnosticsDock.style.gridTemplateColumns = "minmax(0,1fr)"; if (runtimeDiagnosticsDockOpen) positionRuntimeDiagnosticsPanel();
+      dirtyBadge.textContent = authoringReadOnly ? "BUILT-IN / READ ONLY" : (ad?.dirty ? "DIRTY" : "Saved");
+      const preview = previewSession.current();
+      previewDraftBtn.disabled = authoringReadOnly || !ad || authoringModel.hasErrors();
+      previewSavedBtn.disabled = !CONTENT.fsmPresets.get(presetModel.selectedId);
+      previewRestartBtn.disabled = !preview.source;
+      previewStopBtn.disabled = preview.status !== "running";
+      previewStatus.textContent = `PREVIEW: ${preview.source ? preview.source.toUpperCase() : "IDLE"}\nStatus: ${preview.status.toUpperCase()}${preview.endedReason ? ` (${preview.endedReason})` : ""}\nPreset: ${preview.presetId || "(none)"}`;
+      const rt = preview.runtime;
+      previewDiagnostics.textContent = rt ? [
+        `State: ${rt.stateLabel} (${rt.stateId})`,
+        `Index: ${rt.stateIndex}`,
+        `Age: ${formatNum(rt.stateAge, 2)} s`,
+        `Entries: ${rt.entryCount}`,
+        `Movement: ${rt.movementPresetId ?? "none"}`,
+        `Modifiers: ${rt.modifierTypes.join(", ") || "none"}`,
+        `Suppressed: ${rt.movementSuppressed ? "yes" : "no"}`,
+        `Combat: ${rt.combatMode}`,
+        `Attack: ${rt.activeAttackProfileId ?? "none"}`,
+        `Position: ${preview.position ? `${formatNum(preview.position.x)}, ${formatNum(preview.position.y)}` : "none"}`,
+        `Pending/Removed: ${preview.position?.pendingKill ? "pending-kill" : preview.position?.removed ? "removed" : "live"}`,
+        ...preview.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code}: ${x.message}`),
+      ].join("\n") : preview.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code}: ${x.message}`).join("\n");
+      previewTrace.textContent = `Transition Trace\n${preview.trace.map((t) => `${t.tick}: ${t.fromStateId ?? "spawn"} -> ${t.toStateId} #${t.entryCount}`).join("\n")}`;
+      for (const b of [addStateBtn, dupStateBtn, delStateBtn]) b.disabled = authoringReadOnly;
+      saveBtn.disabled = readOnly || (!draft.dirty && !authoringModel.canSave); setIconButtonDisabled(topSaveBtn, saveBtn.disabled);
+      refreshFsmSpawnSelect(CONTENT.fsmPresets.get(presetModel.selectedId) ? presetModel.selectedId : fsmSpawnSelect.value);
+    };
+    editFsmBasicSetupDraft = () => {
+      presetModel.setBasicSetup({ appearanceId: enemySelect.value, count: groupCount, formationId: formationChoice.value, spacing: fsmSpacingSlider.value, elasticity: fsmElasticitySlider.value, followDelay: fsmFollowSlider.value, baseSpeed: fsmBaseSpeedSlider.value, spawnY: screenYControl.value });
+      const normalizedBasicSetup = presetModel.draft?.basicSetup;
+      if (normalizedBasicSetup) authoringModel.setBasicSetup(normalizedBasicSetup);
+      renderPresetEditor();
+    };
+    presetList.addEventListener("change", () => { if (!authoringModel.requireDiscardConfirmation(presetList.value) || window.confirm("Discard unsaved FSM authoring changes?")) { presetModel.select(presetList.value); authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId); } renderPresetEditor(); });
+    idInput.addEventListener("input", () => { presetModel.setDraftId(idInput.value); renderPresetEditor(); });
+    labelInput.addEventListener("input", () => { presetModel.setDraftLabel(labelInput.value); renderPresetEditor(); });
+    newBtn.addEventListener("click", () => { presetModel.create(); renderPresetEditor(); });
+    dupBtn.addEventListener("click", () => { presetModel.duplicate(); renderPresetEditor(); });
+    const saveSelectedFsmPreset = () => { if (authoringModel.draft?.dirty) authoringModel.save(); presetModel.save(); renderPresetEditor(); };
+    saveBtn.addEventListener("click", saveSelectedFsmPreset);
+    topSaveBtn.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); if (topSaveBtn.disabled) return; saveSelectedFsmPreset(); });
+    cancelBtn.addEventListener("click", () => { authoringModel.cancel(); presetModel.cancel(); renderPresetEditor(); });
+    delBtn.addEventListener("click", () => { if (window.confirm("Delete selected user FSM preset?")) presetModel.delete(presetModel.selectedId, true); renderPresetEditor(); });
+    importBtn.addEventListener("click", () => { presetModel.importJson(importText.value, collisionSelect.value as any); renderPresetEditor(); });
+    exportBtn.addEventListener("click", () => { exportText.value = presetModel.exportSelected().exportedText ?? ""; renderPresetEditor(); });
+    exportAllBtn.addEventListener("click", () => { exportText.value = presetModel.exportAllUsers().exportedText ?? ""; renderPresetEditor(); });
+    rawBtn.addEventListener("click", () => { exportText.value = presetModel.inspectRawStorage().rawStorage ?? ""; renderPresetEditor(); });
+    clearBtn.addEventListener("click", () => { if (window.confirm("Clear all user FSM presets?")) presetModel.clearUserPresets(true); renderPresetEditor(); });
+    topNewBtn.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); presetModel.create(); authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId); renderPresetEditor(); });
+    topRenameBtn.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); if (topRenameBtn.disabled) return;
+      const draft = presetModel.draft;
+      if (!draft || draft.source !== "user") return;
+      const content = document.createElement("div");
+      content.style.cssText = "display:flex;flex-direction:column;gap:6px;";
+      const input = document.createElement("input");
+      input.value = draft.label;
+      input.setAttribute("aria-label", "Preset name");
+      applyControlBaseStyle(input);
+      const error = document.createElement("div");
+      error.setAttribute("data-dev-dialog-error", "true");
+      error.style.cssText = "min-height:14px;color:#ff9b9b;";
+      content.append(input, error);
+      openDevDialog({
+        title: "Edit preset name",
+        content,
+        confirmLabel: "Rename",
+        opener: topRenameBtn,
+        onConfirm: () => {
+          const nextName = input.value.trim();
+          if (!nextName) { error.textContent = "Preset name is required."; input.focus(); return false; }
+          const currentLabel = presetModel.draft?.label ?? draft.label;
+          if (nextName === currentLabel) { renderPresetEditor(); return; }
+          const result = presetModel.renameSelected(nextName);
+          if (!result.ok) { error.textContent = result.diagnostics.map((d) => d.message).join("\n") || "Preset rename failed."; input.focus(); return false; }
+          if (authoringModel.draft?.originalPresetId === presetModel.selectedId && presetModel.draft) authoringModel.draft.preset.metadata.name = presetModel.draft.label;
+          renderPresetEditor();
+        },
+        onCancel: renderPresetEditor,
+      });
+      input.focus();
+      input.select();
+    });
+    topDuplicateBtn.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); presetModel.duplicate(); authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId); renderPresetEditor(); });
+    topResetBtn.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); authoringModel.cancel(); presetModel.cancel(); renderPresetEditor(); });
+    topDeleteBtn.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); if (topDeleteBtn.disabled) return;
+      const draft = presetModel.draft;
+      if (draft?.source !== "user") { renderPresetEditor(); return; }
+      const selectedLabel = presetModel.list().find((item) => item.id === presetModel.selectedId)?.label ?? draft.label;
+      const content = document.createElement("div");
+      content.style.cssText = "display:flex;flex-direction:column;gap:8px;line-height:1.35;";
+      const message = document.createElement("div");
+      message.textContent = `Delete preset "${selectedLabel}"?`;
+      content.appendChild(message);
+      if (authoringModel.draft?.dirty) {
+        const warning = document.createElement("div");
+        warning.setAttribute("data-dev-dialog-warning", "dirty");
+        warning.style.cssText = "display:flex;gap:6px;align-items:center;color:#ffd27a;";
+        warning.append(createLucideIcon({ icon: TriangleAlert, name: "TriangleAlert" }), document.createTextNode("This preset has unsaved changes."));
+        content.appendChild(warning);
+      }
+      openDevDialog({
+        title: "Delete preset",
+        content,
+        confirmLabel: "Delete",
+        danger: true,
+        opener: topDeleteBtn,
+        onConfirm: () => {
+          presetModel.delete(presetModel.selectedId, true);
+          authoringModel = new FsmPresetAuthoringModel(CONTENT.userFsmPresets, presetModel.selectedId);
+          renderPresetEditor();
+        },
+        onCancel: renderPresetEditor,
+      });
+    });
+    addStateBtn.addEventListener("click", () => { authoringModel.addState(); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); });
+    dupStateBtn.addEventListener("click", () => { authoringModel.duplicateState(); authoringModel.normalizeSequentialTriggers(); renderPresetEditor(); });
+    delStateBtn.addEventListener("click", () => { const id = authoringModel.draft?.selectedStateId; if (id && window.confirm("Delete selected FSM state?")) { authoringModel.deleteState(id, true); authoringModel.normalizeSequentialTriggers(); } renderPresetEditor(); });
+    movementPresetInput.addEventListener("change", () => { const id = authoringModel.draft?.selectedStateId; if (id) authoringModel.setMovementPreset(id, movementPresetInput.value); renderPresetEditor(); });
+    runtimeDiagnosticsToggle.addEventListener("click", () => { runtimeDiagnosticsDockOpen = !runtimeDiagnosticsDockOpen; renderPresetEditor(); });
+    const editStateFormationDraftLive = () => { const v = authoringModel.selectedStateView(); if (v) { authoringModel.setLabFormationField(v.id, "spacing", stateSpacingSlider.value); authoringModel.setLabFormationField(v.id, "elasticity", stateElasticitySlider.value); authoringModel.setLabFormationField(v.id, "followDelay", stateFollowSlider.value); authoringModel.setLabFormationField(v.id, "speedMultiplier", stateSpeedSlider.value); } updateStateEditorLiveStatus(); };
+    for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateFollowSlider.slider, stateSpeedSlider.slider]) {
+      el.addEventListener("input", editStateFormationDraftLive);
+      el.addEventListener("change", commitStateEditorLiveEdit);
+      el.addEventListener("pointerup", commitStateEditorLiveEdit);
+      el.addEventListener("blur", commitStateEditorLiveEdit);
+    }
+    const editTrigger = () => { const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabTrigger(v.id, triggerSelect.value as any, {}); renderPresetEditor(); };
+    triggerSelect.addEventListener("change", editTrigger);
+    triggerParamWrap.addEventListener("change", commitStateEditorLiveEdit);
+    triggerParamWrap.addEventListener("blur", commitStateEditorLiveEdit);
+    for (const el of [enemySelect, groupEnemySelect]) el.addEventListener("change", () => { if (enemyLabMode === "fsm") { enemySelect.value = el.value; groupEnemySelect.value = el.value; editFsmBasicSetupDraft(); } });
+    fsmSpacingSlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    fsmElasticitySlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    fsmFollowSlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    fsmBaseSpeedSlider.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    screenYControl.slider.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    screenYControl.valueInput.addEventListener("input", () => { if (enemyLabMode === "fsm") editFsmBasicSetupDraft(); });
+    fsmSpawnSelect.addEventListener("change", () => { if (enemyLabMode === "fsm" && fsmSpawnSelect.value && fsmSpawnSelect.value !== presetModel.selectedId) { presetModel.select(fsmSpawnSelect.value); authoringModel.load(presetModel.selectedId); renderPresetEditor(); } });
+    previewDraftBtn.addEventListener("click", () => { previewSession.startDraftPreview(authoringModel.draft?.preset ?? null, !authoringModel.readOnly); renderPresetEditor(); });
+    previewSavedBtn.addEventListener("click", () => { previewSession.startPersistedPreview(presetModel.selectedId); renderPresetEditor(); });
+    previewRestartBtn.addEventListener("click", () => { previewSession.restart(); renderPresetEditor(); });
+    previewStopBtn.addEventListener("click", () => { previewSession.stop(); renderPresetEditor(); });
+    renderPresetEditor();
+    fsmLabSection.appendChild(fsmPresetSection);
+    fsmLabSection.appendChild(fsmBasicSection);
+    fsmLabSection.appendChild(presetPanel);
+    fsmLabSection.appendChild(createSectionGap());
 
     const labPanel = document.createElement("div");
-    labPanel.id = "ds-enemy-lab-debug";
+    labPanel.id = ENEMY_LAB_DEBUG_PANEL_ID;
     labPanel.style.cssText = [
       "margin:0",
       "padding:4px",
@@ -1035,7 +1927,68 @@ export class DevSummoner {
       "box-sizing:border-box"
     ].join(";");
     labPanel.textContent = EMPTY_ENEMY_LAB;
-    panel.appendChild(labPanel);
+    fsmLabSection.appendChild(labPanel);
+
+
+    const refreshEnemyLabMode = () => {
+      const isSimple = enemyLabMode === "simple";
+      const isSmart = enemyLabMode === "smart";
+      const isFsm = enemyLabMode === "fsm";
+      styleLabModeButton(simpleModeButton, isSimple);
+      styleLabModeButton(smartModeButton, isSmart);
+      styleLabModeButton(fsmModeButton, isFsm);
+      simpleModeButton.setAttribute("aria-pressed", String(isSimple));
+      smartModeButton.setAttribute("aria-pressed", String(isSmart));
+      fsmModeButton.setAttribute("aria-pressed", String(isFsm));
+      simpleLabSection.style.display = isSimple ? "flex" : "none";
+      smartLabSection.style.display = isSmart ? "flex" : "none";
+      fsmLabSection.style.display = isFsm ? "flex" : "none";
+      fsmSpawnWrap.style.display = isFsm ? "none" : "flex";
+      fsmSpawnWrap.setAttribute("aria-hidden", String(isFsm));
+      if (isSimple) {
+        modeRow.style.display = "grid";
+        spawnTitle.style.display = "block";
+        if (!groupTypeRow.contains(countSegment)) groupTypeRow.appendChild(countSegment);
+        if (!enemyTypeRow.contains(enemySelect)) enemyTypeRow.appendChild(enemySelect);
+        if (!enemyControls.contains(screenYControl.wrap)) enemyControls.appendChild(screenYControl.wrap);
+        if (!spawnSection.contains(btn)) spawnSection.appendChild(btn);
+        refreshModeButtons();
+        simpleLabSection.appendChild(spawnSection);
+        enemyMovement.setMovementClass("dumb");
+        groupMovement.setMovementClass("dumb");
+      } else if (isSmart) {
+        modeRow.style.display = "grid";
+        spawnTitle.style.display = "block";
+        if (!groupTypeRow.contains(countSegment)) groupTypeRow.appendChild(countSegment);
+        if (!enemyTypeRow.contains(enemySelect)) enemyTypeRow.appendChild(enemySelect);
+        if (!enemyControls.contains(screenYControl.wrap)) enemyControls.appendChild(screenYControl.wrap);
+        if (!spawnSection.contains(btn)) spawnSection.appendChild(btn);
+        refreshModeButtons();
+        smartLabSection.appendChild(spawnSection);
+        enemyMovement.setMovementClass("smart");
+        groupMovement.setMovementClass("smart");
+      } else {
+        modeRow.style.display = "none";
+        spawnTitle.style.display = "none";
+        refreshFsmSpawnSelect();
+        if (!fsmPresetSection.contains(fsmSpawnSelect.root)) fsmPresetSection.appendChild(fsmSpawnSelect.root);
+        if (!fsmTypeRow.contains(enemySelect)) fsmTypeRow.appendChild(enemySelect);
+        if (!fsmTypeRow.contains(countSegment)) fsmTypeRow.appendChild(countSegment);
+        if (!fsmBasicSection.contains(screenYControl.wrap)) fsmBasicSection.appendChild(screenYControl.wrap);
+        if (!fsmBasicSection.contains(btn)) fsmBasicSection.appendChild(btn);
+        groupCount = normalizeFsmSpawnCount(groupCount);
+        btn.textContent = "SPAWN";
+        refreshGroupCount();
+        refreshFsmBasicSetupVisibility();
+      }
+      setLabSectionFocusable(simpleLabSection, isSimple);
+      setLabSectionFocusable(smartLabSection, isSmart);
+      setLabSectionFocusable(fsmLabSection, isFsm);
+    };
+    simpleModeButton.addEventListener("click", () => { enemyLabMode = "simple"; refreshEnemyLabMode(); });
+    smartModeButton.addEventListener("click", () => { enemyLabMode = "smart"; refreshEnemyLabMode(); });
+    fsmModeButton.addEventListener("click", () => { enemyLabMode = "fsm"; refreshEnemyLabMode(); });
+    refreshEnemyLabMode();
 
     document.body.appendChild(panel);
     this.panel = panel;
@@ -1044,33 +1997,57 @@ export class DevSummoner {
   }
 
   private refreshEnemyLab(): void {
-    const out = this.panel?.querySelector("#ds-enemy-lab-debug") as HTMLElement | null;
+    const runtimeOut = document.getElementById("ds-fsm-runtime-diagnostics-body") as HTMLElement | null;
+    if (runtimeOut) {
+      const cm = (window as any).__CM;
+      const bundle = findLatestFsmRuntimeDiagnostics({
+        store: cm?.store,
+        groups: cm?.enemyGroups,
+        latestManualSpawnId: this.latestManualSpawnId,
+        scrollX: Number((this.world as any)?.scrollX ?? 0),
+      });
+      runtimeOut.textContent = renderFsmRuntimeDiagnosticsText(bundle);
+    }
+
+    const out = this.panel?.querySelector(`#${ENEMY_LAB_DEBUG_PANEL_ID}`) as HTMLElement | null;
     if (!out) return;
 
     const selected = this.findSelectedFsmEnemy();
-    if (!selected) {
+    if (selected) {
+      this.retainedFsmInspection = createLiveFsmInspection(selected, Number((this.world as any)?.scrollX ?? 0));
+    } else if (this.retainedFsmInspection?.status === "live") {
+      this.retainedFsmInspection = endFsmInspection(this.retainedFsmInspection, "removed");
+    }
+
+    const retained = this.retainedFsmInspection;
+    if (!retained) {
       out.textContent = EMPTY_ENEMY_LAB;
       return;
     }
 
-    const runtime = getFsmRuntimeDebug(selected);
-    const position = getEnemyPositionDebug(selected, Number((this.world as any)?.scrollX ?? 0));
-    const graphView = renderFsmGraphView(runtime.graphId, runtime.stateId);
+    const runtime = retained.runtime;
+    const position = retained.position;
+    const graphView = renderFsmGraphView(runtime, retained.graph);
+    const statusLine = retained.status === "ended"
+      ? `<br><b>Status:</b> ${esc(retained.endReason === "despawned" ? "DESPAWNED" : "ENTITY REMOVED")}`
+      : "";
 
     out.innerHTML = `<div style="display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:2px;align-items:start;">
 <div style="white-space:nowrap;">
-<b>Type:</b> ${esc(String(selected.typeId ?? "?"))}<br>
-<b>Beh:</b> ${esc(runtime.movement)}<br>
-<b>Atk:</b> ${esc(runtime.attack)}<br>
-<b>HP:</b> ${esc(getEnemyHpLabel(selected))}<br>
-<b>State:</b> ${esc(runtime.stateId)}<br>
-<b>Age:</b> ${esc(formatNum(runtime.age, 2))} s
+<b>Type:</b> ${esc(String(retained.typeId ?? "?"))}<br>
+<b>Beh:</b> ${esc(runtime.movementPresetId ?? "none")}<br>
+<b>Atk:</b> ${esc(runtime.activeAttackProfileId ?? runtime.combatMode)}<br>
+<b>HP:</b> ${esc(retained.hpLabel ?? "?")}<br>
+<b>State:</b> ${esc(runtime.stateLabel || runtime.stateId)}<br>
+<b>Index:</b> ${esc(runtime.stateIndex)}<br>
+<b>Age:</b> ${esc(formatNum(runtime.stateAge, 2))} s<br>
+<b>Entries:</b> ${esc(runtime.entryCount)}${statusLine}
 </div>
 <div style="white-space:nowrap;">
-<b>scrX:</b> ${esc(formatNum(position.screenX))}<br>
-<b>scrY:</b> ${esc(formatNum(position.screenY))}<br>
-<b>wX:</b> ${esc(formatNum(position.worldX))}<br>
-<b>wY:</b> ${esc(formatNum(position.worldY))}
+<b>scrX:</b> ${esc(formatNum(position?.screenX))}<br>
+<b>scrY:</b> ${esc(formatNum(position?.screenY))}<br>
+<b>wX:</b> ${esc(formatNum(position?.worldX))}<br>
+<b>wY:</b> ${esc(formatNum(position?.worldY))}
 </div>
 </div>
 <div style="margin-top:6px;">${graphView}</div>`;

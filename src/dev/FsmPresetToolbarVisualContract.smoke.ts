@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const source = readFileSync("src/dev/DevSummoner.ts", "utf8");
+const buttonSource = readFileSync("src/dev/ui/iconButton.ts", "utf8");
+const iconSource = readFileSync("src/dev/ui/lucideIcon.ts", "utf8");
+const toolbarBlock = source.slice(source.indexOf('const topNewBtn = makeIconBtn'), source.indexOf('fsmPresetSection.appendChild(fsmSpawnSelect.root)'));
+assert(source.includes('grid-template-columns:repeat(6,30px)'), "toolbar reserves exactly six equal 30px button slots");
+assert(buttonSource.includes('data-preset-toolbar-action'), "each toolbar button has an explicit action id");
+assert(buttonSource.includes('preset-toolbar-icon-wrap') && iconSource.includes('preset-toolbar-icon'), "each toolbar SVG uses shared icon class");
+for (const token of ['width:30px', 'height:30px', 'min-width:30px', 'min-height:30px', 'padding:0', 'display:inline-grid', 'place-items:center']) assert(buttonSource.includes(token), `shared button style contains ${token}`);
+for (const token of ['style.width', 'style.height', 'pointerEvents = "none"', 'stroke-width', 'stroke-linecap', 'stroke-linejoin']) assert(iconSource.includes(token), `shared SVG style contains ${token}`);
+const labels = [...toolbarBlock.matchAll(/"(New preset|Edit preset name|Duplicate preset|Reset preset|Save preset|Delete preset)"/g)].map((m) => m[1]);
+assert.deepEqual(labels, ["New preset", "Edit preset name", "Duplicate preset", "Reset preset", "Save preset", "Delete preset"], "toolbar labels and order match contract");
+assert(!toolbarBlock.includes('ICONS.trash') && !toolbarBlock.includes('textContent = icon'), "toolbar icons are Lucide SVGs rather than unique glyph text");
+console.log("[SMOKE] FsmPresetToolbarVisualContract OK ✅");

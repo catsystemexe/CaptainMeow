@@ -1,2 +1,13 @@
 export * from "./FsmTypes";
 export * from "./FsmController";
+export * from "./schema";
+export * from "./validate";
+export * from "./migrate";
+export * from "./resolve";
+export * from "./FsmPresetRegistry";
+export * from "./FsmRuntime";
+export * from "./MovementResolver";
+
+export * from "./LifecycleExecutor";
+export * from "./FsmDebugSnapshot";
+export * from "./UserFsmPresetStore";

@@ -3,8 +3,11 @@ import type { EntityStore } from "../../engine/ecs/EntityStore";
 import { EnemyBehaviorDB } from "./EnemyBehaviorDB";
 import { EnemyBehaviorPresets } from "./EnemyBehaviorPresets";
 import { resolveMovementCullReferenceX } from "./EnemyCullReference";
+import { createFsmRuntimeSnapshot, executeFsmMovement, fsmBaseSpeed, fsmEffectiveSpeed, fsmMovementReferenceSpeed, fsmSpeedMultiplier, getFsmMovementCullReferenceX, getFsmRuntimeState, updateResolvedFsm, velocityFromFsmTarget, type FsmRuntimeSnapshot } from "./fsm";
+import type { ResolvedFsmPreset } from "./fsm/resolve";
 
 type Vec2 = { x: number; y: number };
+type AnchorHistorySample = { time: number; x: number; y: number };
 export type GroupId = number;
 export type FormationId = typeof ENEMY_GROUP_FORMATION_IDS[number];
 export type CohesionId = "rigid" | "elastic";
@@ -39,12 +42,30 @@ export type EnemyGroupSpawnRequest = {
   formationId: string;
   movementPresetId: string;
   cohesionId: string;
+  fsmPreset?: ResolvedFsmPreset;
+  inheritedAttackProfileId?: string | null;
   /** Legacy compatibility alias for formation.spacing. */
   spacing?: number;
   params?: EnemyGroupParams;
 };
 
 type Member = { ref: EntityRef; slotIndex: number; offset: Vec2 };
+export type EnemyGroupMemberCohesionDiagnostics = {
+  groupId: number;
+  slotIndex: number;
+  followDelay: number;
+  targetX: number;
+  targetY: number;
+  distanceToTarget: number;
+  correctionVelocityX: number;
+  correctionVelocityY: number;
+  correctionSpeed: number;
+  catchUpCap: number;
+  saturated: boolean;
+  overshootPrevented: boolean;
+  anchorSpeed: number;
+  responseTime: number;
+};
 type Group = {
   id: GroupId;
   anchor: Vec2;
@@ -53,11 +74,29 @@ type Group = {
   behavior: Record<string, unknown>;
   bState: Record<string, unknown> & { t: number };
   vel: Vec2;
+  fsm?: FsmRuntimeSnapshot;
+  fsmLastScrollX?: number;
+  fsmEnt?: { pos: Vec2; vel: Vec2; bState: Record<string, unknown>; hp: number; maxHp: number };
+  inheritedAttackProfileId?: string | null;
   formationId: FormationId;
   cohesionId: CohesionId;
   params: NormalizedEnemyGroupParams;
+  followDelay: number;
+  historyTime: number;
+  anchorHistory: AnchorHistorySample[];
+  anchorHistoryStart: number;
+  anchorHistoryCount: number;
+  anchorHistoryCapacity: number;
   slotCount: number;
   members: Member[];
+  cohesionDiagnostics?: {
+    anchorSpeed: number;
+    maxMemberTargetDistance: number;
+    maxMemberCorrectionSpeed: number;
+    saturatedMembersCount: number;
+    followDelay: number;
+    elasticity: number;
+  };
 };
 
 export const ENEMY_GROUP_FORMATION_IDS = ["line.horizontal", "wedge", "column.vertical", "arc.forward", "ring"] as const;
@@ -66,6 +105,10 @@ const FORMATIONS = new Set<string>(ENEMY_GROUP_FORMATION_IDS);
 const COHESION = new Set<string>(ENEMY_GROUP_COHESION_IDS);
 const finite = (n: unknown, fallback = 0) => typeof n === "number" && Number.isFinite(n) ? n : fallback;
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+export const ENEMY_GROUP_FOLLOW_DELAY_LIMITS = { min: 0, max: 0.5, default: 0, step: 0.01 } as const;
+const ANCHOR_HISTORY_SAMPLE_RATE = 60;
+const ANCHOR_HISTORY_SAFETY_SECONDS = 0.5;
+const ANCHOR_HISTORY_MIN_CAPACITY = 8;
 
 export const ENEMY_GROUP_PARAM_LIMITS = {
   formation: {
@@ -159,6 +202,126 @@ export function formationOffset(id: FormationId, slotIndex: number, slotCount: n
   return { x: (slot - (count - 1) / 2) * spacing, y: 0 };
 }
 
+
+export function normalizeGroupFollowDelay(value: unknown, fallback = ENEMY_GROUP_FOLLOW_DELAY_LIMITS.default): number {
+  return finiteClamped(value, fallback, ENEMY_GROUP_FOLLOW_DELAY_LIMITS.min, ENEMY_GROUP_FOLLOW_DELAY_LIMITS.max);
+}
+
+function stateFormationParams(state: unknown): { formationId: FormationId; params: NormalizedEnemyGroupParams; cohesionId: CohesionId; followDelay: number | null } | null {
+  const raw: any = state;
+  const legacy = raw?.formationOverride && typeof raw.formationOverride === "object" ? raw.formationOverride : {};
+  const formationRaw = raw?.formationId ?? legacy.shape;
+  const followRaw = raw?.followDelay ?? legacy.followDelay;
+  const hasAny = formationRaw !== undefined || raw?.spacing !== undefined || legacy.spacing !== undefined || raw?.elasticity !== undefined || legacy.elasticity !== undefined || followRaw !== undefined;
+  if (!hasAny) return null;
+  const formationId = normalizeFormationId(String(formationRaw ?? "line.horizontal"));
+  const spacing = finite(raw?.spacing ?? legacy.spacing, ENEMY_GROUP_PARAM_LIMITS.formation.spacing.default);
+  const elasticity = clamp(Math.floor(finite(raw?.elasticity ?? legacy.elasticity, 0)), 0, 10);
+  const cohesionId: CohesionId = elasticity === 0 ? "rigid" : "elastic";
+  const catchLimits = ENEMY_GROUP_PARAM_LIMITS.cohesion.maxCatchupSpeed;
+  const responseLimits = ENEMY_GROUP_PARAM_LIMITS.cohesion.response;
+  const t = elasticity / 10;
+  const response = elasticity === 0 ? responseLimits.default : Math.round(responseLimits.max - (responseLimits.max - responseLimits.min) * t);
+  const maxCatchupSpeed = elasticity === 0 ? catchLimits.rigidDefault : Math.round((catchLimits.rigidDefault - (catchLimits.rigidDefault - catchLimits.min) * t) / catchLimits.step) * catchLimits.step;
+  const formation = formationId === "arc.forward" || formationId === "ring" ? { spacing, radius: spacing } : { spacing, depth: spacing };
+  return { formationId, cohesionId, followDelay: followRaw === undefined ? null : normalizeGroupFollowDelay(followRaw), params: normalizeEnemyGroupParams({ formation, cohesion: { response, maxCatchupSpeed } }, cohesionId) };
+}
+
+function applyStateFormation(group: Group): void {
+  if (!group.fsm) return;
+  const next = stateFormationParams(getFsmRuntimeState(group.fsm));
+  if (!next) return;
+  group.formationId = next.formationId;
+  group.cohesionId = next.cohesionId;
+  group.followDelay = next.followDelay ?? normalizeGroupFollowDelay((group.fsm.preset?.definition as any)?.basicSetup?.followDelay);
+  group.params = next.params;
+  for (const member of group.members) member.offset = formationOffset(group.formationId, member.slotIndex, group.slotCount, group.params);
+}
+
+function anchorHistoryCapacity(followDelay: number, slotCount: number): number {
+  const maxDelay = Math.max(0, followDelay) * Math.max(0, slotCount - 1);
+  return Math.max(ANCHOR_HISTORY_MIN_CAPACITY, Math.ceil((maxDelay + ANCHOR_HISTORY_SAFETY_SECONDS) * ANCHOR_HISTORY_SAMPLE_RATE) + 2);
+}
+
+function resetAnchorHistory(group: Group): void {
+  group.anchorHistoryCapacity = anchorHistoryCapacity(group.followDelay, group.slotCount);
+  group.anchorHistory = Array.from({ length: group.anchorHistoryCapacity }, () => ({ time: group.historyTime, x: group.anchor.x, y: group.anchor.y }));
+  group.anchorHistoryStart = 0;
+  group.anchorHistoryCount = 1;
+  group.anchorHistory[0] = { time: group.historyTime, x: group.anchor.x, y: group.anchor.y };
+}
+
+function ensureAnchorHistoryCapacity(group: Group): void {
+  const nextCapacity = anchorHistoryCapacity(group.followDelay, group.slotCount);
+  if (nextCapacity <= group.anchorHistoryCapacity) return;
+  const samples = anchorHistorySamples(group);
+  group.anchorHistoryCapacity = nextCapacity;
+  group.anchorHistory = Array.from({ length: nextCapacity }, (_, i) => samples[i] ?? samples[samples.length - 1] ?? { time: group.historyTime, x: group.anchor.x, y: group.anchor.y });
+  group.anchorHistoryStart = 0;
+  group.anchorHistoryCount = samples.length;
+}
+
+function anchorHistorySamples(group: Group): AnchorHistorySample[] {
+  const samples: AnchorHistorySample[] = [];
+  for (let i = 0; i < group.anchorHistoryCount; i++) samples.push(group.anchorHistory[(group.anchorHistoryStart + i) % group.anchorHistoryCapacity]);
+  return samples;
+}
+
+function pushAnchorHistory(group: Group): void {
+  ensureAnchorHistoryCapacity(group);
+  const sample = { time: group.historyTime, x: group.anchor.x, y: group.anchor.y };
+  if (group.anchorHistoryCount < group.anchorHistoryCapacity) {
+    group.anchorHistory[(group.anchorHistoryStart + group.anchorHistoryCount) % group.anchorHistoryCapacity] = sample;
+    group.anchorHistoryCount += 1;
+    return;
+  }
+  group.anchorHistory[group.anchorHistoryStart] = sample;
+  group.anchorHistoryStart = (group.anchorHistoryStart + 1) % group.anchorHistoryCapacity;
+}
+
+function cohesionElasticity(group: Group): number {
+  if (group.cohesionId === "rigid") return 0;
+  const cap = group.params.cohesion.maxCatchupSpeed;
+  const limits = ENEMY_GROUP_PARAM_LIMITS.cohesion.maxCatchupSpeed;
+  const span = Math.max(1, limits.rigidDefault - limits.min);
+  return clamp(Math.round((limits.rigidDefault - cap) / span * 10), 0, 10);
+}
+
+function memberResponseTime(group: Group): number {
+  const elasticity = cohesionElasticity(group);
+  return 0.08 + (elasticity / 10) * 0.22;
+}
+
+function dynamicCatchUpCap(group: Group, distance: number): { cap: number; responseTime: number; anchorSpeed: number } {
+  const responseTime = memberResponseTime(group);
+  const anchorSpeed = Math.hypot(finite(group.vel?.x), finite(group.vel?.y));
+  const minimumCatchUpSpeed = group.params.cohesion.maxCatchupSpeed;
+  const anchorSpeedFactor = 1.35;
+  const distanceSpeed = distance / Math.max(0.001, responseTime);
+  const cap = Math.min(2400, Math.max(minimumCatchUpSpeed, anchorSpeed * anchorSpeedFactor, distanceSpeed));
+  return { cap, responseTime, anchorSpeed };
+}
+
+export function sampleAnchorHistoryForGroup(group: any, delaySeconds: number): Vec2 & { sampleAge: number } {
+  const count = group.anchorHistoryCount;
+  if (count <= 0) return { x: group.anchor.x, y: group.anchor.y, sampleAge: 0 };
+  const targetTime = group.historyTime - Math.max(0, delaySeconds);
+  const at = (i: number) => group.anchorHistory[(group.anchorHistoryStart + i) % group.anchorHistoryCapacity];
+  const first = at(0);
+  const last = at(count - 1);
+  if (targetTime <= first.time) return { x: first.x, y: first.y, sampleAge: Math.max(0, group.historyTime - first.time) };
+  if (targetTime >= last.time) return { x: last.x, y: last.y, sampleAge: Math.max(0, group.historyTime - last.time) };
+  for (let i = 1; i < count; i++) {
+    const a = at(i - 1);
+    const b = at(i);
+    if (targetTime <= b.time) {
+      const span = b.time - a.time;
+      const t = span > 0 ? (targetTime - a.time) / span : 0;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, sampleAge: Math.max(0, group.historyTime - targetTime) };
+    }
+  }
+  return { x: last.x, y: last.y, sampleAge: Math.max(0, group.historyTime - last.time) };
+}
 export class EnemyGroupRegistry {
   private nextId = 1;
   private groups = new Map<GroupId, Group>();
@@ -179,9 +342,22 @@ export class EnemyGroupRegistry {
       formationId: normalizeFormationId(req.formationId),
       cohesionId,
       params,
+      followDelay: normalizeGroupFollowDelay((req.fsmPreset?.definition as any)?.basicSetup?.followDelay),
+      historyTime: 0,
+      anchorHistory: [],
+      anchorHistoryStart: 0,
+      anchorHistoryCount: 0,
+      anchorHistoryCapacity: 0,
       slotCount: Math.max(0, Math.floor(finite(req.count, 0))),
       members: [],
+      cohesionDiagnostics: { anchorSpeed: 0, maxMemberTargetDistance: 0, maxMemberCorrectionSpeed: 0, saturatedMembersCount: 0, followDelay: 0, elasticity: 0 },
     };
+    resetAnchorHistory(group);
+    if (req.fsmPreset) {
+      group.fsmEnt = { pos: group.anchor, vel: group.vel, bState: { t: 0 }, hp: 1, maxHp: 1 };
+      group.fsm = createFsmRuntimeSnapshot(req.fsmPreset, {}, group.fsmEnt, { inheritedAttackProfileId: req.inheritedAttackProfileId ?? null, lifecycle: { markKill: () => {}, isKilled: () => false } });
+      group.inheritedAttackProfileId = req.inheritedAttackProfileId ?? null;
+    }
     EnemyBehaviorDB[behaviorId as keyof typeof EnemyBehaviorDB]?.init?.({ pos: group.anchor, vel: group.vel, behavior: group.behavior, bState: group.bState, spawnOrdinal: group.id } as any);
     this.groups.set(group.id, group);
     return group.id;
@@ -196,23 +372,58 @@ export class EnemyGroupRegistry {
     return { groupId, slotIndex: slot };
   }
 
-  updateAnchors(dt: number, ctx: { playerPos: Vec2 | null; logicW: number; logicH: number }): void {
+  updateAnchors(dt: number, ctx: { playerPos: Vec2 | null; logicW: number; logicH: number; scrollX: number }): void {
     if (!(dt > 0)) return;
     for (const group of this.groups.values()) {
-      const behavior = EnemyBehaviorDB[group.behaviorId as keyof typeof EnemyBehaviorDB] ?? EnemyBehaviorDB.none;
-      const ent = { pos: group.anchor, vel: group.vel, behavior: group.behavior, bState: group.bState, spawnOrdinal: group.id };
+      group.cohesionDiagnostics = { anchorSpeed: Math.hypot(finite(group.vel?.x), finite(group.vel?.y)), maxMemberTargetDistance: 0, maxMemberCorrectionSpeed: 0, saturatedMembersCount: 0, followDelay: group.followDelay, elasticity: cohesionElasticity(group) };
       const behaviorCtx = { dt, playerPos: ctx.playerPos, logicW: ctx.logicW, logicH: ctx.logicH };
-      behavior.update?.(ent, behaviorCtx as any);
-      const target = behavior.getTarget?.(ent, behaviorCtx as any);
-      if (target && Number.isFinite(target.x) && Number.isFinite(target.y)) {
-        group.vel.x = (target.x - group.anchor.x) / dt;
-        group.vel.y = (target.y - group.anchor.y) / dt;
+      if (group.fsm && group.fsmEnt) {
+        group.fsmEnt.pos = group.anchor;
+        group.fsmEnt.vel = group.vel;
+        group.fsmLastScrollX = finite(ctx.scrollX);
+        updateResolvedFsm(group.fsmEnt, group.fsm, {
+          scrollX: group.fsmLastScrollX,
+          logicW: ctx.logicW,
+          dt,
+          inheritedAttackProfileId: group.inheritedAttackProfileId ?? null,
+          lifecycle: { markKill: () => {}, isKilled: () => false },
+        });
+        applyStateFormation(group);
+        const target = executeFsmMovement(group.fsm.movement, group.fsmEnt, behaviorCtx);
+        if (target && Number.isFinite(target.x) && Number.isFinite(target.y)) {
+          const state = getFsmRuntimeState(group.fsm);
+          const speed = fsmEffectiveSpeed(group.fsm.preset as any, state);
+          const referenceSpeed = fsmMovementReferenceSpeed(group.fsm.movement);
+          const rawVel = velocityFromFsmTarget(group.fsmEnt, target, dt, null);
+          const vel = velocityFromFsmTarget(group.fsmEnt, target, dt, speed, referenceSpeed);
+          const integratedDeltaX = vel.x * dt;
+          const integratedDeltaY = vel.y * dt;
+          const scrollDeltaX = group.fsmLastScrollX - finite((group.fsm as any).lastDiagnosticsScrollX, group.fsmLastScrollX);
+          (group.fsm as any).lastDiagnosticsScrollX = group.fsmLastScrollX;
+          (group.fsm as any).speedDiagnostics = { baseSpeed: fsmBaseSpeed(group.fsm.preset as any), speedMultiplier: fsmSpeedMultiplier(state), effectiveSpeed: speed, movementPresetReferenceSpeed: referenceSpeed, rawVelocityX: rawVel.x, rawVelocityY: rawVel.y, finalVelocityX: vel.x, finalVelocityY: vel.y, integratedDeltaX, integratedDeltaY, worldSpeedMagnitude: Math.hypot(vel.x, vel.y), screenVelocityX: vel.x - (scrollDeltaX / dt), screenVelocityY: vel.y, screenDeltaX: integratedDeltaX - scrollDeltaX, screenDeltaY: integratedDeltaY, screenSpeedMagnitude: Math.hypot(vel.x - (scrollDeltaX / dt), vel.y) };
+          group.vel.x = vel.x;
+          group.vel.y = vel.y;
+        } else {
+          group.vel.x = finite(group.fsmEnt.vel?.x);
+          group.vel.y = finite(group.fsmEnt.vel?.y);
+        }
       } else {
-        group.vel.x = finite(ent.vel?.x);
-        group.vel.y = finite(ent.vel?.y);
+        const behavior = EnemyBehaviorDB[group.behaviorId as keyof typeof EnemyBehaviorDB] ?? EnemyBehaviorDB.none;
+        const ent = { pos: group.anchor, vel: group.vel, behavior: group.behavior, bState: group.bState, spawnOrdinal: group.id };
+        behavior.update?.(ent, behaviorCtx as any);
+        const target = behavior.getTarget?.(ent, behaviorCtx as any);
+        if (target && Number.isFinite(target.x) && Number.isFinite(target.y)) {
+          group.vel.x = (target.x - group.anchor.x) / dt;
+          group.vel.y = (target.y - group.anchor.y) / dt;
+        } else {
+          group.vel.x = finite(ent.vel?.x);
+          group.vel.y = finite(ent.vel?.y);
+        }
       }
       group.anchor.x += group.vel.x * dt;
       group.anchor.y += group.vel.y * dt;
+      group.historyTime += dt;
+      pushAnchorHistory(group);
     }
   }
 
@@ -221,31 +432,33 @@ export class EnemyGroupRegistry {
     if (!group || !(dt > 0)) return false;
     const member = group.members.find((m) => m.slotIndex === membership.slotIndex);
     const offset = member?.offset ?? formationOffset(group.formationId, membership.slotIndex, group.slotCount, group.params);
-    const target = { x: group.anchor.x + offset.x, y: group.anchor.y + offset.y };
+    const sample = group.followDelay > 0 ? sampleAnchorHistoryForGroup(group, membership.slotIndex * group.followDelay) : { x: group.anchor.x, y: group.anchor.y };
+    const target = { x: sample.x + offset.x, y: sample.y + offset.y };
     ent.vel = ent.vel ?? { x: 0, y: 0 };
-    if (group.cohesionId === "rigid") {
-      let vx = (target.x - finite(ent.pos?.x)) / dt;
-      let vy = (target.y - finite(ent.pos?.y)) / dt;
-      const speed = Math.hypot(vx, vy);
-      const maxSpeed = group.params.cohesion.maxCatchupSpeed;
-      if (speed > maxSpeed) {
-        vx = vx / speed * maxSpeed;
-        vy = vy / speed * maxSpeed;
-      }
-      ent.vel.x = vx;
-      ent.vel.y = vy;
-      return true;
-    }
-    const maxSpeed = group.params.cohesion.maxCatchupSpeed;
-    const response = group.params.cohesion.response;
     const dx = target.x - finite(ent.pos?.x);
     const dy = target.y - finite(ent.pos?.y);
-    let vx = dx * response;
-    let vy = dy * response;
-    const speed = Math.hypot(vx, vy);
-    if (speed > maxSpeed) { vx = vx / speed * maxSpeed; vy = vy / speed * maxSpeed; }
+    const distance = Math.hypot(dx, dy);
+    const { cap, responseTime, anchorSpeed } = dynamicCatchUpCap(group, distance);
+    const desiredSpeed = distance / dt;
+    const correctionSpeed = Math.min(desiredSpeed, cap);
+    const overshootPrevented = desiredSpeed > cap ? false : distance > 0;
+    const scale = distance > 0.000001 ? correctionSpeed / distance : 0;
+    const vx = dx * scale;
+    const vy = dy * scale;
     ent.vel.x = vx;
     ent.vel.y = vy;
+    const actualCorrectionSpeed = Math.hypot(vx, vy);
+    const saturated = desiredSpeed > cap + 0.000001;
+    const diag: EnemyGroupMemberCohesionDiagnostics = { groupId: group.id, slotIndex: membership.slotIndex, followDelay: group.followDelay, targetX: target.x, targetY: target.y, distanceToTarget: distance, correctionVelocityX: vx, correctionVelocityY: vy, correctionSpeed: actualCorrectionSpeed, catchUpCap: cap, saturated, overshootPrevented, anchorSpeed, responseTime };
+    ent.groupCohesionDiagnostics = diag;
+    const summary = group.cohesionDiagnostics ?? { anchorSpeed: 0, maxMemberTargetDistance: 0, maxMemberCorrectionSpeed: 0, saturatedMembersCount: 0, followDelay: group.followDelay, elasticity: cohesionElasticity(group) };
+    summary.anchorSpeed = anchorSpeed;
+    summary.maxMemberTargetDistance = Math.max(summary.maxMemberTargetDistance, distance);
+    summary.maxMemberCorrectionSpeed = Math.max(summary.maxMemberCorrectionSpeed, actualCorrectionSpeed);
+    summary.saturatedMembersCount += saturated ? 1 : 0;
+    summary.followDelay = group.followDelay;
+    summary.elasticity = cohesionElasticity(group);
+    group.cohesionDiagnostics = summary;
     return true;
   }
 
@@ -263,7 +476,7 @@ export class EnemyGroupRegistry {
   resolveCullReferenceX(id: GroupId, fallbackX: unknown): number {
     const group = this.groups.get(id);
     if (!group) return finite(fallbackX);
-    return resolveMovementCullReferenceX(group.behaviorId, group.bState, group.anchor.x);
+    return group.fsm ? getFsmMovementCullReferenceX(group.fsm.movement, { pos: group.anchor }) : resolveMovementCullReferenceX(group.behaviorId, group.bState, group.anchor.x);
   }
   markMembersForKill(id: GroupId, store: EntityStore<any>): void {
     const group = this.groups.get(id);

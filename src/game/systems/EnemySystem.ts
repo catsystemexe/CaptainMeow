@@ -2,13 +2,11 @@
 import type { EntityStore } from "../../engine/ecs/EntityStore";
 import type { TickContext } from "../../engine/core/Loop";
 import { EnemyBehaviorDB } from "../enemies/EnemyBehaviorDB";
-import { EnemyBehaviorPresets } from "../enemies/EnemyBehaviorPresets";
-import { updateFsm } from "../enemies/fsm";
+import { createFsmMovementRuntime, executeFsmMovement, fsmBaseSpeed, fsmEffectiveSpeed, fsmMovementReferenceSpeed, fsmSpeedMultiplier, getFsmMovementCullReferenceX, getFsmRuntimeStateLabel, isFsmIndividualMovementSuppressed, updateResolvedFsm, velocityFromFsmTarget } from "../enemies/fsm";
 import { isEnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import type { EnemyBehaviorId } from "../enemies/EnemyBehaviorTypes";
 import { ENEMY_DEFS, getAttackProfile } from "../defs/EnemyDefs";
 import { updateAttack } from "../enemies/AttackController";
-import { BEHAVIOR_GRAPHS } from "../content/CONTENT";
 import type { EnemyGroupRegistry } from "../enemies/EnemyGroups";
 import { resolveMovementCullReferenceX } from "../enemies/EnemyCullReference";
 
@@ -24,31 +22,6 @@ function smoothTo(cur: number, target: number, easeSec: number, dt: number): num
   const c = Number.isFinite(cur) ? cur : 0;
   const t = Number.isFinite(target) ? target : c;
   return c + (t - c) * a;
-}
-
-function applyStateBehavior(e: any, movementPresetId?: string): void {
-  if (!movementPresetId) return;
-  if (e.fsmAppliedMovementPresetId === movementPresetId) return;
-
-  const preset = EnemyBehaviorPresets[movementPresetId] ?? EnemyBehaviorPresets["none.hold"];
-  if (!preset) return;
-
-  const nextBehaviorId = preset.behaviorId;
-  const behavior = EnemyBehaviorDB[nextBehaviorId] ?? EnemyBehaviorDB.none;
-  const attack = e.bState?.attack;
-
-  e.behaviorId = nextBehaviorId;
-  e.behavior = preset.params ?? {};
-  e.bState = { t: 0 };
-  if (attack) e.bState.attack = attack;
-  if (nextBehaviorId === "none" && e.vel) {
-    e.vel.x = 0;
-    e.vel.y = 0;
-  }
-
-  e.fsmAppliedMovementPresetId = movementPresetId;
-
-  behavior?.init?.(e);
 }
 
 export class EnemySystem {
@@ -74,9 +47,9 @@ export class EnemySystem {
       if (Number.isFinite(x) && Number.isFinite(y)) playerPos = { x, y };
     });
 
-    this.groups?.updateAnchors(dt, { playerPos, logicW: W, logicH: H });
-
     const scrollX = safeNum((this.world as any)?.scrollX, 0);
+
+    this.groups?.updateAnchors(dt, { playerPos, logicW: W, logicH: H, scrollX });
 
     this.store.debugForEachAlive((ref, e: any) => {
       if (!e || e.kind !== "enemy") return;
@@ -125,50 +98,66 @@ export class EnemySystem {
 
       const def = ENEMY_DEFS[e.typeId];
       let fsmAttackProfile: any | undefined;
-      const graphId = typeof def?.behaviorGraphId === "string" ? def.behaviorGraphId : "";
-      const graph = graphId ? BEHAVIOR_GRAPHS[graphId] : undefined;
-      if (graph) {
-        const fsmResult = updateFsm({
-          ent: e,
-          graph,
+      const fsmRuntime = e.fsm;
+      if (fsmRuntime?.preset) {
+        const fsmResult = updateResolvedFsm(e, fsmRuntime, {
           scrollX,
           logicW: W,
           dt,
+          inheritedAttackProfileId: def?.attackProfile?.id ?? null,
+          lifecycle: {
+            markKill: () => this.store.markKill(ref),
+            isKilled: () => e.pendingKill === true,
+          },
         });
+        if (fsmResult.entityKilled) return;
+        const attackProfileId = fsmRuntime.activeCombat.profileId;
+        // updateResolvedFsm may perform a formal entry and replace
+        // fsmRuntime.movement. Always execute the currently assigned runtime so
+        // transition ticks use the target state's movement immediately.
+        const activeMovement = fsmRuntime.movement;
+        const groupControlled = isFsmIndividualMovementSuppressed(e, (groupId) => !!this.groups?.get(Number(groupId) as any));
 
         if (e.typeId === "turret_fsm_test") {
           console.log("[FSM]", {
             type: e.typeId,
-            state: fsmResult.current,
+            state: getFsmRuntimeStateLabel(fsmRuntime),
             switched: fsmResult.switched,
-            age: e.fsm?.age,
+            age: fsmRuntime.age,
             x: e.pos?.x,
             velX: e.vel?.x,
-            movement: fsmResult.state.movementPresetId,
-            attack: fsmResult.state.attackProfileId,
-            applied: e.fsmAppliedMovementPresetId,
-            graphId,
+            movement: activeMovement.base.presetId,
+            attack: attackProfileId,
+            suppressed: groupControlled,
+            graphId: fsmRuntime.preset.id,
           });
         }
 
-
-        
-        if (e.typeId === "turret_fsm_test") {
-          console.log("[FSM]", {
-            state: fsmResult.current,
-            switched: fsmResult.switched,
-            x: e.pos?.x,
-            vel: e.vel,
-            movement: fsmResult.state.movementPresetId,
-            attack: fsmResult.state.attackProfileId,
-          });
+        if (groupControlled) {
+          fsmRuntime.movement.movementSuspended = true;
+        } else {
+          if (activeMovement.movementSuspended) {
+            fsmRuntime.movement = createFsmMovementRuntime(fsmResult.state, e);
+          }
+          const movement = fsmRuntime.movement;
+          movement.movementSuspended = false;
+          const target = executeFsmMovement(movement, e, { dt, playerPos, logicW: W, logicH: H });
+          if (target) {
+            const speed = fsmEffectiveSpeed(fsmRuntime.preset as any, fsmResult.state);
+            const referenceSpeed = fsmMovementReferenceSpeed(movement);
+            const rawVel = velocityFromFsmTarget(e, target, dt, null);
+            const vel = velocityFromFsmTarget(e, target, dt, speed, referenceSpeed);
+            const integratedDeltaX = vel.x * dt;
+            const integratedDeltaY = vel.y * dt;
+            const scrollDeltaX = scrollX - safeNum((e.fsm as any).lastDiagnosticsScrollX, scrollX);
+            (e.fsm as any).lastDiagnosticsScrollX = scrollX;
+            (e.fsm as any).speedDiagnostics = { baseSpeed: fsmBaseSpeed(fsmRuntime.preset as any), speedMultiplier: fsmSpeedMultiplier(fsmResult.state), effectiveSpeed: speed, movementPresetReferenceSpeed: referenceSpeed, rawVelocityX: rawVel.x, rawVelocityY: rawVel.y, finalVelocityX: vel.x, finalVelocityY: vel.y, integratedDeltaX, integratedDeltaY, worldSpeedMagnitude: Math.hypot(vel.x, vel.y), screenVelocityX: vel.x - (scrollDeltaX / dt), screenVelocityY: vel.y, screenDeltaX: integratedDeltaX - scrollDeltaX, screenDeltaY: integratedDeltaY, screenSpeedMagnitude: Math.hypot(vel.x - (scrollDeltaX / dt), vel.y) };
+            e.vel.x = vel.x;
+            e.vel.y = vel.y;
+          }
         }
-
-
-        
-        applyStateBehavior(e, fsmResult.state.movementPresetId);
-        fsmAttackProfile = fsmResult.state.attackProfileId
-          ? getAttackProfile(fsmResult.state.attackProfileId)
+        fsmAttackProfile = attackProfileId
+          ? getAttackProfile(attackProfileId)
           : undefined;
       }
 
@@ -190,10 +179,10 @@ export class EnemySystem {
           logicW: W,
           logicH: H,
         };
-        behavior?.update?.(e, behaviorCtx as any);
+        if (!fsmRuntime?.preset) behavior?.update?.(e, behaviorCtx as any);
 
         // 2) V1: if behavior provides target, derive velocity here (single authority)
-        if (behavior?.getTarget) {
+        if (!fsmRuntime?.preset && behavior?.getTarget) {
           const t = behavior.getTarget(e, behaviorCtx as any);
           if (t && Number.isFinite(t.x) && Number.isFinite(t.y)) {
             const px = safeNum(e.pos?.x, 0);
@@ -233,7 +222,7 @@ export class EnemySystem {
       e.pos.y += e.vel.y * dt;
 
       // attack controller (data-driven enemy shooting)
-      const attackProfile = fsmAttackProfile ?? def?.attackProfile;
+      const attackProfile = fsmRuntime?.preset ? fsmAttackProfile : def?.attackProfile;
       if (attackProfile) {
         updateAttack({
           ent: e,
@@ -254,7 +243,9 @@ export class EnemySystem {
       const xBand = 160; // px tolerance left/right (allows offscreen spawns)
       const cullRefX = e.group
         ? this.groups?.resolveCullReferenceX(e.group.groupId, e.pos.x) ?? safeNum(e.pos.x, 0)
-        : resolveMovementCullReferenceX(e.behaviorId, e.bState, e.pos.x);
+        : fsmRuntime?.preset
+          ? getFsmMovementCullReferenceX(fsmRuntime.movement, e)
+          : resolveMovementCullReferenceX(e.behaviorId, e.bState, e.pos.x);
 
       if (cullRefX < camX - r - xBand) {
         if (e.group) this.groups?.markMembersForKill(e.group.groupId, this.store);

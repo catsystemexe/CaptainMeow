@@ -10,6 +10,9 @@ import type { EnemyBehaviorId, EnemyBehaviorParams, EnemyBehaviorRuntime } from 
 import { EnemyBehaviorDB } from "../enemies/EnemyBehaviorDB";
 import { COLORS } from "../../rendering/ColorPalette";
 import { EnemyBehaviorPresets, type EnemyBehaviorPresetId } from "../enemies/EnemyBehaviorPresets";
+import { CONTENT } from "../content/CONTENT";
+import { createFsmRuntimeSnapshot } from "../enemies/fsm";
+import type { ResolvedFsmPreset } from "../enemies/fsm/resolve";
 
 import { ENEMY_DEFS, type EnemyTypeId } from "../defs/EnemyDefs";
 import { materializeEnemyAppearance } from "../defs/EnemyAppearanceTypes";
@@ -251,15 +254,29 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
             const formationId = normalizeFormationId(String(p.formationId));
             const cohesionId = normalizeCohesionId(String(p.cohesionId));
             const params = normalizeEnemyGroupParams(p.params, cohesionId, spacing);
+            const previewOverride = (p as any).resolvedFsmPresetOverride as ResolvedFsmPreset | undefined;
+            const explicitFsmPresetId = typeof p.fsmPresetId === "string" && p.fsmPresetId.length ? p.fsmPresetId : "";
+            const defaultGraphId = typeof ENEMY_DEFS[enemyTypeId as EnemyTypeId]?.behaviorGraphId === "string" ? ENEMY_DEFS[enemyTypeId as EnemyTypeId].behaviorGraphId : "";
+            const groupFsmPreset = previewOverride
+              ? previewOverride
+              : explicitFsmPresetId
+                ? CONTENT.fsmPresets.get(explicitFsmPresetId)
+                : defaultGraphId
+                  ? CONTENT.fsmPresets.get(defaultGraphId)
+                  : undefined;
+            if (explicitFsmPresetId && !groupFsmPreset) {
+              throw new Error(`[SpawnSystem] Unknown explicit fsmPresetId: ${explicitFsmPresetId}`);
+            }
             const groupId = this.groups.create({
               enemyTypeId,
               count,
               anchor: worldAnchor,
               formationId,
-              movementPresetId: String(p.movementPresetId),
+              movementPresetId: groupFsmPreset ? "none.hold" : String(p.movementPresetId),
               cohesionId,
               spacing,
               params,
+              ...(groupFsmPreset ? { fsmPreset: groupFsmPreset, inheritedAttackProfileId: ENEMY_DEFS[enemyTypeId as EnemyTypeId]?.attackProfile?.id ?? null } : {}),
             });
 
             let spawnedCount = 0;
@@ -270,12 +287,16 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
                   typeId: enemyTypeId,
                   spawn: { x: anchor.x + offset.x, y: anchor.y + offset.y },
                   behaviorPresetId: "none.hold",
+                  fsmPresetId: typeof p.fsmPresetId === "string" && p.fsmPresetId.length ? p.fsmPresetId : undefined,
+                  resolvedFsmPresetOverride: previewOverride,
                   spawnOrdinal: slotIndex,
+                  devManualSpawnId: typeof (p as any).devManualSpawnId === "number" ? (p as any).devManualSpawnId : undefined,
                   group: { groupId, slotIndex },
                 });
                 spawnedCount++;
               } catch (err) {
                 if (spawnedCount === 0) this.groups.remove(groupId);
+                if (typeof p.fsmPresetId === "string" && p.fsmPresetId.length) throw err;
                 break;
               }
             }
@@ -319,6 +340,10 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
     }
   }
 
+      /** Dev/test-only preview entry point; ordinary gameplay uses SPAWN_ENEMY events with persisted preset ids. */
+      spawnPreviewEnemy(p: CMEventMap[typeof EventType.SPAWN_ENEMY] & { resolvedFsmPresetOverride: ResolvedFsmPreset }): EntityRef {
+        return this.spawnEnemy(p);
+      }
 
       private spawnEnemy(p: CMEventMap[typeof EventType.SPAWN_ENEMY] & { group?: EnemyGroupMembership }): EntityRef {
             if ((globalThis as any).__DEV__ && Math.random() < 0.03) {
@@ -337,6 +362,20 @@ export type SpawnableEntity = ProjectileEntity | BombEntity | PickupEntity | Ene
           
 const def = ENEMY_DEFS[p.typeId as EnemyTypeId];
 if (!def) throw new Error(`[SpawnSystem] Unknown enemy typeId: ${String(p.typeId)}`);
+
+          const previewOverride = (p as any).resolvedFsmPresetOverride as ResolvedFsmPreset | undefined;
+          const explicitFsmPresetId = typeof p.fsmPresetId === "string" && p.fsmPresetId.length ? p.fsmPresetId : "";
+          const graphId = typeof def.behaviorGraphId === "string" ? def.behaviorGraphId : "";
+          let fsmPreset: ResolvedFsmPreset | undefined = previewOverride;
+          if (!fsmPreset && explicitFsmPresetId) {
+            fsmPreset = CONTENT.fsmPresets.get(explicitFsmPresetId);
+            if (!fsmPreset) {
+              throw new Error(`[SpawnSystem] Unknown explicit fsmPresetId: ${explicitFsmPresetId}`);
+            }
+          }
+          if (!fsmPreset && graphId) {
+            fsmPreset = CONTENT.fsmPresets.get(graphId);
+          }
 
 const r = (typeof def.radius === "number" && Number.isFinite(def.radius) && def.radius > 0) ? def.radius : 4;
 
@@ -381,14 +420,26 @@ const r = (typeof def.radius === "number" && Number.isFinite(def.radius) && def.
             ent.behaviorId = (EnemyBehaviorDB[behaviorId] ? behaviorId : "none") as EnemyBehaviorId;
             ent.behavior = { ...(preset.params ?? {}) };
             ent.bState = { t: spawnAgeSec };
+            delete ent.fsm;
             beh?.init?.(ent);
             ent.posPrev.x = ent.pos.x;
             ent.posPrev.y = ent.pos.y;
             ent.pendingKill = false;
           });
+          const ent = this.store.get(spawned) as any;
+          if (ent) {
+            if (fsmPreset) {
+              ent.fsm = createFsmRuntimeSnapshot(fsmPreset, {}, ent, {
+                inheritedAttackProfileId: def.attackProfile?.id ?? null,
+                lifecycle: {
+                  markKill: () => this.store.markKill(spawned),
+                  isKilled: () => this.store.get(spawned)?.pendingKill === true,
+                },
+              });
+            }
+          }
           if (p.group && this.groups) {
             const membership = this.groups.addMember(p.group.groupId, spawned, p.group.slotIndex);
-            const ent = this.store.get(spawned) as any;
             if (ent && membership) ent.group = membership;
           }
           return spawned;

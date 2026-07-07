@@ -1,0 +1,1295 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "id": "builtin-fsm-presets",
+    "source": "builtin",
+    "schemaVersion": 1
+  },
+  "presets": [
+    {
+      "schemaVersion": 1,
+      "metadata": {
+        "id": "fsm.turret",
+        "name": "fsm.turret",
+        "source": "builtin",
+        "schemaVersion": 1
+      },
+      "graph": {
+        "initialStateId": "enter",
+        "states": [
+          {
+            "id": "enter",
+            "label": "enter",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.basic"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "screenXBelow",
+                  "params": {
+                    "x": 700
+                  }
+                },
+                "targetStateId": "attack"
+              }
+            ]
+          },
+          {
+            "id": "attack",
+            "label": "attack",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "profile",
+              "profileId": "spread_test_slow",
+              "runtimePolicy": "reset"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 5
+                  }
+                },
+                "targetStateId": "retreat"
+              }
+            ]
+          },
+          {
+            "id": "retreat",
+            "label": "retreat",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.charge"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "offscreen",
+                  "params": {
+                    "side": "left",
+                    "marginPx": 96
+                  }
+                },
+                "targetStateId": "despawn"
+              }
+            ]
+          },
+          {
+            "id": "despawn",
+            "label": "despawn",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "lifecycle": {
+              "enterActions": [
+                {
+                  "type": "despawn"
+                }
+              ]
+            },
+            "transitions": []
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "metadata": {
+        "id": "fsm.hover",
+        "name": "fsm.hover",
+        "source": "builtin",
+        "schemaVersion": 1
+      },
+      "graph": {
+        "initialStateId": "enter",
+        "states": [
+          {
+            "id": "enter",
+            "label": "enter",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "sine.soft"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "screenXBelow",
+                  "params": {
+                    "x": 760
+                  }
+                },
+                "targetStateId": "hover"
+              }
+            ]
+          },
+          {
+            "id": "hover",
+            "label": "hover",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "profile",
+              "profileId": "spread_test_fast",
+              "runtimePolicy": "reset"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 8
+                  }
+                },
+                "targetStateId": "retreat"
+              }
+            ]
+          },
+          {
+            "id": "retreat",
+            "label": "retreat",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "sine.evade"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "offscreen",
+                  "params": {
+                    "side": "left",
+                    "marginPx": 96
+                  }
+                },
+                "targetStateId": "despawn"
+              }
+            ]
+          },
+          {
+            "id": "despawn",
+            "label": "despawn",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "lifecycle": {
+              "enterActions": [
+                {
+                  "type": "despawn"
+                }
+              ]
+            },
+            "transitions": []
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "metadata": {
+        "id": "fsm.charge",
+        "name": "fsm.charge",
+        "source": "builtin",
+        "schemaVersion": 1
+      },
+      "graph": {
+        "initialStateId": "enter",
+        "states": [
+          {
+            "id": "enter",
+            "label": "enter",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.drift"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "screenXBelow",
+                  "params": {
+                    "x": 650
+                  }
+                },
+                "targetStateId": "charge"
+              }
+            ]
+          },
+          {
+            "id": "charge",
+            "label": "charge",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.charge"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 3
+                  }
+                },
+                "targetStateId": "despawn"
+              }
+            ]
+          },
+          {
+            "id": "despawn",
+            "label": "despawn",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "lifecycle": {
+              "enterActions": [
+                {
+                  "type": "despawn"
+                }
+              ]
+            },
+            "transitions": []
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "metadata": {
+        "id": "fsm.zigzag",
+        "name": "fsm.zigzag",
+        "source": "builtin",
+        "schemaVersion": 1
+      },
+      "graph": {
+        "initialStateId": "enter",
+        "states": [
+          {
+            "id": "enter",
+            "label": "enter",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "zigzag.sharp"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "screenXBelow",
+                  "params": {
+                    "x": 700
+                  }
+                },
+                "targetStateId": "hold"
+              }
+            ]
+          },
+          {
+            "id": "hold",
+            "label": "hold",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 2
+                  }
+                },
+                "targetStateId": "retreat"
+              }
+            ]
+          },
+          {
+            "id": "retreat",
+            "label": "retreat",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "diagonal.up"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "offscreen",
+                  "params": {
+                    "side": "left",
+                    "marginPx": 96
+                  }
+                },
+                "targetStateId": "despawn"
+              }
+            ]
+          },
+          {
+            "id": "despawn",
+            "label": "despawn",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "lifecycle": {
+              "enterActions": [
+                {
+                  "type": "despawn"
+                }
+              ]
+            },
+            "transitions": []
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "metadata": {
+        "id": "fsm.smart_tracker",
+        "name": "fsm.smart_tracker",
+        "source": "builtin",
+        "schemaVersion": 1
+      },
+      "graph": {
+        "initialStateId": "enter",
+        "states": [
+          {
+            "id": "enter",
+            "label": "enter",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "smart.track.soft"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "screenXBelow",
+                  "params": {
+                    "x": 760
+                  }
+                },
+                "targetStateId": "pressure"
+              }
+            ]
+          },
+          {
+            "id": "pressure",
+            "label": "pressure",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "smart.track.aggressive"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 4
+                  }
+                },
+                "targetStateId": "retreat"
+              }
+            ]
+          },
+          {
+            "id": "retreat",
+            "label": "retreat",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.charge"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "offscreen",
+                  "params": {
+                    "side": "left",
+                    "marginPx": 96
+                  }
+                },
+                "targetStateId": "despawn"
+              }
+            ]
+          },
+          {
+            "id": "despawn",
+            "label": "despawn",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "lifecycle": {
+              "enterActions": [
+                {
+                  "type": "despawn"
+                }
+              ]
+            },
+            "transitions": []
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "metadata": {
+        "id": "fsm.smart_aligner",
+        "name": "fsm.smart_aligner",
+        "source": "builtin",
+        "schemaVersion": 1
+      },
+      "graph": {
+        "initialStateId": "enter",
+        "states": [
+          {
+            "id": "enter",
+            "label": "enter",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.drift"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "screenXBelow",
+                  "params": {
+                    "x": 760
+                  }
+                },
+                "targetStateId": "align"
+              }
+            ]
+          },
+          {
+            "id": "align",
+            "label": "align",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "smart.align.attack"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 2.25
+                  }
+                },
+                "targetStateId": "attack"
+              }
+            ]
+          },
+          {
+            "id": "attack",
+            "label": "attack",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "profile",
+              "profileId": "single_basic",
+              "runtimePolicy": "reset"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 2
+                  }
+                },
+                "targetStateId": "retreat"
+              }
+            ]
+          },
+          {
+            "id": "retreat",
+            "label": "retreat",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.charge"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "offscreen",
+                  "params": {
+                    "side": "left",
+                    "marginPx": 96
+                  }
+                },
+                "targetStateId": "despawn"
+              }
+            ]
+          },
+          {
+            "id": "despawn",
+            "label": "despawn",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "lifecycle": {
+              "enterActions": [
+                {
+                  "type": "despawn"
+                }
+              ]
+            },
+            "transitions": []
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "metadata": {
+        "id": "fsm.smart_evader",
+        "name": "fsm.smart_evader",
+        "source": "builtin",
+        "schemaVersion": 1
+      },
+      "graph": {
+        "initialStateId": "enter",
+        "states": [
+          {
+            "id": "enter",
+            "label": "enter",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.basic"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "screenXBelow",
+                  "params": {
+                    "x": 760
+                  }
+                },
+                "targetStateId": "evade"
+              }
+            ]
+          },
+          {
+            "id": "evade",
+            "label": "evade",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "smart.evade.axis"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 4
+                  }
+                },
+                "targetStateId": "retreat"
+              }
+            ]
+          },
+          {
+            "id": "retreat",
+            "label": "retreat",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.charge"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "offscreen",
+                  "params": {
+                    "side": "left",
+                    "marginPx": 96
+                  }
+                },
+                "targetStateId": "despawn"
+              }
+            ]
+          },
+          {
+            "id": "despawn",
+            "label": "despawn",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "lifecycle": {
+              "enterActions": [
+                {
+                  "type": "despawn"
+                }
+              ]
+            },
+            "transitions": []
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "metadata": {
+        "id": "fsm.smart_ranger",
+        "name": "fsm.smart_ranger",
+        "source": "builtin",
+        "schemaVersion": 1
+      },
+      "graph": {
+        "initialStateId": "enter",
+        "states": [
+          {
+            "id": "enter",
+            "label": "enter",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.basic"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "screenXBelow",
+                  "params": {
+                    "x": 760
+                  }
+                },
+                "targetStateId": "control"
+              }
+            ]
+          },
+          {
+            "id": "control",
+            "label": "control",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "smart.range.medium"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 4
+                  }
+                },
+                "targetStateId": "retreat"
+              }
+            ]
+          },
+          {
+            "id": "retreat",
+            "label": "retreat",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.charge"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "offscreen",
+                  "params": {
+                    "side": "left",
+                    "marginPx": 96
+                  }
+                },
+                "targetStateId": "despawn"
+              }
+            ]
+          },
+          {
+            "id": "despawn",
+            "label": "despawn",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "lifecycle": {
+              "enterActions": [
+                {
+                  "type": "despawn"
+                }
+              ]
+            },
+            "transitions": []
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "metadata": {
+        "id": "fsm.smart_orbit_half",
+        "name": "fsm.smart_orbit_half",
+        "source": "builtin",
+        "schemaVersion": 1
+      },
+      "graph": {
+        "initialStateId": "enter",
+        "states": [
+          {
+            "id": "enter",
+            "label": "enter",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "smart.range.close"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 1.25
+                  }
+                },
+                "targetStateId": "orbit"
+              }
+            ]
+          },
+          {
+            "id": "orbit",
+            "label": "orbit",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "smart.orbit.half"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 1.6
+                  }
+                },
+                "targetStateId": "retreat"
+              }
+            ]
+          },
+          {
+            "id": "retreat",
+            "label": "retreat",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.charge"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "offscreen",
+                  "params": {
+                    "side": "left",
+                    "marginPx": 96
+                  }
+                },
+                "targetStateId": "despawn"
+              }
+            ]
+          },
+          {
+            "id": "despawn",
+            "label": "despawn",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "lifecycle": {
+              "enterActions": [
+                {
+                  "type": "despawn"
+                }
+              ]
+            },
+            "transitions": []
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "metadata": {
+        "id": "fsm.smart_orbit_repeat",
+        "name": "fsm.smart_orbit_repeat",
+        "source": "builtin",
+        "schemaVersion": 1
+      },
+      "graph": {
+        "initialStateId": "enter",
+        "states": [
+          {
+            "id": "enter",
+            "label": "enter",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "smart.range.medium"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 1.25
+                  }
+                },
+                "targetStateId": "orbit"
+              }
+            ]
+          },
+          {
+            "id": "orbit",
+            "label": "orbit",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "smart.orbit.repeat"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "timeInState",
+                  "params": {
+                    "seconds": 4
+                  }
+                },
+                "targetStateId": "retreat"
+              }
+            ]
+          },
+          {
+            "id": "retreat",
+            "label": "retreat",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "straight.charge"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "transitions": [
+              {
+                "condition": {
+                  "type": "offscreen",
+                  "params": {
+                    "side": "left",
+                    "marginPx": 96
+                  }
+                },
+                "targetStateId": "despawn"
+              }
+            ]
+          },
+          {
+            "id": "despawn",
+            "label": "despawn",
+            "movement": {
+              "base": {
+                "type": "movementPreset",
+                "params": {
+                  "presetId": "none.hold"
+                }
+              }
+            },
+            "targeting": {
+              "type": "forward"
+            },
+            "combat": {
+              "mode": "inherit"
+            },
+            "lifecycle": {
+              "enterActions": [
+                {
+                  "type": "despawn"
+                }
+              ]
+            },
+            "transitions": []
+          }
+        ]
+      }
+    }
+  ]
+}
