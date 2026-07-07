@@ -421,6 +421,7 @@ function createCompactSelect(id: string): {
     button.setAttribute("aria-expanded", "true");
   };
   const selectedLabel = () => options.find((option) => option.value === value)?.label ?? "(none)";
+  const isOpen = () => list.style.display !== "none";
 
   const choose = (nextValue: string) => {
     if (value === nextValue) {
@@ -502,8 +503,15 @@ function createCompactSelect(id: string): {
       value = nextValue && options.some((option) => option.value === nextValue) ? nextValue : (options.find((option) => !option.disabled)?.value ?? options[0]?.value ?? "");
       button.disabled = options.length === 0 || options.every((option) => option.disabled);
       button.textContent = selectedLabel();
+      const wasOpen = isOpen();
       renderOptions();
-      close();
+      if (wasOpen) {
+        positionList();
+        list.style.display = "block";
+        button.setAttribute("aria-expanded", "true");
+      } else {
+        close();
+      }
     },
     addEventListener(_type: "change", listener: () => void) {
       listeners.push(listener);
@@ -1159,7 +1167,7 @@ export class DevSummoner {
     const fsmSpawnSelect = createCompactSelect("ds-fsm-preset");
     this.cleanupHandlers.push(() => fsmSpawnSelect.destroy());
     const refreshFsmSpawnSelect = (preferred?: string) => {
-      fsmSpawnSelect.setOptions([{ value: "", label: "(movement preset)" }, ...CONTENT.userFsmPresets.registry().list().map((preset) => ({ value: preset.id, label: `${CONTENT.userFsmPresets.registry().sourceOf(preset.id) === "user" ? "USER" : "BUILT-IN"} ${preset.id}` }))], preferred ?? fsmSpawnSelect.value);
+      fsmSpawnSelect.setOptions([{ value: "", label: "(movement preset)" }, ...CONTENT.userFsmPresets.registry().list().map((preset) => ({ value: preset.id, label: `${CONTENT.userFsmPresets.registry().sourceOf(preset.id) === "user" ? "USER" : "BUILT-IN"} ${preset.definition.metadata.name}` }))], preferred ?? fsmSpawnSelect.value);
     };
     refreshFsmSpawnSelect();
     fsmSpawnWrap.appendChild(fsmSpawnSelect.root);
@@ -1684,7 +1692,7 @@ ${d.states.join(", ")}` : "No preset selected";
     this.cleanupHandlers.push(() => { document.removeEventListener("keydown", handleRuntimeDiagnosticsKeydown); if (typeof window.removeEventListener === "function") window.removeEventListener("resize", handleRuntimeDiagnosticsResize); runtimeDiagnosticsSection.remove(); });
 
     const renderPresetEditor = () => {
-      const items = presetModel.list(); presetList.textContent = ""; for (const item of items) appendOption(presetList, item.id, `${item.source === "user" ? "USER" : "BUILT-IN"} ${item.id}`); presetList.value = presetModel.selectedId;
+      const items = presetModel.list(); presetList.textContent = ""; for (const item of items) appendOption(presetList, item.id, `${item.source === "user" ? "USER" : "BUILT-IN"} ${item.label}`); presetList.value = presetModel.selectedId;
       const draft = presetModel.draft; idInput.value = draft?.id ?? ""; labelInput.value = draft?.label ?? ""; const readOnly = !draft || draft.source === "builtin"; idInput.disabled = readOnly; labelInput.disabled = readOnly; saveBtn.disabled = readOnly || !draft.dirty; delBtn.disabled = readOnly; setIconButtonDisabled(topRenameBtn, readOnly); setIconButtonDisabled(topDeleteBtn, readOnly); setIconButtonDisabled(topSaveBtn, readOnly || (!draft.dirty && !authoringModel.canSave));
       const d = presetModel.details(); details.textContent = d ? `Source: ${d.source.toUpperCase()} | Schema: ${d.schemaVersion} | States: ${d.stateCount}
 Initial: ${d.initialState} | Validation: ${d.validationStatus}
@@ -1828,8 +1836,11 @@ ${d.states.join(", ")}` : "No preset selected";
         onConfirm: () => {
           const nextName = input.value.trim();
           if (!nextName) { error.textContent = "Preset name is required."; input.focus(); return false; }
-          if (nextName === draft.label) { renderPresetEditor(); return; }
-          presetModel.renameSelected(nextName);
+          const currentLabel = presetModel.draft?.label ?? draft.label;
+          if (nextName === currentLabel) { renderPresetEditor(); return; }
+          const result = presetModel.renameSelected(nextName);
+          if (!result.ok) { error.textContent = result.diagnostics.map((d) => d.message).join("\n") || "Preset rename failed."; input.focus(); return false; }
+          if (authoringModel.draft?.originalPresetId === presetModel.selectedId && presetModel.draft) authoringModel.draft.preset.metadata.name = presetModel.draft.label;
           renderPresetEditor();
         },
         onCancel: renderPresetEditor,
@@ -1842,16 +1853,17 @@ ${d.states.join(", ")}` : "No preset selected";
     topDeleteBtn.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); if (topDeleteBtn.disabled) return;
       const draft = presetModel.draft;
       if (draft?.source !== "user") { renderPresetEditor(); return; }
+      const selectedLabel = presetModel.list().find((item) => item.id === presetModel.selectedId)?.label ?? draft.label;
       const content = document.createElement("div");
       content.style.cssText = "display:flex;flex-direction:column;gap:8px;line-height:1.35;";
       const message = document.createElement("div");
-      message.textContent = `Delete preset "${draft.label}"?`;
+      message.textContent = `Delete preset "${selectedLabel}"?`;
       content.appendChild(message);
       if (authoringModel.draft?.dirty) {
         const warning = document.createElement("div");
         warning.setAttribute("data-dev-dialog-warning", "dirty");
         warning.style.cssText = "display:flex;gap:6px;align-items:center;color:#ffd27a;";
-        warning.append(createLucideIcon({ icon: TriangleAlert, name: "TriangleAlert" }), document.createTextNode("This preset has unsaved draft changes."));
+        warning.append(createLucideIcon({ icon: TriangleAlert, name: "TriangleAlert" }), document.createTextNode("This preset has unsaved changes."));
         content.appendChild(warning);
       }
       openDevDialog({
