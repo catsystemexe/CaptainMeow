@@ -1,6 +1,8 @@
 # FSM implementation handoffs
 
 - [A4 — Preset loss and state Speed instability analysis](./A4-preset-loss-state-speed-analysis.md)
+- [A5 — Basic Speed dead zone and state carry analysis](./A5-basic-speed-state-carry-analysis.md)
+- [U1.4.11 — Basic Speed source of truth and zero semantics](./U1.4.11.md)
 
 Tento adresář obsahuje verzované výstupy jednotlivých implementačních sessions FSM projektu.
 

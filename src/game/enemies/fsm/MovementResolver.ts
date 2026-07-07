@@ -157,13 +157,15 @@ export function velocityFromFsmTarget(ent: any, target: MutableVec2, dt: number,
   const dx = target.x - num(ent?.pos?.x, 0);
   const dy = target.y - num(ent?.pos?.y, 0);
   const raw = { x: dx / dt, y: dy / dt };
-  if (effectiveSpeed !== null) {
+  if (effectiveSpeed !== null && Number.isFinite(effectiveSpeed)) {
+    if (effectiveSpeed === 0) return { x: 0, y: 0 };
     if (referenceSpeed !== null && referenceSpeed > 0.000001) {
       const scale = effectiveSpeed / referenceSpeed;
       return { x: raw.x * scale, y: raw.y * scale };
     }
     const len = Math.hypot(dx, dy);
     if (len > 0.000001) return { x: dx / len * effectiveSpeed, y: dy / len * effectiveSpeed };
+    return { x: 0, y: 0 };
   }
   return raw;
 }
@@ -175,8 +177,10 @@ export function fsmSpeedMultiplier(state: unknown): number {
 }
 
 export function fsmBaseSpeed(preset: { definition?: { basicSetup?: { baseSpeed?: unknown } } }): number | null {
-  const base = Number(preset?.definition?.basicSetup?.baseSpeed);
-  return Number.isFinite(base) && base > 0 ? base : null;
+  const raw = preset?.definition?.basicSetup?.baseSpeed;
+  if (raw === undefined || raw === null) return null;
+  const base = Number(raw);
+  return Number.isFinite(base) && base >= 0 ? base : null;
 }
 
 export function getFsmMovementCullReferenceX(runtime: FsmMovementRuntime | undefined, ent: any): number {
