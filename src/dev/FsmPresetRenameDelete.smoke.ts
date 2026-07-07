@@ -48,7 +48,7 @@ assert(source.includes("setIconButtonDisabled(topRenameBtn, readOnly)"), "rename
 assert(source.includes("setIconButtonDisabled(topDeleteBtn, readOnly)"), "delete control disabled for built-ins");
 assert(source.includes("input.value = draft.label"), "rename dialog pre-fills current name");
 assert(source.includes("openDevDialog") && !source.includes("window.prompt(\"Rename FSM user preset"), "rename uses in-app dialog instead of prompt");
-assert(source.includes("Delete preset \"${draft.label}\"?"), "delete confirmation identifies preset name");
-assert(source.includes("This preset has unsaved draft changes."), "delete confirmation warns about dirty drafts");
+assert(source.includes("Delete preset \"${selectedLabel}\"?"), "delete confirmation identifies preset name");
+assert(source.includes("This preset has unsaved changes."), "delete confirmation warns about dirty drafts");
 assert(source.includes("makeIconBtn(Pencil, \"Pencil\"") && source.includes("makeIconBtn(Trash2, \"Trash2\""), "compact edit/trash Lucide icons are used");
 console.log("[SMOKE] FsmPresetRenameDelete OK ✅");

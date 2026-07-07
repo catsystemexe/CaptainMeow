@@ -14,10 +14,10 @@ assert(renameBlock.includes("openDevDialog") && !renameBlock.includes("window.pr
 assert(deleteBlock.includes("openDevDialog") && !deleteBlock.includes("window.confirm"), "delete uses in-app dialog, not confirm");
 assert(renameBlock.includes("input.value = draft.label"), "rename input is prefilled");
 assert(renameBlock.includes("input.value.trim()") && renameBlock.includes("Preset name is required"), "rename trims and rejects empty values");
-assert(renameBlock.includes("nextName === draft.label"), "same-name rename is no-op");
+assert(renameBlock.includes("nextName === currentLabel"), "same-name rename is no-op");
 assert(renameBlock.includes("opener: topRenameBtn"), "rename focus returns to Pencil button");
-assert(deleteBlock.includes("Delete preset") && deleteBlock.includes("draft.label"), "delete dialog shows preset name");
-assert(deleteBlock.includes('data-dev-dialog-warning') && deleteBlock.includes("unsaved draft changes"), "delete dirty path shows warning");
+assert(deleteBlock.includes("Delete preset") && deleteBlock.includes("selectedLabel"), "delete dialog shows preset name");
+assert(deleteBlock.includes('data-dev-dialog-warning') && deleteBlock.includes("unsaved changes"), "delete dirty path shows warning");
 assert(deleteBlock.includes("opener: topDeleteBtn"), "delete focus returns to Trash2 button");
 assert(readFileSync("src/dev/ui/devDialog.ts", "utf8").includes("activeDialog?.close(false)"), "dialog enforces single active overlay");
 

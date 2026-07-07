@@ -64,3 +64,5 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [U1.4.13 — User preset rename and delete](U1.4.13.md)
 - [U1.4.14 — Preset toolbar audit and repair](U1.4.14.md)
 - [U1.4.15 — Lucide preset toolbar and in-app dialogs](U1.4.15.md)
+
+- [U1.4.16 — Preset dialog and label synchronization](U1.4.16.md)
