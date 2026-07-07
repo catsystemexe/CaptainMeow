@@ -59,3 +59,5 @@ Handoff nenahrazuje kontrolu kódu. Následující session musí vždy ověřit,
 - [U1.4.6 — State formation/speed runtime wiring and side-panel fixes](./U1.4.6.md)
 - [U1.4.7 — Authoritative Speed, Diagnostics content, and initial Preset lifecycle](./U1.4.7.md)
 - [A3 — Speed, high-speed stutter, and silent reset analysis](./A3-speed-stutter-reset-analysis.md)
+
+- [U1.4.12 — Trigger time live UI synchronization](U1.4.12.md)
