@@ -391,6 +391,7 @@ export async function createGame(
         });
         upgradeWeaponSlot = (slot: "w1" | "w2") => { weaponSystem.upgradeSlot(slot); };
         if (typeof window !== "undefined") {
+          (window as any).__CM.enemyGroups = enemyGroups;
           (window as any).__CM.weapons = {
             setLevel: (slot: "w1" | "w2", level: number) => weaponSystem.setLevel(slot, level),
             getSnapshot: () => weaponSystem.getSnapshot(),
@@ -556,31 +557,31 @@ export async function createGame(
       },
     },
 
-    collision: {
-      update: (_ctx, _events) => {
-        if (session.gameOver) return;
-        collision.update(_ctx.dt);
-      },
+  collision: {
+    update: (_ctx, _events) => {
+      if (session.gameOver) return;
+      collision.update(_ctx.dt);
     },
+  },
 
-    impact: {
-      update: (ctx, events) => {
-        if (session.gameOver) return;
-        (impact as any).update(ctx, events as any);
-      },
+  impact: {
+    update: (ctx, events) => {
+      if (session.gameOver) return;
+      (impact as any).update(ctx, events as any);
     },
+  },
 
-    flow: {
-      update: (ctx, events) => {
-        flow.update(ctx, events as any);
-      },
+  flow: {
+    update: (ctx, events) => {
+      flow.update(ctx, events as any);
     },
+  },
 
-    cleanup: {
-      update: (_ctx, _events) => {
-        store.cleanup();
-      },
+  cleanup: {
+    update: (_ctx, _events) => {
+      store.cleanup();
     },
+  },
   });
 
 return {
@@ -596,6 +597,7 @@ return {
   playerRef,
   inputMgr,
   playerEnt,
+  spawn,
   world,
 };
 }

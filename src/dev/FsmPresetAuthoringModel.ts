@@ -1,0 +1,110 @@
+import { CONTENT } from "../game/content/CONTENT";
+import { CONDITION_DESCRIPTORS, MOVEMENT_MODIFIER_DESCRIPTORS, TARGETING_DESCRIPTORS, type ParamSpec } from "../game/enemies/catalog/descriptors";
+import { FSM_SCHEMA_VERSION, asFsmStateId, type CombatConfig, type ConditionConfig, type EnterAction, type FsmPresetSchemaV1, type FsmStateDefinition, type MovementModifierConfig, type ValidationIssue } from "../game/enemies/fsm/schema";
+import type { UserFsmPresetStore } from "../game/enemies/fsm/UserFsmPresetStore";
+import { validateFsmPreset } from "../game/enemies/fsm/validate";
+import { cloneBasicSetup, normalizeBasicSetup, type EnemyLabBasicSetup } from "./EnemyLabPresetModel";
+
+export type FsmLabTriggerType = "never" | "time" | "screenXBelow" | "hit";
+export interface FsmLabStateRow { id: string; number: number; behaviorPresetId: string; triggerSummary: string; selected: boolean; }
+export interface FsmLabFormationOverride { shape: string; spacing: number; elasticity: number; followDelay: number; speedMultiplier: number; }
+export interface FsmLabSelectedStateView { id: string; number: number; behaviorPresetId: string; formation: FsmLabFormationOverride; triggerType: FsmLabTriggerType; triggerParams: Record<string, unknown>; nextStateId: string | null; isLast: boolean; }
+
+export interface FsmPresetAuthoringDraft { originalPresetId: string; preset: FsmPresetSchemaV1; selectedStateId: string | null; dirty: boolean; diagnostics: readonly ValidationIssue[]; }
+export interface FsmAuthoringResult { ok: boolean; diagnostics: readonly ValidationIssue[]; message?: string; }
+export interface DeleteStatePlan { stateId: string; incomingTransitions: readonly { stateId: string; transitionIndex: number }[]; requiresConfirmation: boolean; }
+export type DirtySelectionPolicy = "allow" | "confirm-discard";
+
+const clone = <T>(v: T): T => globalThis.structuredClone ? globalThis.structuredClone(v) : JSON.parse(JSON.stringify(v));
+const issue = (code: string, message: string, path = "", severity: ValidationIssue["severity"] = "error"): ValidationIssue => ({ severity, code, message, path });
+const isStateId = (id: string): boolean => /^[A-Za-z][A-Za-z0-9_-]*$/.test(id);
+
+function defaultParams(specs?: Record<string, ParamSpec>): Record<string, unknown> { const out: Record<string, unknown> = {}; for (const [k, s] of Object.entries(specs ?? {})) out[k] = s.defaultValue; return out; }
+function defaultState(id: string): FsmStateDefinition { return { id: asFsmStateId(id), label: id, movement: { base: { type: "movementPreset", params: { presetId: "none.hold" } }, modifiers: [] }, targeting: { type: "forward" }, combat: { mode: "disabled" }, lifecycle: { enterActions: [] }, transitions: [] }; }
+
+export class FsmPresetAuthoringModel {
+  draft: FsmPresetAuthoringDraft | null = null;
+  readonly dirtySelectionPolicy: DirtySelectionPolicy = "confirm-discard";
+  constructor(private readonly store: UserFsmPresetStore, presetId: string) { this.load(presetId); }
+  get readOnly(): boolean { return !this.draft || this.store.registry().sourceOf(this.draft.originalPresetId) !== "user"; }
+  get canSave(): boolean { return !!this.draft && !this.readOnly && this.draft.dirty && !this.hasErrors(); }
+  hasErrors(): boolean { return (this.draft?.diagnostics ?? []).some((d) => d.severity === "error"); }
+  labStateRows(): FsmLabStateRow[] { const states = this.draft?.preset.graph.states ?? []; return states.map((s, i) => ({ id: String(s.id), number: i + 1, behaviorPresetId: String((s.movement.base as any)?.params?.presetId ?? ""), triggerSummary: summarizeSequentialTrigger(s, states[i + 1]?.id ? String(states[i + 1].id) : null), selected: String(s.id) === this.draft?.selectedStateId })); }
+  selectedStateView(): FsmLabSelectedStateView | null { const states = this.draft?.preset.graph.states ?? []; const selected = states.find((s) => String(s.id) === this.draft?.selectedStateId) ?? states[0]; if (!selected) return null; const index = states.indexOf(selected); const nextStateId = states[index + 1]?.id ? String(states[index + 1].id) : null; const trigger = readSequentialTrigger(selected, nextStateId); const formation = readStateFormation(selected as any, this.draft?.preset.basicSetup); return { id: String(selected.id), number: index + 1, behaviorPresetId: String((selected.movement.base as any)?.params?.presetId ?? ""), formation, triggerType: trigger.type, triggerParams: trigger.params, nextStateId, isLast: !nextStateId }; }
+  setBasicSetup(next: EnemyLabBasicSetup): FsmAuthoringResult { const basicSetup = cloneBasicSetup(normalizeBasicSetup(next, "fsm")); return this.mutate((p) => { p.basicSetup = basicSetup; }); }
+  setLabFormationOverride(stateId: string, override: FsmLabFormationOverride): FsmAuthoringResult { return this.mutate(() => { writeStateFormation(this.requireState(stateId) as any, override); }); }
+  setLabFormationOverrideEnabled(stateId: string, enabled: boolean): FsmAuthoringResult { void enabled; const current = this.selectedStateViewFor(stateId)?.formation; return this.setLabFormationOverride(stateId, current ?? readStateFormation({}, this.draft?.preset.basicSetup)); }
+  setLabFormationField(stateId: string, field: "shape" | "spacing" | "elasticity" | "followDelay" | "speedMultiplier", value: string | number): FsmAuthoringResult { const current = this.selectedStateViewFor(stateId)?.formation ?? { shape: "line.horizontal", spacing: 64, elasticity: 0, followDelay: 0, speedMultiplier: 1 }; return this.setLabFormationOverride(stateId, { ...current, [field]: field === "shape" ? String(value) : normalizeFiniteNumber(value, field === "spacing" ? 8 : 0, field === "spacing" ? 240 : field === "elasticity" ? 10 : field === "followDelay" ? 0.5 : 3, field === "spacing" ? 64 : field === "elasticity" ? 0 : field === "followDelay" ? 0 : 1) }); }
+  setLabTrigger(stateId: string, type: FsmLabTriggerType, params: Record<string, unknown> = {}): FsmAuthoringResult { return this.mutate(() => { const states = this.draft?.preset.graph.states ?? []; const s = this.requireState(stateId); const index = states.findIndex((x) => String(x.id) === stateId); const next = states[index + 1]; if (type === "never" || !next) { s.transitions = []; return; } const condition = type === "time" ? { type: "timeInState", params: { seconds: Number(params.seconds ?? 1) } } : type === "screenXBelow" ? { type: "screenXBelow", params: { x: Number(params.x ?? 650) } } : { type: "hpBelow", params: { ratio: Number(params.ratio ?? 0.999) } }; s.transitions = [{ condition: condition as ConditionConfig, targetStateId: next.id }]; }); }
+  normalizeSequentialTriggers(): FsmAuthoringResult { return this.mutate((p) => { p.graph.initialStateId = p.graph.states[0]?.id ?? asFsmStateId(""); for (let i = 0; i < p.graph.states.length; i++) { const s = p.graph.states[i]; const next = p.graph.states[i + 1]; if (!next) { s.transitions = []; continue; } if (s.transitions[0]) s.transitions = [{ ...s.transitions[0], targetStateId: next.id }]; } }); }
+
+  requireDiscardConfirmation(nextPresetId: string, nextStateId?: string): boolean { void nextPresetId; void nextStateId; return this.draft?.dirty === true; }
+  load(presetId: string, preferredSelectedStateId = this.draft?.selectedStateId ?? null): FsmAuthoringResult { const source = this.store.registry().sourceOf(presetId); const preset = source === "user" ? this.store.get(presetId) : CONTENT.builtinFsmPresets.get(presetId)?.definition; if (!preset) return this.fail("E_AUTHORING_UNKNOWN_PRESET", `Unknown FSM preset ${presetId}.`); const cloned = clone(preset) as FsmPresetSchemaV1; cloned.basicSetup = normalizeBasicSetup((cloned as any).basicSetup, "fsm"); const selectedStateId = reconcileSelectedStateId(cloned.graph.states, preferredSelectedStateId); this.draft = { originalPresetId: presetId, preset: cloned, selectedStateId, dirty: false, diagnostics: [] }; this.revalidate(false); return { ok: true, diagnostics: this.draft.diagnostics }; }
+  cancel(): FsmAuthoringResult { return this.draft ? this.load(this.draft.originalPresetId) : this.fail("E_NO_DRAFT", "No authoring draft is loaded."); }
+  save(): FsmAuthoringResult { if (!this.draft) return this.fail("E_NO_DRAFT", "No authoring draft is loaded."); if (this.readOnly) return this.fail("E_BUILTIN_READONLY", "Built-in FSM presets are read-only."); this.revalidate(false); if (this.hasErrors()) return { ok: false, diagnostics: this.draft.diagnostics, message: "Save blocked by validation errors." }; if (!this.draft.dirty) return { ok: true, diagnostics: this.draft.diagnostics }; const r = this.store.upsert(clone(this.draft.preset)); if (!r.ok) return this.fail("E_STORE_SAVE", r.diagnostics.map((d) => d.message).join("\n")); return this.load(this.draft.preset.metadata.id); }
+  setPresetLabel(name: string): FsmAuthoringResult { return this.mutate((p) => { p.metadata.name = name; }); }
+  setPresetDescription(description: string): FsmAuthoringResult { return this.mutate((p) => { p.metadata.description = description; }); }
+  setInitialState(id: string): FsmAuthoringResult { return this.mutate((p) => { p.graph.initialStateId = asFsmStateId(id); }); }
+  selectState(id: string | null): FsmAuthoringResult { if (!this.draft) return this.fail("E_NO_DRAFT", "No authoring draft is loaded."); if (id !== null && !this.findState(id)) return this.fail("E_UNKNOWN_STATE", `Unknown state ${id}.`); this.draft = { ...this.draft, selectedStateId: id }; return { ok: true, diagnostics: this.draft.diagnostics }; }
+  addState(): FsmAuthoringResult { return this.mutate((p) => { const id = this.nextStateId("state"); p.graph.states.push(defaultState(id)); if (!p.graph.initialStateId) p.graph.initialStateId = asFsmStateId(id); this.setSelected(id); normalizeSequentialGraph(p); }); }
+  duplicateState(id = this.draft?.selectedStateId ?? ""): FsmAuthoringResult { return this.mutate((p) => { const s = this.requireState(id); const copy = clone(s); copy.id = asFsmStateId(this.nextStateId(String(s.id))); copy.label = `${s.label} Copy`; p.graph.states.splice(p.graph.states.indexOf(s) + 1, 0, copy); this.setSelected(String(copy.id)); normalizeSequentialGraph(p); }); }
+  renameState(oldId: string, newId: string): FsmAuthoringResult { if (!isStateId(newId)) return this.fail("E_STATE_ID_FORMAT", "State ID must start with a letter and contain letters, numbers, _ or -."); if (oldId !== newId && this.findState(newId)) return this.fail("E_STATE_ID_COLLISION", `State ${newId} already exists.`); return this.mutate((p) => { const s = this.requireState(oldId); s.id = asFsmStateId(newId); if (p.graph.initialStateId === oldId) p.graph.initialStateId = asFsmStateId(newId); for (const state of p.graph.states) for (const t of state.transitions) if (t.targetStateId === oldId) t.targetStateId = asFsmStateId(newId); if (this.draft?.selectedStateId === oldId) this.setSelected(newId); }); }
+  setStateLabel(id: string, label: string): FsmAuthoringResult { return this.mutate(() => { this.requireState(id).label = label; }); }
+  planDeleteState(id: string): DeleteStatePlan { const incoming: { stateId: string; transitionIndex: number }[] = []; for (const s of this.draft?.preset.graph.states ?? []) s.transitions.forEach((t, i) => { if (t.targetStateId === id) incoming.push({ stateId: String(s.id), transitionIndex: i }); }); return { stateId: id, incomingTransitions: incoming, requiresConfirmation: incoming.length > 0 }; }
+  deleteState(id: string, confirmed = false): FsmAuthoringResult { if ((this.draft?.preset.graph.states.length ?? 0) <= 1) return this.fail("E_DELETE_LAST_STATE", "At least one FSM state is required."); const plan = this.planDeleteState(id); if (plan.requiresConfirmation && !confirmed) return this.fail("E_DELETE_STATE_CONFIRM_REQUIRED", "Deleting this state requires confirmation because transitions target it."); const selectedBefore = this.draft?.selectedStateId ?? null; return this.mutate((p) => { const oldIndex = p.graph.states.findIndex((s) => String(s.id) === id); p.graph.states = p.graph.states.filter((s) => String(s.id) !== id); const nextIndex = Math.max(0, Math.min(oldIndex, p.graph.states.length - 1)); normalizeSequentialGraph(p); this.setSelected(selectedBefore === id ? (p.graph.states[nextIndex]?.id ? String(p.graph.states[nextIndex].id) : null) : reconcileSelectedStateId(p.graph.states, selectedBefore)); }); }
+  reorderState(id: string, toIndex: number): FsmAuthoringResult { const states = this.draft?.preset.graph.states ?? []; const from = states.findIndex((x) => String(x.id) === id); const clamped = Math.max(0, Math.min(toIndex, states.length - 1)); if (from < 0 || from === clamped) return { ok: !this.hasErrors(), diagnostics: this.draft?.diagnostics ?? [] }; return this.mutate((p) => { moveIndex(p.graph.states, from, clamped); p.graph.initialStateId = p.graph.states[0]?.id ?? asFsmStateId(""); }); }
+  setMovementPreset(stateId: string, presetId: string): FsmAuthoringResult { return this.mutate(() => { this.requireState(stateId).movement.base = { type: "movementPreset", params: { presetId } }; }); }
+  addModifier(stateId: string, type: keyof typeof MOVEMENT_MODIFIER_DESCRIPTORS): FsmAuthoringResult { return this.mutate(() => { const s = this.requireState(stateId); (s.movement.modifiers ??= []).push({ type, params: defaultParams(MOVEMENT_MODIFIER_DESCRIPTORS[type].params) } as MovementModifierConfig); }); }
+  removeModifier(stateId: string, index: number): FsmAuthoringResult { return this.mutate(() => { this.requireState(stateId).movement.modifiers?.splice(index, 1); }); }
+  reorderModifier(stateId: string, from: number, to: number): FsmAuthoringResult { return this.mutate(() => moveIndex(this.requireState(stateId).movement.modifiers ?? [], from, to)); }
+  setModifierType(stateId: string, index: number, type: keyof typeof MOVEMENT_MODIFIER_DESCRIPTORS): FsmAuthoringResult { return this.mutate(() => { (this.requireState(stateId).movement.modifiers ?? [])[index] = { type, params: defaultParams(MOVEMENT_MODIFIER_DESCRIPTORS[type].params) } as MovementModifierConfig; }); }
+  setModifierParam(stateId: string, index: number, key: string, value: unknown): FsmAuthoringResult { return this.mutate(() => { ((this.requireState(stateId).movement.modifiers ?? [])[index] as any).params[key] = value; }); }
+  setTargeting(stateId: string, type: keyof typeof TARGETING_DESCRIPTORS): FsmAuthoringResult { return this.mutate(() => { this.requireState(stateId).targeting = { type } as any; }); }
+  setCombat(stateId: string, combat: CombatConfig): FsmAuthoringResult { return this.mutate(() => { this.requireState(stateId).combat = clone(combat); }); }
+  addDespawnAction(stateId: string): FsmAuthoringResult { return this.mutate(() => { const s = this.requireState(stateId); (s.lifecycle ??= {}).enterActions ??= []; s.lifecycle.enterActions.push({ type: "despawn" }); }); }
+  removeEnterAction(stateId: string, index: number): FsmAuthoringResult { return this.mutate(() => { this.requireState(stateId).lifecycle?.enterActions?.splice(index, 1); }); }
+  reorderEnterAction(stateId: string, from: number, to: number): FsmAuthoringResult { return this.mutate(() => moveIndex(this.requireState(stateId).lifecycle?.enterActions ?? [], from, to)); }
+  addTransition(stateId: string): FsmAuthoringResult { return this.mutate(() => { const s = this.requireState(stateId); s.transitions.push({ condition: { type: "timeInState", params: defaultParams(CONDITION_DESCRIPTORS.timeInState.params) } as ConditionConfig, targetStateId: asFsmStateId(stateId) }); }); }
+  duplicateTransition(stateId: string, index: number): FsmAuthoringResult { return this.mutate(() => { const s = this.requireState(stateId); s.transitions.splice(index + 1, 0, clone(s.transitions[index])); }); }
+  deleteTransition(stateId: string, index: number): FsmAuthoringResult { return this.mutate(() => { this.requireState(stateId).transitions.splice(index, 1); }); }
+  reorderTransition(stateId: string, from: number, to: number): FsmAuthoringResult { return this.mutate(() => moveIndex(this.requireState(stateId).transitions, from, to)); }
+  setTransitionTarget(stateId: string, index: number, targetId: string): FsmAuthoringResult { return this.mutate(() => { this.requireState(stateId).transitions[index].targetStateId = asFsmStateId(targetId); }); }
+  setTransitionConditionType(stateId: string, index: number, type: keyof typeof CONDITION_DESCRIPTORS): FsmAuthoringResult { return this.mutate(() => { const t = this.requireState(stateId).transitions[index]; t.condition = { type, params: defaultParams(CONDITION_DESCRIPTORS[type].params) } as ConditionConfig; }); }
+  setTransitionConditionParam(stateId: string, index: number, key: string, value: unknown): FsmAuthoringResult { return this.mutate(() => { ((this.requireState(stateId).transitions[index].condition as any).params ??= {})[key] = value; }); }
+  private revalidate(normalize: boolean): void { if (!this.draft) return; const r = validateFsmPreset(this.draft.preset); this.draft = { ...this.draft, diagnostics: r.issues }; void normalize; }
+  private mutate(fn: (preset: FsmPresetSchemaV1) => void): FsmAuthoringResult { if (!this.draft) return this.fail("E_NO_DRAFT", "No authoring draft is loaded."); if (this.readOnly) return this.fail("E_BUILTIN_READONLY", "Built-in FSM presets are read-only."); fn(this.draft.preset); this.draft = { ...this.draft, dirty: true }; this.revalidate(false); return { ok: !this.hasErrors(), diagnostics: this.draft.diagnostics }; }
+  private fail(code: string, message: string): FsmAuthoringResult { const diagnostics = [issue(code, message)]; if (this.draft) this.draft = { ...this.draft, diagnostics }; return { ok: false, diagnostics, message }; }
+  private findState(id: string): FsmStateDefinition | undefined { return this.draft?.preset.graph.states.find((s) => s.id === id); }
+  private requireState(id: string): FsmStateDefinition { const s = this.findState(id); if (!s) throw new Error(`Unknown state ${id}`); return s; }
+  private selectedStateViewFor(stateId: string): FsmLabSelectedStateView | null { const previous = this.draft?.selectedStateId ?? null; if (!this.draft) return null; this.draft.selectedStateId = stateId; const view = this.selectedStateView(); this.draft.selectedStateId = previous; return view; }
+  private nextStateId(base: string): string { const ids = new Set(this.draft?.preset.graph.states.map((s) => String(s.id)) ?? []); const stem = isStateId(base) ? base : "state"; if (!ids.has(stem)) return stem; for (let i = 2; ; i++) { const id = `${stem}-${i}`; if (!ids.has(id)) return id; } }
+  private setSelected(id: string | null): void { if (this.draft) this.draft.selectedStateId = id; }
+}
+function moveIndex<T>(items: T[], from: number, to: number): void { if (from < 0 || from >= items.length) return; const [x] = items.splice(from, 1); items.splice(Math.max(0, Math.min(to, items.length)), 0, x); }
+function reconcileSelectedStateId(states: readonly FsmStateDefinition[], preferred: string | null): string | null { if (preferred && states.some((s) => String(s.id) === preferred)) return preferred; return states[0]?.id ? String(states[0].id) : null; }
+function normalizeFiniteNumber(value: string | number, min: number, max: number, fallback: number): number { const n = Number(value); if (!Number.isFinite(n)) return fallback; return Math.max(min, Math.min(max, n)); }
+
+
+function readSequentialTrigger(state: FsmStateDefinition, nextStateId: string | null): { type: FsmLabTriggerType; params: Record<string, unknown> } { const t = nextStateId ? state.transitions.find((x) => String(x.targetStateId) === nextStateId) ?? state.transitions[0] : undefined; if (!t) return { type: "never", params: {} }; const c: any = t.condition; if (c.type === "timeInState") return { type: "time", params: { seconds: c.params?.seconds ?? 1 } }; if (c.type === "screenXBelow") return { type: "screenXBelow", params: { x: c.params?.x ?? 650 } }; if (c.type === "hpBelow") return { type: "hit", params: { ratio: c.params?.ratio ?? 0.999 } }; return { type: "never", params: {} }; }
+function summarizeSequentialTrigger(state: FsmStateDefinition, nextStateId: string | null): string { const trigger = readSequentialTrigger(state, nextStateId); if (!nextStateId || trigger.type === "never") return "Never"; if (trigger.type === "time") return `Time ${trigger.params.seconds ?? 1}s → next`; if (trigger.type === "screenXBelow") return `screenXBelow ${trigger.params.x ?? 650} → next`; return "Hit → next"; }
+
+function normalizeSequentialGraph(p: FsmPresetSchemaV1): void { p.graph.initialStateId = p.graph.states[0]?.id ?? asFsmStateId(""); for (let i = 0; i < p.graph.states.length; i++) { const s = p.graph.states[i]; const next = p.graph.states[i + 1]; if (!next) { s.transitions = []; continue; } if (s.transitions[0]) s.transitions = [{ ...s.transitions[0], targetStateId: next.id }]; } }
+
+function readStateFormation(state: any, basicSetup: FsmPresetSchemaV1["basicSetup"] | undefined): FsmLabFormationOverride {
+  const legacy = state?.formationOverride && typeof state.formationOverride === "object" ? state.formationOverride : {};
+  return {
+    shape: String(state?.formationId ?? legacy.shape ?? basicSetup?.formationId ?? "line.horizontal"),
+    spacing: Number(state?.spacing ?? legacy.spacing ?? basicSetup?.spacing ?? 64),
+    elasticity: Number(state?.elasticity ?? legacy.elasticity ?? basicSetup?.elasticity ?? 0),
+    followDelay: Number(state?.followDelay ?? legacy.followDelay ?? basicSetup?.followDelay ?? 0),
+    speedMultiplier: Number(state?.speedMultiplier ?? legacy.speedMultiplier ?? 1),
+  };
+}
+function writeStateFormation(state: any, formation: FsmLabFormationOverride): void {
+  state.formationId = formation.shape;
+  state.spacing = formation.spacing;
+  state.elasticity = formation.elasticity;
+  state.followDelay = formation.followDelay;
+  state.speedMultiplier = formation.speedMultiplier;
+  delete state.formationOverride;
+}

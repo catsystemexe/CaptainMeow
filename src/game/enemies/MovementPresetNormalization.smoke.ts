@@ -1,4 +1,4 @@
-import { CONTENT, BEHAVIOR_GRAPHS } from "../content/CONTENT";
+import { CONTENT } from "../content/CONTENT";
 import { EnemyBehaviorDB } from "./EnemyBehaviorDB";
 import { EnemyBehaviorPresets } from "./EnemyBehaviorPresets";
 import { straightBehavior } from "./behaviors/straight";
@@ -57,11 +57,10 @@ function assertContentReferencesResolve(): void {
     }
   }
 
-  for (const [graphId, graph] of Object.entries(BEHAVIOR_GRAPHS)) {
-    for (const [stateId, state] of Object.entries(graph.states)) {
-      if (state.movementPresetId) {
-        assert(ids.has(state.movementPresetId), `graph ${graphId}.${stateId} movementPresetId must resolve`);
-      }
+  for (const preset of CONTENT.builtinFsmPresets.list()) {
+    for (const state of preset.states) {
+      const movementPresetId = state.movement.base.params.presetId;
+      assert(ids.has(movementPresetId), `graph ${preset.id}.${state.label} movementPresetId must resolve`);
     }
   }
 }
@@ -553,7 +552,7 @@ function assertEvadeCooldown(): void {
 
 function assertSmartFsmContent(): void {
   for (const id of ["fsm.smart_tracker", "fsm.smart_aligner", "fsm.smart_evader", "fsm.smart_ranger", "fsm.smart_orbit_half", "fsm.smart_orbit_repeat"]) {
-    assert(BEHAVIOR_GRAPHS[id], `expected test FSM graph ${id}`);
+    assert(CONTENT.builtinFsmPresets.has(id), `expected test FSM graph ${id}`);
   }
   const enemies = new Set(CONTENT.enemyTypes.map((enemy) => enemy.id));
   for (const id of ["fsm_smart_tracker", "fsm_smart_aligner", "fsm_smart_evader", "fsm_smart_ranger", "fsm_smart_orbit_half", "fsm_smart_orbit_repeat"]) {
