@@ -5,6 +5,7 @@ export interface TimelineScale { minX: number; maxX: number; widthPx: number }
 export interface ChunkTimelineBlock extends TimelineRange { id: string; leftPx: number; widthPx: number; selected: boolean }
 export type ChunkTimelineDragMode = "move" | "resize-left" | "resize-right";
 export interface ChunkTimelineDragOptions { snapPx?: number; minStartX?: number; minLength?: number }
+export interface TimelinePointerDrag { pointerId: number; active: boolean }
 
 const DEFAULT_LENGTH = 720;
 const MIN_SPAN = 1;
@@ -79,6 +80,15 @@ export function overlapsForChunk(chunkId: string, chunks: readonly Pick<Backgrou
   const startX = chunk.startX;
   const endX = chunkEndX(chunk);
   return chunks.filter(c => c.id !== chunkId).map(c => ({ startX: Math.max(startX, c.startX), endX: Math.min(endX, chunkEndX(c)) })).filter(r => r.endX > r.startX);
+}
+
+export function timelinePointerDeltaWorld(startClientX: number, clientX: number, scale: TimelineScale): number {
+  const deltaPx = (Number.isFinite(clientX) ? clientX : startClientX) - (Number.isFinite(startClientX) ? startClientX : 0);
+  return timelinePxToWorld(deltaPx, scale) - timelinePxToWorld(0, scale);
+}
+
+export function shouldHandleTimelinePointerEvent(drag: TimelinePointerDrag | null, pointerId: number): boolean {
+  return Boolean(drag?.active && drag.pointerId === pointerId);
 }
 
 export function applyChunkTimelineDrag(
