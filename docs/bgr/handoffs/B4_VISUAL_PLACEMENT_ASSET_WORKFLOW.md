@@ -208,3 +208,29 @@
 - Tests.
 - Build.
 - Binary-free diff confirmation.
+
+## B4 UI polish
+
+### Compact layout
+- The Pixel BGR Lab retains the existing three-column `Chunks | Layers | Properties` structure.
+- The Lab chrome, row gaps, toolbar gaps, list rows, and button/input heights were tightened for the iPad + external-monitor + mouse/keyboard workflow without converting the Lab to a mobile tab layout.
+- The properties column is independently scrollable so visual-placement controls, asset selection, and renderer texture metadata remain reachable at smaller preview heights.
+- The top toolbar and compact validation summary remain above the scrollable three-column grid where practical.
+
+### Validation summary
+- Validation now renders through one shared summary control.
+- A valid scene shows `PASS`; warning-only scenes show a collapsed summary such as `PASS — 3 warnings ▸` by default.
+- Error scenes default to expanded detail with an `ERROR — ... ▾` summary while preserving all existing validation errors and warnings.
+- Clicking the summary toggles the scrollable detail area; warning/error counts are derived from the existing validation result and no validation behavior is suppressed.
+
+### Numeric steppers
+- Supported fields: chunk `startX`, chunk `length`, sprite `opacity`, sprite `parallax.x`, sprite `parallax.y`, sprite `offset.x`, sprite `offset.y`, visual-placement nudge step, preview `scrollX`, and preview `speed`.
+- Field-specific steps: chunk start/length `16 px`, opacity `0.05`, parallax `0.05`, offsets use the current nudge step, nudge step `1`, preview scroll `16 px`, and preview speed `10`.
+- Clamp behavior: opacity is clamped to `0..1`; chunk length is clamped to a minimum of `1`; parallax, offsets, scroll, and speed preserve their existing allowed numeric ranges.
+- Manual input compatibility: stepper text fields remain editable number inputs; temporary text entry is local until commit, and invalid/non-finite committed values fall back through the numeric normalizer without applying invalid runtime state.
+- Keyboard behavior: focused numeric fields handle ArrowUp/ArrowDown with the configured step, support Shift for 10× step, commit on Enter through the same input path, and restore the displayed last valid value on Escape. Arrow handling is scoped to focused numeric inputs and does not replace visual-placement keyboard nudging outside numeric fields.
+
+### Verification
+- Added `src/ui/PixelBgrLabB4UiPolish.smoke.ts` for pure numeric stepping, clamping, floating-point normalization, non-finite handling, validation summary state, and immutable scene-update coverage.
+- Existing Pixel BGR Lab, B4 visual-placement, and B1/B2 background layer smokes remain targeted verification for the runtime model and visual-placement contract.
+- External-monitor workflow should be visually verified by opening Pixel BGR Lab, confirming the compact three-column layout leaves more canvas visible, toggling validation details, using steppers/manual keyboard input, verifying visual-placement arrow nudging outside numeric focus, and scrolling the properties panel to reach asset metadata.
