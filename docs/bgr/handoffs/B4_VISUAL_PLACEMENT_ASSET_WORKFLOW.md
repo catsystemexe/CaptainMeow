@@ -32,7 +32,7 @@
 - Added actual game-canvas pointer placement for selected sprite background layers.
 - Added DOM overlay synchronized to the canvas viewport.
 - Added pixel-safe placement and visible nudge buttons.
-- Added typed static background asset catalog using existing repository assets only.
+- Added typed static background asset catalog using existing repository assets only; B4 now references user-added raster demo PNGs already present on the authoritative `pixel_bgr` branch.
 - Added renderer-owned sprite texture metadata exposure.
 - Added pure B4 coordinate/editing/catalog smoke coverage.
 
@@ -85,7 +85,14 @@
 
 ## Asset workflow
 - catalog model: `BackgroundAssetEntry` is static, typed, project-local, and separate from scene content.
-- included assets: B1 technical SVG and existing tracked raster sprite assets.
+- included assets: B1 technical SVG plus the user-added raster PNG demo assets already present on the authoritative `pixel_bgr` branch.
+- raster demo asset paths:
+  - `public/assets/bg/demo/bgr_demo_stars_tile.png`
+  - `public/assets/bg/demo/bgr_demo_orientation.png`
+  - `public/assets/bg/demo/bgr_demo_chunk_band.png`
+- B4 references those PNG assets through `/assets/bg/demo/...` URLs but does not transport binary PNG files in the Codex session diff.
+- the rejected obsolete B4-owned checker PNG asset was removed from the workflow; no source or documentation should reference it.
+- binary-file transport is not supported by this PR/session workflow, so future binary assets should be added directly to the integration branch or through another supported asset workflow.
 - assignment: selecting a catalog entry assigns its URL to the selected sprite layer through immutable scene helpers.
 - manual URL fallback: the existing texture URL text field remains available.
 - texture metadata: dimensions/loading/error state come from `SpriteBackgroundLayerRenderer` cache snapshots; the Lab does not load images independently to discover dimensions.
@@ -133,8 +140,7 @@
 - Overlay bounds use base tile dimensions only for repeated layers.
 - Overlay is DOM-based and should be visually verified on target iPad/Replit sizes.
 - Texture metadata appears after the renderer has attempted to draw/load the selected sprite.
-- Binary asset transport is unsupported in this workflow, so the earlier B4 technical raster PNG was removed from the commit.
-- Raster pixel-art background validation is deferred/manual using existing tracked raster sprite assets rather than a new binary demo asset.
+- Binary asset transport is unsupported in this workflow; raster demo PNGs are expected to be added directly to the authoritative integration branch or through another supported asset workflow.
 - No complex canvas hit-testing among repeated tiles was implemented.
 
 ## Deferred scope
@@ -180,3 +186,25 @@
 - No editor-only scene schema.
 - No gameplay phase order changes.
 - No duplicated Lab-owned image loading for texture dimensions.
+
+## B4 asset transport fix
+
+### Problem
+- PR/session transport rejected a binary PNG.
+
+### Resolution
+- Removed the obsolete B4-owned PNG reference.
+- Switched the catalog to user-added repository demo PNGs.
+- No binary file is added by this fix commit.
+
+### Assets
+- `public/assets/bg/demo/bgr_demo_stars_tile.png`
+- `public/assets/bg/demo/bgr_demo_orientation.png`
+- `public/assets/bg/demo/bgr_demo_chunk_band.png`
+
+### Validation
+- Catalog smoke.
+- Typecheck.
+- Tests.
+- Build.
+- Binary-free diff confirmation.
