@@ -26,3 +26,4 @@ Independent audit of the actual state of the background/render stack at base
 
 Reading order: executive audit → render pipeline → branch matrix → bgr deep dive →
 architecture options → B1 contract → roadmap.
+- [B5 — Environment Markers and Presentation Triggers](handoffs/B5_ENVIRONMENT_MARKERS_PRESENTATION_TRIGGERS.md)

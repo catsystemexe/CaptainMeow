@@ -8,10 +8,13 @@ import { cosinePalette, MUZZLE_PALETTE, TRACER_PALETTE } from "../../game/vfx/co
 import { DemosceneBg } from "./bg/DemosceneBg";
 import { FlowRibbonBg } from "./bg/FlowRibbonBg";
 import { FlowSegmentsBg } from "./bg/FlowSegmentsBg";
-import { getBackgroundPreviewState, setBackgroundPreviewState, stepBackgroundPreviewState, getBackgroundState } from "../BackgroundState";
+import { consumeBackgroundMarkerRuntimeReset, getBackgroundPreviewState, setBackgroundPreviewState, stepBackgroundPreviewState, getBackgroundState } from "../BackgroundState";
 import type { BackgroundLayer } from "./bg/layers/BackgroundLayerTypes";
 import { resolveBackgroundLayers, selectBackgroundFallback } from "./bg/layers/backgroundLayerMath";
 import { composeBackgroundLayers, resolveActiveBackgroundChunks } from "./bg/layers/BackgroundSceneResolve";
+import { resolveBackgroundMarkers } from "./bg/layers/BackgroundMarkerResolve";
+import { createBackgroundMarkerRuntime, evaluateBackgroundMarkerCrossings, resetBackgroundMarkerRuntime } from "./bg/layers/BackgroundMarkerRuntime";
+import { applyBackgroundMarkerActions, applyBackgroundPresentationOverrides, createBackgroundPresentationOverrides, resetBackgroundPresentationOverrides, stepBackgroundPresentationOverrides } from "./bg/layers/BackgroundPresentationOverrides";
 import { SpriteBackgroundLayerRenderer, type SpriteTextureInfo } from "./bg/layers/SpriteBackgroundLayerRenderer";
 import type { FlowDisturbance } from "./bg/flowStep";
 import { createAtmosphericFXPass, type AtmosphericFXPass } from "./AtmosphericFXPass";
@@ -418,6 +421,9 @@ export class WebGLSceneRenderer {
 
   private accumTime = 0;
   private lastRenderMs = -1;
+  private markerRuntime = createBackgroundMarkerRuntime();
+  private presentationOverrides = createBackgroundPresentationOverrides();
+  private seenMarkerResetSerial = -1;
 
   private fxSprites: SpriteSystem;
   private fxSpriteSystems: Map<string, SpriteSystem> = new Map();
@@ -1090,12 +1096,36 @@ export class WebGLSceneRenderer {
     setBackgroundPreviewState(preview, globalThis);
     const sx = preview.enabled ? preview.scrollX : gameplaySx;
     const backgroundState = getBackgroundState(globalThis);
-    const layers = backgroundState?.source?.kind === "scene"
-      ? composeBackgroundLayers(
-        backgroundState.source.scene,
-        resolveActiveBackgroundChunks(backgroundState.source.scene, sx, this.logicW, 0),
-      )
+    const resetSerial = consumeBackgroundMarkerRuntimeReset(globalThis);
+    if (resetSerial !== this.seenMarkerResetSerial) {
+      this.seenMarkerResetSerial = resetSerial;
+      resetBackgroundMarkerRuntime(this.markerRuntime, null, sx);
+      resetBackgroundPresentationOverrides(this.presentationOverrides);
+    }
+    const scene = backgroundState?.source?.kind === "scene" ? backgroundState.source.scene : null;
+    let layers = scene
+      ? composeBackgroundLayers(scene, resolveActiveBackgroundChunks(scene, sx, this.logicW, 0))
       : resolveBackgroundLayers(backgroundState);
+    if (scene && selectBackgroundFallback(backgroundState) === "layers") {
+      const markers = resolveBackgroundMarkers(scene);
+      const sceneKey = `${scene.id}:${String((backgroundState as any)?.source?.scene === scene)}`;
+      const layerIds = new Set(layers.map((l) => l.id));
+      const manualId = (globalThis as any).__CM_BGR_MARKER_MANUAL_FIRE__;
+      if (typeof manualId === "string") {
+        const manual = markers.find((m) => m.runtimeId === manualId);
+        if (manual) applyBackgroundMarkerActions(this.presentationOverrides, manual, scene.id, tSec * 1000, layerIds);
+        delete (globalThis as any).__CM_BGR_MARKER_MANUAL_FIRE__;
+      }
+      for (const marker of evaluateBackgroundMarkerCrossings(this.markerRuntime, sceneKey, sx, markers)) {
+        applyBackgroundMarkerActions(this.presentationOverrides, marker, scene.id, tSec * 1000, layerIds);
+      }
+      stepBackgroundPresentationOverrides(this.presentationOverrides, dt * 1000);
+      layers = applyBackgroundPresentationOverrides(layers, this.presentationOverrides);
+      (globalThis as any).__CM_BGR_MARKER_DEBUG__ = { lastFiredMarker: this.presentationOverrides.lastFiredMarker, lastEnvironmentEvent: this.presentationOverrides.lastEnvironmentEvent, missingTargets: this.presentationOverrides.missingTargets.slice() };
+    } else {
+      resetBackgroundMarkerRuntime(this.markerRuntime, null, sx);
+      resetBackgroundPresentationOverrides(this.presentationOverrides);
+    }
     if (selectBackgroundFallback(backgroundState) === "layers") {
       this.drawBackgroundLayers(resolveBackgroundLayers({ enabled: true, source: { kind: "layers", layers } }), tSec, sx, sy);
     } else {

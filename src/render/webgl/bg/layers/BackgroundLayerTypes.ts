@@ -89,6 +89,7 @@ export function createB2BackgroundSceneDemoState(): BackgroundState {
         repeat: { x: true, y: true },
       },
     ],
+    markers: [{ id: "global-star-pulse", x: 180, enabled: true, once: true, actions: [{ kind: "pulse-layer-opacity", layerId: "global:far-stars", from: 0.25, to: 1, durationMs: 500 }] }],
     chunks: [
       {
         id: "chunk-a",
@@ -105,6 +106,7 @@ export function createB2BackgroundSceneDemoState(): BackgroundState {
           offset: { x: 24, y: 72 },
           repeat: { x: true, y: false },
         }],
+        markers: [{ id: "disable-near-rocks", x: 220, enabled: true, once: true, actions: [{ kind: "set-layer-enabled", layerId: "chunk:chunk-a:near-rocks", enabled: false }] }],
       },
       {
         id: "chunk-b",
@@ -121,6 +123,7 @@ export function createB2BackgroundSceneDemoState(): BackgroundState {
           offset: { x: 80, y: 118 },
           repeat: { x: true, y: false },
         }],
+        markers: [{ id: "enter", x: 80, enabled: true, once: false, actions: [{ kind: "set-layer-enabled", layerId: "chunk:chunk-b:near-rocks", enabled: true }, { kind: "emit-environment-event", event: "chunk-b-enter" }] }],
       },
     ],
   };

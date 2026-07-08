@@ -3,6 +3,7 @@ import type { BackgroundScene } from "./webgl/bg/layers/BackgroundSceneTypes";
 
 const STATE_KEY = "__CM_BACKGROUND_STATE__";
 const PREVIEW_KEY = "__CM_BACKGROUND_PREVIEW__";
+const MARKER_RESET_KEY = "__CM_BACKGROUND_MARKER_RESET__";
 
 type Listener = (state: BackgroundState | null) => void;
 const listeners = new Set<Listener>();
@@ -38,6 +39,7 @@ export function getBackgroundState(root: any = globalThis): BackgroundState | nu
 
 export function setBackgroundState(next: BackgroundState | null, root: any = globalThis): void {
   state = isObject(next) ? next as BackgroundState : null;
+  requestBackgroundMarkerRuntimeReset(root);
   publish(root);
 }
 
@@ -70,12 +72,17 @@ export function getBackgroundPreviewState(root: any = globalThis): BackgroundPre
 export function setBackgroundPreviewState(next: Partial<BackgroundPreviewState>, root: any = globalThis): BackgroundPreviewState {
   previewState = normalizeBackgroundPreviewState({ ...previewState, ...next });
   if (root) root[PREVIEW_KEY] = previewState;
+  requestBackgroundMarkerRuntimeReset(root);
   return previewState;
 }
+
+export function requestBackgroundMarkerRuntimeReset(root: any = globalThis): void { if (root) root[MARKER_RESET_KEY] = Number(root[MARKER_RESET_KEY] ?? 0) + 1; }
+export function consumeBackgroundMarkerRuntimeReset(root: any = globalThis): number { return Number(root?.[MARKER_RESET_KEY] ?? 0); }
 
 export function clearBackgroundPreviewState(root: any = globalThis): BackgroundPreviewState {
   previewState = { ...defaultPreview };
   if (root) root[PREVIEW_KEY] = previewState;
+  requestBackgroundMarkerRuntimeReset(root);
   return previewState;
 }
 

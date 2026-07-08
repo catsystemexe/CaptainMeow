@@ -1,5 +1,6 @@
 import { createB2BackgroundSceneDemoState, type BackgroundLayer, type SpriteBackgroundLayer } from "../render/webgl/bg/layers/BackgroundLayerTypes";
 import type { BackgroundChunk, BackgroundScene } from "../render/webgl/bg/layers/BackgroundSceneTypes";
+import type { BackgroundMarker, BackgroundMarkerAction } from "../render/webgl/bg/layers/BackgroundMarkerTypes";
 
 export type LayerOwner = { kind: "global" } | { kind: "chunk"; chunkId: string };
 export const cloneScene = (scene: BackgroundScene): BackgroundScene => JSON.parse(JSON.stringify(scene)) as BackgroundScene;
@@ -33,3 +34,21 @@ export function roundSpriteOffset(scene: BackgroundScene, owner: LayerOwner, lay
 export function assignAssetToSpriteLayer(scene: BackgroundScene, owner: LayerOwner, layerId: string, url: string): BackgroundScene {
   return updateLayer(scene, owner, layerId, (layer) => layer.kind === "sprite" ? { ...layer, texture: { ...layer.texture, url } } : layer);
 }
+
+
+export type MarkerOwner = { kind: "global" } | { kind: "chunk"; chunkId: string };
+export function markerOwner(scene: BackgroundScene, owner: MarkerOwner): BackgroundMarker[] { return owner.kind === "global" ? scene.markers ?? [] : scene.chunks.find(c => c.id === owner.chunkId)?.markers ?? []; }
+function withMarkerOwner(scene: BackgroundScene, owner: MarkerOwner, markers: BackgroundMarker[]): BackgroundScene { return owner.kind === "global" ? { ...scene, markers } : { ...scene, chunks: scene.chunks.map(c => c.id === owner.chunkId ? { ...c, markers } : c) }; }
+export function createMarker(id = "marker"): BackgroundMarker { return { id, x: 0, enabled: true, once: true, actions: [] }; }
+export function addMarker(scene: BackgroundScene, owner: MarkerOwner): BackgroundScene { const markers = markerOwner(scene, owner); return withMarkerOwner(scene, owner, [...markers, createMarker(uniqueId("marker", new Set(markers.map(m => m.id))))]); }
+export function duplicateMarker(scene: BackgroundScene, owner: MarkerOwner, markerId: string): BackgroundScene { const markers = markerOwner(scene, owner); const m = markers.find(x => x.id === markerId); if (!m) return scene; const copy = JSON.parse(JSON.stringify(m)) as BackgroundMarker; copy.id = uniqueId(`${m.id}-copy`, new Set(markers.map(x => x.id))); return withMarkerOwner(scene, owner, [...markers, copy]); }
+export function deleteMarker(scene: BackgroundScene, owner: MarkerOwner, markerId: string): BackgroundScene { return withMarkerOwner(scene, owner, markerOwner(scene, owner).filter(m => m.id !== markerId)); }
+export function moveMarker(scene: BackgroundScene, owner: MarkerOwner, markerId: string, dir: -1|1): BackgroundScene { const markers = markerOwner(scene, owner).slice(); const i = markers.findIndex(m => m.id === markerId), j = i + dir; if (i < 0 || j < 0 || j >= markers.length) return scene; [markers[i], markers[j]] = [markers[j], markers[i]]; return withMarkerOwner(scene, owner, markers); }
+export function updateMarker(scene: BackgroundScene, owner: MarkerOwner, markerId: string, patcher: (m: BackgroundMarker) => BackgroundMarker): BackgroundScene { const markers = markerOwner(scene, owner); if (!markers.some(m => m.id === markerId)) return scene; return withMarkerOwner(scene, owner, markers.map(m => m.id === markerId ? patcher(JSON.parse(JSON.stringify(m))) : m)); }
+export function toggleMarker(scene: BackgroundScene, owner: MarkerOwner, markerId: string): BackgroundScene { return updateMarker(scene, owner, markerId, m => ({ ...m, enabled: !m.enabled })); }
+export function createMarkerAction(kind: BackgroundMarkerAction["kind"] = "set-layer-opacity", layerId = ""): BackgroundMarkerAction { if (kind === "set-layer-enabled") return { kind, layerId, enabled: true }; if (kind === "pulse-layer-opacity") return { kind, layerId, from: 0, to: 1, durationMs: 500 }; if (kind === "emit-environment-event") return { kind, event: "environment-event" }; return { kind, layerId, opacity: 1 }; }
+export function addMarkerAction(scene: BackgroundScene, owner: MarkerOwner, markerId: string, action: BackgroundMarkerAction = createMarkerAction()): BackgroundScene { return updateMarker(scene, owner, markerId, m => ({ ...m, actions: [...m.actions, action] })); }
+export function duplicateMarkerAction(scene: BackgroundScene, owner: MarkerOwner, markerId: string, index: number): BackgroundScene { return updateMarker(scene, owner, markerId, m => { if (index < 0 || index >= m.actions.length) return m; return { ...m, actions: [...m.actions, JSON.parse(JSON.stringify(m.actions[index]))] }; }); }
+export function deleteMarkerAction(scene: BackgroundScene, owner: MarkerOwner, markerId: string, index: number): BackgroundScene { return updateMarker(scene, owner, markerId, m => ({ ...m, actions: m.actions.filter((_, i) => i !== index) })); }
+export function moveMarkerAction(scene: BackgroundScene, owner: MarkerOwner, markerId: string, index: number, dir: -1|1): BackgroundScene { return updateMarker(scene, owner, markerId, m => { const actions = m.actions.slice(); const j = index + dir; if (index < 0 || j < 0 || j >= actions.length) return m; [actions[index], actions[j]] = [actions[j], actions[index]]; return { ...m, actions }; }); }
+export function updateMarkerAction(scene: BackgroundScene, owner: MarkerOwner, markerId: string, index: number, patcher: (a: BackgroundMarkerAction) => BackgroundMarkerAction): BackgroundScene { return updateMarker(scene, owner, markerId, m => ({ ...m, actions: m.actions.map((a, i) => i === index ? patcher(JSON.parse(JSON.stringify(a))) : a) })); }
