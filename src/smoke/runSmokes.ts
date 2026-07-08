@@ -47,6 +47,7 @@ const SMOKES = [
   "../ui/PixelBgrLabB4DockedLayout.smoke",
   "../render/webgl/bg/layers/BackgroundMarkers.smoke",
   "../ui/PixelBgrLabB5.smoke",
+  "../ui/PixelBgrTimeline.smoke",
   "../game/systems/BombExplosionChain.smoke",
   "../game/systems/WeaponVFXEmit.smoke",
   "../render/webgl/bg/FlowDisturbanceKick.smoke",
