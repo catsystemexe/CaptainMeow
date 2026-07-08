@@ -24,14 +24,26 @@ export function isLayerVisible(layer: BackgroundLayer): boolean {
   return true;
 }
 
+function getDirectLayers(state: BackgroundState | null | undefined): unknown[] | null {
+  if (!state?.enabled) return null;
+  if (state.source?.kind === "layers") return state.source.layers;
+  if (!state.source && Array.isArray(state.layers)) return state.layers;
+  if (state.source?.kind === "scene") return null;
+  return Array.isArray(state.layers) ? state.layers : null;
+}
+
 export function selectBackgroundFallback(state: BackgroundState | null | undefined): BackgroundFallback {
-  if (!state?.enabled || !Array.isArray(state.layers) || state.layers.length === 0) return "legacy";
-  return state.layers.some(isKnownBackgroundLayer) ? "layers" : "legacy";
+  if (!state?.enabled) return "legacy";
+  if (state.source?.kind === "scene") return state.source.scene?.id ? "layers" : "legacy";
+  const layers = getDirectLayers(state);
+  if (!layers || layers.length === 0) return "legacy";
+  return layers.some(isKnownBackgroundLayer) ? "layers" : "legacy";
 }
 
 export function resolveBackgroundLayers(state: BackgroundState | null | undefined): BackgroundLayer[] {
-  if (selectBackgroundFallback(state) === "legacy") return [];
-  return state!.layers.filter((layer): layer is BackgroundLayer => isKnownBackgroundLayer(layer) && isLayerVisible(layer));
+  const layers = getDirectLayers(state);
+  if (!layers || selectBackgroundFallback(state) === "legacy") return [];
+  return layers.filter((layer): layer is BackgroundLayer => isKnownBackgroundLayer(layer) && isLayerVisible(layer));
 }
 
 export function resolveParallaxOffset(layer: Pick<SpriteBackgroundLayer, "offset" | "parallax">, scroll: Vec2): Vec2 {
