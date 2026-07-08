@@ -38,7 +38,29 @@ const assigned = assignAssetToSpriteLayer(scene, { kind:"global" }, "s", "/manua
 assert.equal((assigned.globalLayers[0] as any).texture.url, "/manual.png");
 assert.equal((scene.globalLayers[0] as any).texture.url, "/assets/bg/b1_pixel_stars.svg");
 
+const expectedDemoAssets = [
+  { id: "bgr-demo-stars-tile", url: "/assets/bg/demo/bgr_demo_stars_tile.png" },
+  { id: "bgr-demo-orientation", url: "/assets/bg/demo/bgr_demo_orientation.png" },
+  { id: "bgr-demo-chunk-band", url: "/assets/bg/demo/bgr_demo_chunk_band.png" },
+] as const;
 const ids = new Set<string>();
-for (const a of BACKGROUND_ASSET_CATALOG) { assert.equal(a.kind, "sprite"); assert.ok(a.url.length); assert.ok(a.label.includes("Technical") || a.technical === false); assert.ok(!ids.has(a.id)); ids.add(a.id); }
+for (const a of BACKGROUND_ASSET_CATALOG) {
+  assert.equal(a.kind, "sprite");
+  assert.ok(a.url.length);
+  assert.equal(a.pixelArt, true);
+  assert.equal(a.technical, true);
+  assert.ok(a.label.includes("Technical"));
+  assert.ok(!ids.has(a.id));
+  assert.ok(!a.url.includes(["b4", "checker", "orientation"].join("_")));
+  ids.add(a.id);
+}
+for (const expected of expectedDemoAssets) {
+  const found = findBackgroundAsset(expected.id);
+  assert.ok(found);
+  assert.equal(found.url, expected.url);
+  const assignedDemo = assignAssetToSpriteLayer(scene, { kind:"global" }, "s", found.url);
+  assert.equal((assignedDemo.globalLayers[0] as any).texture.url, expected.url);
+}
+assert.equal(new Set(expectedDemoAssets.map(a => a.id)).size, expectedDemoAssets.length);
 assert.ok(findBackgroundAsset("b1-technical-stars-svg"));
 console.log("[SMOKE] PixelBgrLabB4 OK ✅");
