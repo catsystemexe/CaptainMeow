@@ -11,6 +11,7 @@ if ((window as any).__CM.__rafId) {
 (document.title = `CM boot#${bootN}`);
 
 
+import { disableTypedBackground, enableB1SpriteParallaxDemo } from "./render/BackgroundState";
 import { VFXSystem } from "./game/vfx/VFXSystem";
 
 import { WebGLSceneRenderer } from "./render/webgl/WebGLSceneRenderer";
@@ -325,6 +326,19 @@ async function main() {
       const next = cur === "flow" ? "shader" : "flow";
       (globalThis as any).__CM_BG_KIND__ = next;
       console.log("[BG] kind", next);
+      return;
+    }
+
+    // B1 typed sprite/parallax background demo (V): toggles typed BackgroundState.
+    if (e.code === "KeyV") {
+      const current = (globalThis as any).__CM_BACKGROUND_STATE__;
+      if (current) {
+        disableTypedBackground(globalThis);
+        console.log("[BGR] typed background disabled; legacy shader/flow path active");
+      } else {
+        enableB1SpriteParallaxDemo(globalThis);
+        console.log("[BGR] B1 sprite/parallax demo enabled");
+      }
       return;
     }
 
