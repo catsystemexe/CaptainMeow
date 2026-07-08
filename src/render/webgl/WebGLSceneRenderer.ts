@@ -8,6 +8,10 @@ import { cosinePalette, MUZZLE_PALETTE, TRACER_PALETTE } from "../../game/vfx/co
 import { DemosceneBg } from "./bg/DemosceneBg";
 import { FlowRibbonBg } from "./bg/FlowRibbonBg";
 import { FlowSegmentsBg } from "./bg/FlowSegmentsBg";
+import { getBackgroundState } from "../BackgroundState";
+import type { BackgroundLayer } from "./bg/layers/BackgroundLayerTypes";
+import { resolveBackgroundLayers, selectBackgroundFallback } from "./bg/layers/backgroundLayerMath";
+import { SpriteBackgroundLayerRenderer } from "./bg/layers/SpriteBackgroundLayerRenderer";
 import type { FlowDisturbance } from "./bg/flowStep";
 import { createAtmosphericFXPass, type AtmosphericFXPass } from "./AtmosphericFXPass";
 import { createSdfPass, type SdfPass } from "./SdfPass";
@@ -403,6 +407,7 @@ export class WebGLSceneRenderer {
   private bg: DemosceneBg;
   private bgFlowRibbon: FlowRibbonBg;
   private bgFlowSegments: FlowSegmentsBg;
+  private spriteBackground: SpriteBackgroundLayerRenderer;
   private atmosphericFX: AtmosphericFXPass;
   private sdfPass: SdfPass | null;
   private meshPass: MeshPass | null = null;
@@ -500,6 +505,7 @@ export class WebGLSceneRenderer {
        this.bg = new DemosceneBg(gl);
     this.bgFlowRibbon = new FlowRibbonBg(gl);
     this.bgFlowSegments = new FlowSegmentsBg(gl);
+    this.spriteBackground = new SpriteBackgroundLayerRenderer(gl);
     this.atmosphericFX = createAtmosphericFXPass(gl);
     // SDF vector pass — restores to the main program/VAO/uLogic after each draw.
     // Defensive: a shader compile/link failure must NOT blank the whole scene —
@@ -1023,6 +1029,38 @@ export class WebGLSceneRenderer {
     gl.uniform4f(this.uColor, 1, 1, 1, 1);
   }
 
+  private drawLegacyBackground(tSec: number, sx: number, sy: number): void {
+    const bgKind = String((globalThis as any).__CM_BG_KIND__ ?? "shader");
+    const presetIndex = Number((globalThis as any).__CM_BG_PRESET__ ?? 0) | 0;
+    if (bgKind === "flow") {
+      const labKind = String((globalThis as any).__CM_BG_LAB__?.kind ?? "flowRibbon");
+      if (labKind === "flowSegments") {
+        this.bgFlowSegments.draw({ logicW: this.logicW, logicH: this.logicH, timeSec: tSec, scrollX: sx, scrollY: sy, presetIndex, disturbances: this.collectFlowDisturbances(sx, sy) });
+      } else {
+        this.bgFlowRibbon.draw({ logicW: this.logicW, logicH: this.logicH, timeSec: tSec, scrollX: sx, scrollY: sy, presetIndex });
+      }
+    } else {
+      this.bg.draw({ logicW: this.logicW, logicH: this.logicH, timeSec: tSec, scrollX: sx, scrollY: sy, presetIndex });
+    }
+  }
+
+  private drawBackgroundLayers(layers: BackgroundLayer[], tSec: number, sx: number, sy: number): void {
+    const spriteIds = new Set<string>();
+    for (const layer of layers) {
+      if (layer.kind === "shader") {
+        this.bg.draw({ logicW: this.logicW, logicH: this.logicH, timeSec: tSec, scrollX: sx, scrollY: sy, presetIndex: layer.presetIndex | 0 });
+      } else if (layer.kind === "flow-ribbon") {
+        this.bgFlowRibbon.draw({ logicW: this.logicW, logicH: this.logicH, timeSec: tSec, scrollX: sx, scrollY: sy, presetIndex: layer.presetIndex | 0 });
+      } else if (layer.kind === "flow-segments") {
+        this.bgFlowSegments.draw({ logicW: this.logicW, logicH: this.logicH, timeSec: tSec, scrollX: sx, scrollY: sy, presetIndex: layer.presetIndex | 0, disturbances: this.collectFlowDisturbances(sx, sy) });
+      } else if (layer.kind === "sprite") {
+        spriteIds.add(layer.id);
+        this.spriteBackground.draw(layer, { logicW: this.logicW, logicH: this.logicH, scrollX: sx, scrollY: sy });
+      }
+    }
+    this.spriteBackground.retainLayerIds(spriteIds);
+  }
+
   render(alpha: number = 1): void {
     const gl = this.gl;
 
@@ -1044,43 +1082,12 @@ export class WebGLSceneRenderer {
     this.lastRenderMs = nowMs;
     this.accumTime += dt;
     const tSec = this.accumTime;
-    const bgKind = String((globalThis as any).__CM_BG_KIND__ ?? "shader");
-    const presetIndex = Number((globalThis as any).__CM_BG_PRESET__ ?? 0) | 0;
-
-    // BG pass (shader or flow)
-    if (bgKind === "flow") {
-      const labKind = String((globalThis as any).__CM_BG_LAB__?.kind ?? "flowRibbon");
-
-      if (labKind === "flowSegments") {
-        this.bgFlowSegments.draw({
-          logicW: this.logicW,
-          logicH: this.logicH,
-          timeSec: tSec,
-          scrollX: sx,
-          scrollY: sy,
-          presetIndex,
-          disturbances: this.collectFlowDisturbances(sx, sy),
-        });
-      } else {
-        // default: flowRibbon
-        this.bgFlowRibbon.draw({
-          logicW: this.logicW,
-          logicH: this.logicH,
-          timeSec: tSec,
-          scrollX: sx,
-          scrollY: sy,
-          presetIndex,
-        });
-      }
+    const backgroundState = getBackgroundState(globalThis);
+    const layers = resolveBackgroundLayers(backgroundState);
+    if (selectBackgroundFallback(backgroundState) === "layers") {
+      this.drawBackgroundLayers(layers, tSec, sx, sy);
     } else {
-      this.bg.draw({
-        logicW: this.logicW,
-        logicH: this.logicH,
-        timeSec: tSec,
-        scrollX: sx,
-        scrollY: sy,
-        presetIndex,
-      });
+      this.drawLegacyBackground(tSec, sx, sy);
     }
     // this.drawDebugBackground(sx, sy);
 

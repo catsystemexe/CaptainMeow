@@ -19,6 +19,7 @@ Independent audit of the actual state of the background/render stack at base
 | [fable-audit/FABLE_BRG_B1_CONTRACT.md](fable-audit/FABLE_BRG_B1_CONTRACT.md) | proposed (not implemented) B1 contract: types, ownership, data/render/resource flow, pure functions, tests, acceptance, likely files, forbidden scope; video & ASCII feasibility appendices |
 | [fable-audit/FABLE_BRG_ROADMAP.md](fable-audit/FABLE_BRG_ROADMAP.md) | session plan B1–B7 with goals, scopes, non-goals, dependencies, tests, acceptance, risks, sizes, rollback boundaries |
 | [handoffs/FABLE_B0_AUDIT.md](handoffs/FABLE_B0_AUDIT.md) | session handoff: repo/branch/HEAD verification, fetch status, branches inspected/unavailable, baseline results, findings summary, uncertainties |
+| [handoffs/B1_TYPED_SPRITE_PARALLAX.md](handoffs/B1_TYPED_SPRITE_PARALLAX.md) | B1 implementation handoff: typed background state, renderer-owned layer dispatch, sprite/parallax repeat layer, texture lifecycle, validation, and visual verification steps |
 
 Reading order: executive audit → render pipeline → branch matrix → bgr deep dive →
 architecture options → B1 contract → roadmap.
