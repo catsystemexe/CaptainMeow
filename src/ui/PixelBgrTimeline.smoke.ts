@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { applyChunkTimelineDrag, chunkEndX, chunkOverlapRanges, chunkTimelineBlocks, createTimelineScale, MIN_CHUNK_TIMELINE_LENGTH, timelinePxToWorld, worldToTimelinePx, overlapsForChunk, snapTimelineValue } from "./PixelBgrTimeline";
+import { readFileSync } from "node:fs";
+import { applyChunkTimelineDrag, chunkEndX, chunkOverlapRanges, chunkTimelineBlocks, createTimelineScale, MIN_CHUNK_TIMELINE_LENGTH, shouldHandleTimelinePointerEvent, timelinePointerDeltaWorld, timelinePxToWorld, worldToTimelinePx, overlapsForChunk, snapTimelineValue } from "./PixelBgrTimeline";
 import type { BackgroundChunk } from "../render/webgl/bg/layers/BackgroundSceneTypes";
 
 const chunks: BackgroundChunk[] = [
@@ -12,6 +13,11 @@ assert.deepEqual(chunkOverlapRanges(chunks), [{ startX: 80, endX: 100 }]);
 assert.deepEqual(overlapsForChunk("a", chunks), [{ startX: 80, endX: 100 }]);
 const scale = createTimelineScale(chunks, 40, 1000);
 assert.equal(Math.round(timelinePxToWorld(worldToTimelinePx(80, scale), scale)), 80);
+assert.equal(Math.round(timelinePointerDeltaWorld(200, 260, scale)), Math.round(timelinePxToWorld(60, scale) - timelinePxToWorld(0, scale)));
+assert.equal(shouldHandleTimelinePointerEvent({ pointerId: 7, active: true }, 7), true);
+assert.equal(shouldHandleTimelinePointerEvent({ pointerId: 7, active: true }, 8), false);
+assert.equal(shouldHandleTimelinePointerEvent({ pointerId: 7, active: false }, 7), false);
+assert.equal(shouldHandleTimelinePointerEvent(null, 7), false);
 const blocks = chunkTimelineBlocks(chunks, "b", scale);
 assert.equal(blocks.length, 3);
 assert.equal(blocks[1].selected, true);
@@ -29,4 +35,12 @@ assert.deepEqual(applyChunkTimelineDrag({ startX: 100, length: 120 }, "resize-le
 assert.deepEqual(applyChunkTimelineDrag({ startX: 40, length: 100 }, "resize-left", -100, { snapPx: 16, minLength: MIN_CHUNK_TIMELINE_LENGTH }), { startX: 0, length: 140 });
 const moved = chunks.map(c => c.id === "a" ? { ...c, ...applyChunkTimelineDrag(c, "move", 96, { snapPx: 16, minLength: 64 }) } : c);
 assert.deepEqual(chunkOverlapRanges(moved), [{ startX: 96, endX: 130 }, { startX: 130, endX: 196 }]);
+const sceneLabSource = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
+const enemyLabSource = readFileSync(new URL("../dev/DevSummoner.ts", import.meta.url), "utf8");
+assert(sceneLabSource.includes("--cm-scene-lab-opacity"), "Scene Lab opacity uses a namespaced CSS variable");
+assert(!sceneLabSource.includes("--cm-bgr-lab-opacity"), "Scene Lab no longer uses the previous shared opacity variable");
+assert(!enemyLabSource.includes("--cm-scene-lab-opacity"), "Enemy Lab does not consume Scene Lab opacity state");
+assert(sceneLabSource.includes("setPointerCapture") && sceneLabSource.includes("window.addEventListener(\"pointermove\", this.onTimelinePointerMove)"), "timeline drag uses pointer capture plus window-level move handling");
+assert(sceneLabSource.includes("releasePointerCapture") && sceneLabSource.includes("window.removeEventListener(\"pointerup\", this.onTimelinePointerUp)"), "timeline drag cleans up window-level pointer listeners on pointerup/cancel");
+assert(sceneLabSource.includes("beginCursorDrag"), "preview cursor has a drag path");
 console.log("[SMOKE] PixelBgrTimeline OK ✅");
