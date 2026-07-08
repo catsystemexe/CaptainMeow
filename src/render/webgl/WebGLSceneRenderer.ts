@@ -8,7 +8,7 @@ import { cosinePalette, MUZZLE_PALETTE, TRACER_PALETTE } from "../../game/vfx/co
 import { DemosceneBg } from "./bg/DemosceneBg";
 import { FlowRibbonBg } from "./bg/FlowRibbonBg";
 import { FlowSegmentsBg } from "./bg/FlowSegmentsBg";
-import { getBackgroundState } from "../BackgroundState";
+import { getBackgroundPreviewState, setBackgroundPreviewState, stepBackgroundPreviewState, getBackgroundState } from "../BackgroundState";
 import type { BackgroundLayer } from "./bg/layers/BackgroundLayerTypes";
 import { resolveBackgroundLayers, selectBackgroundFallback } from "./bg/layers/backgroundLayerMath";
 import { composeBackgroundLayers, resolveActiveBackgroundChunks } from "./bg/layers/BackgroundSceneResolve";
@@ -1073,7 +1073,7 @@ export class WebGLSceneRenderer {
 
     // --- DEBUG BACKGROUND (world scroll aware)
     const world = (window as any).__CM?.game?.world;
-    const sx = Number(world?.scrollX ?? 0);
+    const gameplaySx = Number(world?.scrollX ?? 0);
     const sy = Number(world?.scrollY ?? 0);
 
     // sprite anim time
@@ -1083,6 +1083,9 @@ export class WebGLSceneRenderer {
     this.lastRenderMs = nowMs;
     this.accumTime += dt;
     const tSec = this.accumTime;
+    const preview = stepBackgroundPreviewState(getBackgroundPreviewState(globalThis), dt);
+    setBackgroundPreviewState(preview, globalThis);
+    const sx = preview.enabled ? preview.scrollX : gameplaySx;
     const backgroundState = getBackgroundState(globalThis);
     const layers = backgroundState?.source?.kind === "scene"
       ? composeBackgroundLayers(

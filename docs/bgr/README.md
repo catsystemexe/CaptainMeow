@@ -21,6 +21,7 @@ Independent audit of the actual state of the background/render stack at base
 | [handoffs/FABLE_B0_AUDIT.md](handoffs/FABLE_B0_AUDIT.md) | session handoff: repo/branch/HEAD verification, fetch status, branches inspected/unavailable, baseline results, findings summary, uncertainties |
 | [handoffs/B1_TYPED_SPRITE_PARALLAX.md](handoffs/B1_TYPED_SPRITE_PARALLAX.md) | B1 implementation handoff: typed background state, renderer-owned layer dispatch, sprite/parallax repeat layer, texture lifecycle, validation, and visual verification steps |
 | [handoffs/B2_BACKGROUND_SCENE_CHUNKS.md](handoffs/B2_BACKGROUND_SCENE_CHUNKS.md) | B2 implementation handoff: typed background scene/chunk descriptors, active chunk resolution, deterministic layer composition, runtime ids, texture lifecycle, validation, and visual verification steps |
+| [handoffs/B3_PIXEL_BGR_LAB_MVP.md](handoffs/B3_PIXEL_BGR_LAB_MVP.md) | B3 implementation handoff: Pixel BGR Lab MVP authoring UI, typed state API, scene/chunk/layer editing, preview controls, import/export, validation, tests, and visual verification steps |
 
 Reading order: executive audit → render pipeline → branch matrix → bgr deep dive →
 architecture options → B1 contract → roadmap.

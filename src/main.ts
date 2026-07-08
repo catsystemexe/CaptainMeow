@@ -11,7 +11,8 @@ if ((window as any).__CM.__rafId) {
 (document.title = `CM boot#${bootN}`);
 
 
-import { disableTypedBackground, enableB2BackgroundSceneDemo } from "./render/BackgroundState";
+import { clearBackgroundPreviewState, disableTypedBackground, enableB2BackgroundSceneDemo, getBackgroundState } from "./render/BackgroundState";
+import { createPixelBgrLabToggleButton, togglePixelBgrLab } from "./ui/PixelBgrLabAccess";
 import { VFXSystem } from "./game/vfx/VFXSystem";
 
 import { WebGLSceneRenderer } from "./render/webgl/WebGLSceneRenderer";
@@ -247,6 +248,30 @@ async function main() {
     console.warn("[BG_LAB] init failed", e);
   }
 
+  // ---- Pixel BGR Lab UI (F8 toggle) ----
+  try {
+    const oldUi = (globalThis as any).__CM_PIXEL_BGR_LAB_UI__;
+    if (oldUi && typeof oldUi.dispose === "function") oldUi.dispose();
+    const mod = await import("./ui/PixelBgrLabUI");
+    (globalThis as any).__CM_PIXEL_BGR_LAB_UI__ = new mod.PixelBgrLabUI();
+  } catch (e) {
+    console.warn("[PIXEL_BGR_LAB] init failed", e);
+  }
+
+  try {
+    const pixelBgrLabUi = (globalThis as any).__CM_PIXEL_BGR_LAB_UI__;
+    if (pixelBgrLabUi && typeof pixelBgrLabUi.toggle === "function") {
+      const oldButton = (globalThis as any).__CM_PIXEL_BGR_LAB_BUTTON__;
+      if (oldButton && typeof oldButton.dispatchEvent === "function") oldButton.dispatchEvent(new Event("cm-pixel-bgr-destroy"));
+      if (oldButton && typeof oldButton.remove === "function") oldButton.remove();
+      const launchButton = createPixelBgrLabToggleButton(pixelBgrLabUi);
+      (globalThis as any).__CM_PIXEL_BGR_LAB_BUTTON__ = launchButton;
+      document.body.appendChild(launchButton);
+    }
+  } catch (e) {
+    console.warn("[PIXEL_BGR_LAB] launch button init failed", e);
+  }
+
   // ---- Grid Lab UI (G toggle) ----
   try {
     const mod = await import("./ui/GridLabUI");
@@ -331,7 +356,7 @@ async function main() {
 
     // B2 typed background scene demo (V): toggles typed BackgroundState.
     if (e.code === "KeyV") {
-      const current = (globalThis as any).__CM_BACKGROUND_STATE__;
+      const current = getBackgroundState(globalThis);
       if (current) {
         disableTypedBackground(globalThis);
         console.log("[BGR] typed background disabled; legacy shader/flow path active");
@@ -339,6 +364,14 @@ async function main() {
         enableB2BackgroundSceneDemo(globalThis);
         console.log("[BGR] B2 scene/chunk demo enabled");
       }
+      return;
+    }
+
+    // Pixel BGR Lab toggle (F8): typed background scene authoring.
+    if (e.code === "F8") {
+      const ui = (globalThis as any).__CM_PIXEL_BGR_LAB_UI__;
+      if (ui && typeof ui.toggle === "function") togglePixelBgrLab(ui);
+      else console.log("[PIXEL_BGR_LAB] UI not ready");
       return;
     }
 
@@ -368,6 +401,7 @@ async function main() {
       const ui = (globalThis as any).__CM_BG_LAB_UI__;
       if (ui && typeof ui.toggle === "function") ui.toggle();
       else console.log("[BG_LAB] UI not ready");
+      return;
     }
 // Game over keys (Y/N)
     if (!session?.gameOver) return;
@@ -406,6 +440,7 @@ async function main() {
     { passive: false, capture: true },
   );
 
+  clearBackgroundPreviewState(globalThis);
   renderer = new WebGLSceneRenderer(gl, store as any, LOGIC_W, LOGIC_H);
   let particlePass: ParticlePass | null = null;
   try {
