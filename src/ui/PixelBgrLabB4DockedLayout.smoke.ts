@@ -3,14 +3,16 @@ import type { BackgroundScene } from "../render/webgl/bg/layers/BackgroundSceneT
 import { createDemoScene } from "./PixelBgrLabState";
 import { PIXEL_BGR_LAB_TAB_LABELS, PIXEL_BGR_LAB_TABS, normalizePixelBgrLabTab, pixelBgrLabTabAfterLayerDelete, pixelBgrLabTabForSelection } from "./PixelBgrLabUI";
 
-assert.deepEqual([...PIXEL_BGR_LAB_TABS], ["scene", "chunks", "layers", "properties", "placement"]);
+assert.deepEqual([...PIXEL_BGR_LAB_TABS], ["scene", "chunks", "layers", "properties", "placement", "markers"]);
 assert.equal(PIXEL_BGR_LAB_TAB_LABELS.scene, "Scene");
 assert.equal(PIXEL_BGR_LAB_TAB_LABELS.chunks, "Chunks");
 assert.equal(PIXEL_BGR_LAB_TAB_LABELS.layers, "Layers");
 assert.equal(PIXEL_BGR_LAB_TAB_LABELS.properties, "Properties");
 assert.equal(PIXEL_BGR_LAB_TAB_LABELS.placement, "Placement");
+assert.equal(PIXEL_BGR_LAB_TAB_LABELS.markers, "Markers");
 assert.equal(normalizePixelBgrLabTab("scene"), "scene");
 assert.equal(normalizePixelBgrLabTab("placement"), "placement");
+assert.equal(normalizePixelBgrLabTab("markers"), "markers");
 assert.equal(normalizePixelBgrLabTab("bad", "chunks"), "chunks");
 assert.equal(normalizePixelBgrLabTab(undefined), "scene");
 assert.equal(pixelBgrLabTabForSelection(false), "scene");

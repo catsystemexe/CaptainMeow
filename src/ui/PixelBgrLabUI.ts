@@ -1,7 +1,10 @@
-import { clearBackgroundPreviewState, getBackgroundPreviewState, getBackgroundScene, setBackgroundPreviewState, setBackgroundScene, subscribeBackgroundState } from "../render/BackgroundState";
+import { clearBackgroundPreviewState, getBackgroundPreviewState, getBackgroundScene, requestBackgroundMarkerRuntimeReset, setBackgroundPreviewState, setBackgroundScene, subscribeBackgroundState } from "../render/BackgroundState";
 import type { BackgroundLayer, SpriteBackgroundLayer } from "../render/webgl/bg/layers/BackgroundLayerTypes";
 import type { BackgroundScene } from "../render/webgl/bg/layers/BackgroundSceneTypes";
-import { addChunk, addLayer, assignAssetToSpriteLayer, cloneScene, createDemoScene, deleteChunk, deleteLayer, duplicateChunk, duplicateLayer, layerOwner, moveChunk, moveLayer, nudgeSpriteLayer, roundSpriteOffset, type LayerOwner, updateChunk, updateLayer, updateSelectedSpriteOffset } from "./PixelBgrLabState";
+import type { BackgroundMarkerAction } from "../render/webgl/bg/layers/BackgroundMarkerTypes";
+import { chunkRuntimeLayerId, globalRuntimeLayerId } from "../render/webgl/bg/layers/BackgroundSceneResolve";
+import { chunkMarkerRuntimeId, globalMarkerRuntimeId } from "../render/webgl/bg/layers/BackgroundMarkerResolve";
+import { addChunk, addLayer, addMarker, addMarkerAction, assignAssetToSpriteLayer, cloneScene, createDemoScene, deleteChunk, deleteLayer, deleteMarker, deleteMarkerAction, duplicateChunk, duplicateLayer, duplicateMarker, duplicateMarkerAction, layerOwner, markerOwner, moveChunk, moveLayer, moveMarker, moveMarkerAction, nudgeSpriteLayer, roundSpriteOffset, toggleMarker, type LayerOwner, type MarkerOwner, updateChunk, updateLayer, updateMarker, updateMarkerAction, updateSelectedSpriteOffset } from "./PixelBgrLabState";
 import { clearDraft, exportBackgroundScene, importBackgroundSceneJson, loadDraft, saveDraft } from "./PixelBgrLabSerialization";
 import { validateBackgroundScene } from "./PixelBgrLabValidation";
 import { BACKGROUND_ASSET_CATALOG } from "./PixelBgrLabAssets";
@@ -15,9 +18,9 @@ function num(value: number, step: number, fn: (v:number)=>void): HTMLInputElemen
 function text(value: string, fn: (v:string)=>void): HTMLInputElement { const i = el("input"); i.value=value; i.oninput=()=>fn(i.value); return i; }
 function check(value: boolean, fn: (v:boolean)=>void): HTMLInputElement { const i = el("input"); i.type="checkbox"; i.checked=value; i.oninput=()=>fn(i.checked); return i; }
 
-export type PixelBgrLabTab = "scene" | "chunks" | "layers" | "properties" | "placement";
-export const PIXEL_BGR_LAB_TABS: readonly PixelBgrLabTab[] = ["scene", "chunks", "layers", "properties", "placement"] as const;
-export const PIXEL_BGR_LAB_TAB_LABELS: Record<PixelBgrLabTab, string> = { scene: "Scene", chunks: "Chunks", layers: "Layers", properties: "Properties", placement: "Placement" };
+export type PixelBgrLabTab = "scene" | "chunks" | "layers" | "properties" | "placement" | "markers";
+export const PIXEL_BGR_LAB_TABS: readonly PixelBgrLabTab[] = ["scene", "chunks", "layers", "properties", "placement", "markers"] as const;
+export const PIXEL_BGR_LAB_TAB_LABELS: Record<PixelBgrLabTab, string> = { scene: "Scene", chunks: "Chunks", layers: "Layers", properties: "Properties", placement: "Placement", markers: "Markers" };
 export function normalizePixelBgrLabTab(value: unknown, fallback: PixelBgrLabTab = "scene"): PixelBgrLabTab { return typeof value === "string" && (PIXEL_BGR_LAB_TABS as readonly string[]).includes(value) ? value as PixelBgrLabTab : fallback; }
 export function pixelBgrLabTabForSelection(hasSelectedLayer: boolean, selectedLayerKind?: string, placementRequested = false): PixelBgrLabTab { if (placementRequested && selectedLayerKind === "sprite") return "placement"; return hasSelectedLayer ? "properties" : "scene"; }
 export function pixelBgrLabTabAfterLayerDelete(current: PixelBgrLabTab, hasSelectedLayer: boolean): PixelBgrLabTab { return hasSelectedLayer ? current : current === "properties" || current === "placement" ? "layers" : current; }
@@ -28,6 +31,8 @@ export class PixelBgrLabUI {
   private draft: BackgroundScene;
   private owner: LayerOwner = { kind: "global" };
   private selectedLayerId = "";
+  private selectedMarkerId = "";
+  private selectedActionIndex = -1;
   private message = "";
   private unsub: () => void;
   private openListeners = new Set<(open: boolean) => void>();
@@ -90,6 +95,7 @@ export class PixelBgrLabUI {
     else if (this.activeTab === "chunks") body.appendChild(this.renderChunks());
     else if (this.activeTab === "layers") body.appendChild(this.renderLayers());
     else if (this.activeTab === "placement") body.appendChild(this.renderPlacementTab());
+    else if (this.activeTab === "markers") body.appendChild(this.renderMarkersTab());
     else body.appendChild(this.renderProps());
     this.syncOverlay();
   }
@@ -101,6 +107,32 @@ export class PixelBgrLabUI {
   private renderValidationSummary(errors: any[], warnings: any[]): HTMLElement { const box=el("div","cm-pixel-msg"); if(this.message){ box.append(this.message); return box; } const summary=validationSummaryState(errors,warnings,this.warningsExpanded ?? undefined); this.warningsExpanded = summary.expanded; const b=button(summary.label,()=>{ if(summary.hasDetails){ this.warningsExpanded=toggleValidationExpanded(summary.expanded); this.render(); } }); b.className="cm-pixel-summary"; box.appendChild(b); if(summary.hasDetails&&summary.expanded) box.append(document.createTextNode("\n"), ...[...errors,...warnings].map(i=>document.createTextNode(`${i.level}: ${i.path}: ${i.message}\n`))); return box; }
   private renderProps(): HTMLElement { const p=el("div","cm-pixel-panel cm-pixel-props"); const l=this.selectedLayer(); if(!l){p.append("No selected layer. Choose one in Layers."); return p;} p.append(`Layer properties (${l.kind})`); p.append(this.row("id",text(l.id,v=>this.patchLayer(x=>({...x,id:v} as BackgroundLayer)))),this.row("enabled",check(l.enabled,v=>this.patchLayer(x=>({...x,enabled:v} as BackgroundLayer))))); if(l.kind==="sprite"){ const s=l as SpriteBackgroundLayer; const patch=(f:(x:SpriteBackgroundLayer)=>SpriteBackgroundLayer)=>this.patchLayer(x=>x.kind==="sprite"?f(x):x); p.append(this.row("texture",text(s.texture.url,v=>patch(x=>({...x,texture:{...x.texture,url:v}})))),this.row("opacity",this.numericStepper({value:s.opacity,step:.05,min:0,max:1,onCommit:v=>patch(x=>({...x,opacity:v}))})),this.row("blend",this.select(s.blend,["normal","additive"],v=>patch(x=>({...x,blend:v as any})))),this.row("parallax X",this.numericStepper({value:s.parallax.x,step:.05,onCommit:v=>patch(x=>({...x,parallax:{...x.parallax,x:v}}))})),this.row("parallax Y",this.numericStepper({value:s.parallax.y,step:.05,onCommit:v=>patch(x=>({...x,parallax:{...x.parallax,y:v}}))})),this.row("offset X",this.numericStepper({value:s.offset.x,step:this.nudgeStep,onCommit:v=>patch(x=>({...x,offset:{...x.offset,x:v}}))})),this.row("offset Y",this.numericStepper({value:s.offset.y,step:this.nudgeStep,onCommit:v=>patch(x=>({...x,offset:{...x.offset,y:v}}))})),this.row("repeat X",check(s.repeat.x,v=>patch(x=>({...x,repeat:{...x.repeat,x:v}})))),this.row("repeat Y",check(s.repeat.y,v=>patch(x=>({...x,repeat:{...x.repeat,y:v}})))),this.row("filtering",document.createTextNode(s.texture.filtering))); } else p.append(this.row("typed fields",document.createTextNode(JSON.stringify(l)))); return p; }
   private renderPlacementTab(): HTMLElement { const l=this.selectedLayer(); const p=el("div","cm-pixel-panel cm-pixel-props"); if(l?.kind!=="sprite"){ p.append("Select a sprite layer to use visual placement.", this.renderPreview()); return p; } p.appendChild(this.renderVisualPlacement(l as SpriteBackgroundLayer)); p.appendChild(this.renderPreview()); return p; }
+
+
+  private markerOwner(): MarkerOwner { return this.owner.kind === "chunk" ? { kind: "chunk", chunkId: (this.owner as {kind:"chunk";chunkId:string}).chunkId } : { kind: "global" }; }
+  private layerTargets(): Array<{ id: string; label: string }> { const out = this.draft.globalLayers.map(l => ({ id: globalRuntimeLayerId(l.id), label: `Global / ${l.id}` })); for (const c of this.draft.chunks) for (const l of c.layers) out.push({ id: chunkRuntimeLayerId(c.id, l.id), label: `${c.id} / ${l.id}` }); return out; }
+  private targetSelect(value: string, fn: (v: string) => void): HTMLSelectElement { const targets=this.layerTargets(); const s=el("select"); if(value && !targets.some(t=>t.id===value)){ const o=el("option"); o.value=value; o.textContent=`Missing: ${value}`; o.selected=true; s.appendChild(o); } for(const t of targets){ const o=el("option"); o.value=t.id; o.textContent=t.label; o.selected=t.id===value; s.appendChild(o); } s.oninput=()=>fn(s.value); return s; }
+  private selectedMarker() { return markerOwner(this.draft, this.markerOwner()).find(m => m.id === this.selectedMarkerId) ?? null; }
+  private markerRuntimeId(): string { const owner=this.markerOwner(); return owner.kind === "global" ? globalMarkerRuntimeId(this.selectedMarkerId) : chunkMarkerRuntimeId(owner.chunkId, this.selectedMarkerId); }
+  private renderMarkersTab(): HTMLElement { const p=el("div","cm-pixel-panel"); const owner=this.markerOwner(); const markers=markerOwner(this.draft, owner); p.append(`Markers: ${owner.kind}${owner.kind==="chunk"?` ${(owner as {kind:"chunk";chunkId:string}).chunkId}`:""}`); const list=el("div","cm-pixel-list"); for(const m of markers){ const b=button(`${m.enabled?"✓":"·"} ${m.id} @ ${m.x}`,()=>{this.selectedMarkerId=m.id;this.selectedActionIndex=-1;this.render();}); if(m.id===this.selectedMarkerId)b.className="sel"; list.appendChild(b); } p.appendChild(list); p.append(button("add",()=>{this.activeTab="markers";this.setDraft(addMarker(this.draft,owner));}),button("duplicate",()=>this.selectedMarkerId&&this.setDraft(duplicateMarker(this.draft,owner,this.selectedMarkerId))),button("delete",()=>{if(this.selectedMarkerId){const next=deleteMarker(this.draft,owner,this.selectedMarkerId); this.selectedMarkerId=markerOwner(next,owner)[0]?.id??""; this.setDraft(next);}}),button("toggle",()=>this.selectedMarkerId&&this.setDraft(toggleMarker(this.draft,owner,this.selectedMarkerId))),button("↑",()=>this.selectedMarkerId&&this.setDraft(moveMarker(this.draft,owner,this.selectedMarkerId,-1))),button("↓",()=>this.selectedMarkerId&&this.setDraft(moveMarker(this.draft,owner,this.selectedMarkerId,1)))); const m=this.selectedMarker(); if(m){ p.append(el("hr"), this.row("id", text(m.id,v=>this.setDraft(updateMarker(this.draft,owner,m.id,x=>({...x,id:v}))))), this.row("x", this.numericStepper({value:m.x,step:16,onCommit:v=>this.setDraft(updateMarker(this.draft,owner,m.id,x=>({...x,x:v})))})), this.row("enabled", check(m.enabled,v=>this.setDraft(updateMarker(this.draft,owner,m.id,x=>({...x,enabled:v}))))), this.row("once", check(m.once,v=>this.setDraft(updateMarker(this.draft,owner,m.id,x=>({...x,once:v})))))); const actions=el("div","cm-pixel-list"); m.actions.forEach((a,i)=>{ const b=button(`${i+1}. ${a.kind}`,()=>{this.selectedActionIndex=i;this.render();}); if(i===this.selectedActionIndex)b.className="sel"; actions.appendChild(b); }); p.append("Actions",actions, button("add",()=>this.setDraft(addMarkerAction(this.draft,owner,m.id))), button("duplicate",()=>this.setDraft(duplicateMarkerAction(this.draft,owner,m.id,this.selectedActionIndex))), button("delete",()=>this.setDraft(deleteMarkerAction(this.draft,owner,m.id,this.selectedActionIndex))), button("↑",()=>this.setDraft(moveMarkerAction(this.draft,owner,m.id,this.selectedActionIndex,-1))), button("↓",()=>this.setDraft(moveMarkerAction(this.draft,owner,m.id,this.selectedActionIndex,1)))); const a=m.actions[this.selectedActionIndex]; if(a) p.appendChild(this.renderMarkerActionEditor(owner,m.id,this.selectedActionIndex,a)); }
+    const debug=(globalThis as any).__CM_BGR_MARKER_DEBUG__ ?? {}; p.append(el("hr"), button("Reset marker runtime",()=>{requestBackgroundMarkerRuntimeReset(globalThis);this.render();}), button("Fire selected marker now",()=>{ if(this.selectedMarkerId)(globalThis as any).__CM_BGR_MARKER_MANUAL_FIRE__=this.markerRuntimeId(); this.render(); }), document.createElement("br"), document.createTextNode(`Last fired marker: ${debug.lastFiredMarker ?? "none"}`), document.createElement("br"), document.createTextNode(`Last environment event: ${debug.lastEnvironmentEvent?.name ?? "none"}`), this.renderPreview()); return p; }
+  private renderMarkerActionEditor(owner: MarkerOwner, markerId: string, index: number, action: BackgroundMarkerAction): HTMLElement {
+    const p = el("div", "cm-pixel-panel");
+    const kinds = ["set-layer-enabled", "set-layer-opacity", "pulse-layer-opacity", "emit-environment-event"];
+    p.append(this.row("kind", this.select(action.kind, kinds, (k) => {
+      const next = k === "set-layer-enabled" ? { kind: k, layerId: "", enabled: true }
+        : k === "pulse-layer-opacity" ? { kind: k, layerId: "", from: 0, to: 1, durationMs: 500 }
+        : k === "emit-environment-event" ? { kind: k, event: "environment-event" }
+        : { kind: k, layerId: "", opacity: 1 };
+      this.setDraft(updateMarkerAction(this.draft, owner, markerId, index, () => next as BackgroundMarkerAction));
+    })));
+    const patch = (f: (a: BackgroundMarkerAction) => BackgroundMarkerAction) => this.setDraft(updateMarkerAction(this.draft, owner, markerId, index, f));
+    if (action.kind === "set-layer-enabled") p.append(this.row("target", this.targetSelect(action.layerId, v => patch(a => ({ ...a, layerId: v } as BackgroundMarkerAction)))), this.row("enabled", check(action.enabled, v => patch(a => ({ ...a, enabled: v } as BackgroundMarkerAction)))));
+    else if (action.kind === "set-layer-opacity") p.append(this.row("target", this.targetSelect(action.layerId, v => patch(a => ({ ...a, layerId: v } as BackgroundMarkerAction)))), this.row("opacity", this.numericStepper({ value: action.opacity, step: .05, min: 0, max: 1, onCommit: v => patch(a => ({ ...a, opacity: v } as BackgroundMarkerAction)) })));
+    else if (action.kind === "pulse-layer-opacity") p.append(this.row("target", this.targetSelect(action.layerId, v => patch(a => ({ ...a, layerId: v } as BackgroundMarkerAction)))), this.row("from", this.numericStepper({ value: action.from, step: .05, min: 0, max: 1, onCommit: v => patch(a => ({ ...a, from: v } as BackgroundMarkerAction)) })), this.row("to", this.numericStepper({ value: action.to, step: .05, min: 0, max: 1, onCommit: v => patch(a => ({ ...a, to: v } as BackgroundMarkerAction)) })), this.row("duration", this.numericStepper({ value: action.durationMs, step: 50, min: 1, onCommit: v => patch(a => ({ ...a, durationMs: v } as BackgroundMarkerAction)) })));
+    else p.append(this.row("event", text(action.event, v => patch(a => ({ ...a, event: v } as BackgroundMarkerAction)))));
+    return p;
+  }
 
   private renderVisualPlacement(layer: SpriteBackgroundLayer): HTMLElement {
     const p = el("div", "cm-pixel-panel cm-pixel-visual"); p.append("Visual placement");
