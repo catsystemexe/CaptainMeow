@@ -40,6 +40,7 @@ const SMOKES = [
   "../render/webgl/bg/layers/BackgroundLayerResolve.smoke",
   "../render/webgl/bg/layers/ParallaxOffset.smoke",
   "../render/webgl/bg/layers/WrappedTileOrigins.smoke",
+  "../render/webgl/bg/layers/BackgroundSceneResolve.smoke",
   "../game/systems/BombExplosionChain.smoke",
   "../game/systems/WeaponVFXEmit.smoke",
   "../render/webgl/bg/FlowDisturbanceKick.smoke",

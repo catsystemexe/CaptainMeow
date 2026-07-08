@@ -1,4 +1,4 @@
-import { createB1SpriteParallaxDemoState, type BackgroundState } from "./webgl/bg/layers/BackgroundLayerTypes";
+import { createB1SpriteParallaxDemoState, createB2BackgroundSceneDemoState, type BackgroundState } from "./webgl/bg/layers/BackgroundLayerTypes";
 
 const STATE_KEY = "__CM_BACKGROUND_STATE__";
 
@@ -15,6 +15,12 @@ export function setBackgroundState(state: BackgroundState | null, root: any = gl
 
 export function enableB1SpriteParallaxDemo(root: any = globalThis): BackgroundState {
   const state = createB1SpriteParallaxDemoState();
+  setBackgroundState(state, root);
+  return state;
+}
+
+export function enableB2BackgroundSceneDemo(root: any = globalThis): BackgroundState {
+  const state = createB2BackgroundSceneDemoState();
   setBackgroundState(state, root);
   return state;
 }

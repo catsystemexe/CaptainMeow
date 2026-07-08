@@ -11,6 +11,7 @@ import { FlowSegmentsBg } from "./bg/FlowSegmentsBg";
 import { getBackgroundState } from "../BackgroundState";
 import type { BackgroundLayer } from "./bg/layers/BackgroundLayerTypes";
 import { resolveBackgroundLayers, selectBackgroundFallback } from "./bg/layers/backgroundLayerMath";
+import { composeBackgroundLayers, resolveActiveBackgroundChunks } from "./bg/layers/BackgroundSceneResolve";
 import { SpriteBackgroundLayerRenderer } from "./bg/layers/SpriteBackgroundLayerRenderer";
 import type { FlowDisturbance } from "./bg/flowStep";
 import { createAtmosphericFXPass, type AtmosphericFXPass } from "./AtmosphericFXPass";
@@ -1083,10 +1084,16 @@ export class WebGLSceneRenderer {
     this.accumTime += dt;
     const tSec = this.accumTime;
     const backgroundState = getBackgroundState(globalThis);
-    const layers = resolveBackgroundLayers(backgroundState);
+    const layers = backgroundState?.source?.kind === "scene"
+      ? composeBackgroundLayers(
+        backgroundState.source.scene,
+        resolveActiveBackgroundChunks(backgroundState.source.scene, sx, this.logicW, 0),
+      )
+      : resolveBackgroundLayers(backgroundState);
     if (selectBackgroundFallback(backgroundState) === "layers") {
-      this.drawBackgroundLayers(layers, tSec, sx, sy);
+      this.drawBackgroundLayers(resolveBackgroundLayers({ enabled: true, source: { kind: "layers", layers } }), tSec, sx, sy);
     } else {
+      this.spriteBackground.retainLayerIds(new Set());
       this.drawLegacyBackground(tSec, sx, sy);
     }
     // this.drawDebugBackground(sx, sy);
