@@ -1,6 +1,8 @@
 import type { SpriteBackgroundLayer } from "./BackgroundLayerTypes";
 import { clamp01, resolveParallaxOffset, wrappedTileOrigins } from "./backgroundLayerMath";
 
+export type SpriteTextureInfo = { id: string; url: string; state: "loading" | "ready" | "error"; width: number; height: number; generation: number };
+
 type CacheEntry = {
   url: string;
   tex: WebGLTexture;
@@ -78,6 +80,20 @@ export class SpriteBackgroundLayerRenderer {
     gl.disable(gl.BLEND);
     gl.bindTexture(gl.TEXTURE_2D, null);
     gl.bindVertexArray(null);
+  }
+
+  getTextureInfo(layerId: string): SpriteTextureInfo | null {
+    const entry = this.cache.get(layerId);
+    return entry ? { id: layerId, url: entry.url, state: entry.state, width: entry.w, height: entry.h, generation: entry.generation } : null;
+  }
+
+  getTextureInfoSnapshot(): Record<string, SpriteTextureInfo> {
+    const out: Record<string, SpriteTextureInfo> = {};
+    for (const id of this.cache.keys()) {
+      const info = this.getTextureInfo(id);
+      if (info) out[id] = info;
+    }
+    return out;
   }
 
   retainLayerIds(ids: Set<string>): void {
