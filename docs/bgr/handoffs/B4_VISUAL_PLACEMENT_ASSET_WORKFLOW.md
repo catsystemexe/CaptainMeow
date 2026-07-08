@@ -234,3 +234,57 @@
 - Added `src/ui/PixelBgrLabB4UiPolish.smoke.ts` for pure numeric stepping, clamping, floating-point normalization, non-finite handling, validation summary state, and immutable scene-update coverage.
 - Existing Pixel BGR Lab, B4 visual-placement, and B1/B2 background layer smokes remain targeted verification for the runtime model and visual-placement contract.
 - External-monitor workflow should be visually verified by opening Pixel BGR Lab, confirming the compact three-column layout leaves more canvas visible, toggling validation details, using steppers/manual keyboard input, verifying visual-placement arrow nudging outside numeric focus, and scrolling the properties panel to reach asset metadata.
+
+## B4 docked layout fix
+
+### Problem
+- The full-screen three-column Pixel BGR Lab obscured the real game preview.
+
+### Resolution
+- Pixel BGR Lab is now a right-docked panel.
+- The information architecture is tabbed.
+- Visible canvas space is preserved to the left of the panel.
+- The toolbar is compact.
+- Panel content scrolls internally.
+
+### Tabs
+- Scene
+- Chunks
+- Layers
+- Properties
+- Placement
+
+### Preserved behavior
+- Runtime state.
+- Visual placement.
+- Asset workflow.
+- Numeric steppers.
+- Preview scroll.
+- Validation.
+- Touch launcher/F8.
+
+### Visual verification
+Use the external-monitor workflow below:
+1. Open Pixel BGR Lab.
+2. Confirm it docks to the right instead of covering most of the screen.
+3. Confirm substantial game canvas remains visible on the left.
+4. Confirm no page-level horizontal scrollbar appears.
+5. Switch through Scene, Chunks, Layers, Properties, and Placement.
+6. Confirm only one tab body is visible.
+7. Load/reset the B2 demo.
+8. Select global layers, chunk A, and chunk B.
+9. Select a sprite layer and confirm Properties opens or is reachable.
+10. Use numeric −/+ controls.
+11. Open Placement.
+12. Enable Visual placement.
+13. Drag a sprite in the visible canvas area.
+14. Confirm overlay alignment remains correct.
+15. Confirm asset selector and metadata remain reachable.
+16. Use preview play/pause/scrub.
+17. Expand/collapse warnings.
+18. Resize the external-monitor browser window.
+19. Confirm the panel remains docked and scrollable.
+20. Close and reopen Lab.
+21. Confirm scene state remains preserved.
+22. Confirm no duplicate panel, overlay, or listeners appear.
+23. Confirm no console errors.
