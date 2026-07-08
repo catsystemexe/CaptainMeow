@@ -12,7 +12,7 @@ import { getBackgroundPreviewState, setBackgroundPreviewState, stepBackgroundPre
 import type { BackgroundLayer } from "./bg/layers/BackgroundLayerTypes";
 import { resolveBackgroundLayers, selectBackgroundFallback } from "./bg/layers/backgroundLayerMath";
 import { composeBackgroundLayers, resolveActiveBackgroundChunks } from "./bg/layers/BackgroundSceneResolve";
-import { SpriteBackgroundLayerRenderer } from "./bg/layers/SpriteBackgroundLayerRenderer";
+import { SpriteBackgroundLayerRenderer, type SpriteTextureInfo } from "./bg/layers/SpriteBackgroundLayerRenderer";
 import type { FlowDisturbance } from "./bg/flowStep";
 import { createAtmosphericFXPass, type AtmosphericFXPass } from "./AtmosphericFXPass";
 import { createSdfPass, type SdfPass } from "./SdfPass";
@@ -507,6 +507,7 @@ export class WebGLSceneRenderer {
     this.bgFlowRibbon = new FlowRibbonBg(gl);
     this.bgFlowSegments = new FlowSegmentsBg(gl);
     this.spriteBackground = new SpriteBackgroundLayerRenderer(gl);
+    (globalThis as any).__CM_BGR_SPRITE_TEXTURES__ = () => this.spriteBackground.getTextureInfoSnapshot();
     this.atmosphericFX = createAtmosphericFXPass(gl);
     // SDF vector pass — restores to the main program/VAO/uLogic after each draw.
     // Defensive: a shader compile/link failure must NOT blank the whole scene —
@@ -1061,6 +1062,8 @@ export class WebGLSceneRenderer {
     }
     this.spriteBackground.retainLayerIds(spriteIds);
   }
+
+  getSpriteBackgroundTextureInfo(layerId: string): SpriteTextureInfo | null { return this.spriteBackground.getTextureInfo(layerId); }
 
   render(alpha: number = 1): void {
     const gl = this.gl;

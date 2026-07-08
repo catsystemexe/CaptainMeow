@@ -17,4 +17,19 @@ export function addLayer(scene: BackgroundScene, owner: LayerOwner): BackgroundS
 export function duplicateLayer(scene: BackgroundScene, owner: LayerOwner, layerId: string): BackgroundScene { const layers = layerOwner(scene, owner); const layer = layers.find(l=>l.id===layerId); if (!layer) return scene; const copy = JSON.parse(JSON.stringify(layer)) as BackgroundLayer; copy.id = uniqueId(`${layer.id}-copy`, new Set(layers.map(l=>l.id))); return withOwner(scene, owner, [...layers, copy]); }
 export function deleteLayer(scene: BackgroundScene, owner: LayerOwner, layerId: string): BackgroundScene { return withOwner(scene, owner, layerOwner(scene, owner).filter(l=>l.id!==layerId)); }
 export function moveLayer(scene: BackgroundScene, owner: LayerOwner, layerId: string, dir: -1|1): BackgroundScene { const layers = layerOwner(scene, owner).slice(); const i = layers.findIndex(l=>l.id===layerId), j=i+dir; if (i<0||j<0||j>=layers.length) return scene; [layers[i],layers[j]]=[layers[j],layers[i]]; return withOwner(scene, owner, layers); }
-export function updateLayer(scene: BackgroundScene, owner: LayerOwner, layerId: string, patcher: (layer: BackgroundLayer)=>BackgroundLayer): BackgroundScene { return withOwner(scene, owner, layerOwner(scene, owner).map(l=>l.id===layerId ? patcher(JSON.parse(JSON.stringify(l))) : l)); }
+export function updateLayer(scene: BackgroundScene, owner: LayerOwner, layerId: string, patcher: (layer: BackgroundLayer)=>BackgroundLayer): BackgroundScene { const layers = layerOwner(scene, owner); if (!layers.some(l => l.id === layerId)) return scene; return withOwner(scene, owner, layers.map(l=>l.id===layerId ? patcher(JSON.parse(JSON.stringify(l))) : l)); }
+
+export type PixelSafeMode = "integer" | "fractional";
+function maybeRound(v: number, mode: PixelSafeMode): number { return mode === "integer" ? Math.round(v) : v; }
+export function updateSelectedSpriteOffset(scene: BackgroundScene, owner: LayerOwner, layerId: string, offset: { x: number; y: number }, mode: PixelSafeMode = "integer"): BackgroundScene {
+  return updateLayer(scene, owner, layerId, (layer) => layer.kind === "sprite" ? { ...layer, offset: { x: maybeRound(offset.x, mode), y: maybeRound(offset.y, mode) } } : layer);
+}
+export function nudgeSpriteLayer(scene: BackgroundScene, owner: LayerOwner, layerId: string, dx: number, dy: number, mode: PixelSafeMode = "integer"): BackgroundScene {
+  return updateLayer(scene, owner, layerId, (layer) => layer.kind === "sprite" ? { ...layer, offset: { x: maybeRound(layer.offset.x + dx, mode), y: maybeRound(layer.offset.y + dy, mode) } } : layer);
+}
+export function roundSpriteOffset(scene: BackgroundScene, owner: LayerOwner, layerId: string): BackgroundScene {
+  return updateLayer(scene, owner, layerId, (layer) => layer.kind === "sprite" ? { ...layer, offset: { x: Math.round(layer.offset.x), y: Math.round(layer.offset.y) } } : layer);
+}
+export function assignAssetToSpriteLayer(scene: BackgroundScene, owner: LayerOwner, layerId: string, url: string): BackgroundScene {
+  return updateLayer(scene, owner, layerId, (layer) => layer.kind === "sprite" ? { ...layer, texture: { ...layer.texture, url } } : layer);
+}

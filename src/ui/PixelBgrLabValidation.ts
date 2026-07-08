@@ -29,6 +29,7 @@ function validateSpriteLayer(layer: SpriteBackgroundLayer, path: string, errors:
   else if (layer.texture.url.endsWith(".svg")) warnings.push(issue("warning", `${path}.texture.url`, "SVG technical asset; replace with pixel art before production"));
   if (!finite(layer.opacity) || layer.opacity < 0 || layer.opacity > 1) errors.push(issue("error", `${path}.opacity`, "opacity must be in range 0..1"));
   for (const key of ["x", "y"] as const) { checkFinite(layer.parallax?.[key], `${path}.parallax.${key}`, errors); checkFinite(layer.offset?.[key], `${path}.offset.${key}`, errors); }
+  if (!Number.isInteger(Number(layer.offset?.x)) || !Number.isInteger(Number(layer.offset?.y))) warnings.push(issue("warning", `${path}.offset`, "fractional sprite offset; pixel-safe placement will round on movement"));
   if (Math.abs(Number(layer.parallax?.x)) > 4 || Math.abs(Number(layer.parallax?.y)) > 4) warnings.push(issue("warning", `${path}.parallax`, "very high parallax"));
   if (!layer.repeat?.x && !layer.repeat?.y) warnings.push(issue("warning", `${path}.repeat`, "repeat disabled; small textures may expose empty background"));
 }
