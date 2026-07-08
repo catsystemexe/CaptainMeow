@@ -10,6 +10,7 @@ import { validateBackgroundScene } from "./PixelBgrLabValidation";
 import { BACKGROUND_ASSET_CATALOG } from "./PixelBgrLabAssets";
 import { clientPointToInternalPoint, layerRenderedOrigin, renderedOriginToAuthoredOffset, resolveCanvasViewportRect, type Point } from "./PixelBgrLabCoordinates";
 import { stepNumericValue, validationSummaryState, toggleValidationExpanded, type NumericStepOptions } from "./PixelBgrLabNumeric";
+import { applyChunkTimelineDrag, chunkEndX, chunkOverlapRanges, chunkTimelineBlocks, createTimelineScale, DEFAULT_CHUNK_TIMELINE_SNAP_PX, MIN_CHUNK_TIMELINE_LENGTH, overlapsForChunk, timelinePxToWorld, worldToTimelinePx, type ChunkTimelineDragMode, type TimelineScale } from "./PixelBgrTimeline";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -40,9 +41,11 @@ export class PixelBgrLabUI {
   private pixelSafe = true;
   private nudgeStep = 1;
   private overlay: HTMLDivElement | null = null;
+  private timelineDrag: { pointerId: number; chunkId: string; mode: ChunkTimelineDragMode; startClientX: number; startX: number; length: number; scale: TimelineScale } | null = null;
   private drag: { pointerId: number; anchor: Point } | null = null;
   private warningsExpanded: boolean | null = null;
   private activeTab: PixelBgrLabTab = "scene";
+  private overlayOpacity = 0.94;
   private readonly logicW = 896;
   private readonly logicH = 504;
 
@@ -52,20 +55,20 @@ export class PixelBgrLabUI {
     this.root = el("div", "cm-pixel-bgr-lab");
     this.root.style.display = "none";
     const style = el("style");
-    style.textContent = `.cm-bgr-placement-overlay{position:fixed;z-index:100000;pointer-events:none;box-sizing:border-box}.cm-bgr-placement-box{position:absolute;border:2px solid #ffe66d;box-sizing:border-box}.cm-bgr-placement-origin{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;background:#ff4d6d;border-radius:50%}.cm-bgr-placement-chunk{position:absolute;top:0;bottom:0;border-left:2px dashed #66e3ff;border-right:2px dashed #66e3ff;background:rgba(102,227,255,.04)}.cm-bgr-placement-label{position:absolute;left:4px;top:4px;color:#eaf6ff;background:rgba(0,0,0,.65);font:12px monospace;padding:2px 4px}.cm-pixel-bgr-lab{position:fixed;top:8px;right:8px;bottom:8px;width:clamp(360px,34vw,520px);max-width:min(520px,calc(100vw - 96px));min-width:min(420px,calc(100vw - 96px));z-index:100001;background:rgba(4,8,16,.94);color:#eaf6ff;border:1px solid rgba(120,220,255,.28);border-radius:8px;font:12px/1.25 ui-monospace,Menlo,Consolas,monospace;padding:8px;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;min-height:0}.cm-pixel-bgr-lab h3{margin:0;color:#8ee8ff}.cm-pixel-bgr-lab button{margin:1px;min-height:26px;padding:2px 7px;background:#12344a;color:#eaf6ff;border:1px solid #2e83aa;border-radius:4px}.cm-pixel-bgr-lab input,.cm-pixel-bgr-lab select,.cm-pixel-bgr-lab textarea{min-height:26px;background:#071521;color:#eaf6ff;border:1px solid #28516d;border-radius:3px;font:inherit;box-sizing:border-box;max-width:100%}.cm-pixel-titlebar{display:flex;gap:6px;align-items:center;justify-content:space-between;min-width:0}.cm-pixel-scene-summary{opacity:.72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cm-pixel-tabs{display:flex;gap:3px;flex-wrap:wrap;margin:6px 0}.cm-pixel-tab[aria-selected="true"]{background:#235b80;border-color:#8ee8ff;color:#fff}.cm-pixel-tab-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:2px}.cm-pixel-panel{border:1px solid rgba(120,220,255,.18);border-radius:6px;padding:5px;overflow:auto;min-height:0;margin-bottom:6px;box-sizing:border-box}.cm-pixel-props{overflow-y:visible;overflow-x:hidden}.cm-pixel-row{display:flex;gap:4px;align-items:center;margin:3px 0;min-width:0}.cm-pixel-row label{min-width:82px;opacity:.78}.cm-pixel-row input,.cm-pixel-row select{flex:1 1 auto;min-width:0}.cm-pixel-list button{display:block;width:100%;text-align:left;margin:1px 0;padding:2px 5px;overflow:hidden;text-overflow:ellipsis}.cm-pixel-list button.sel{background:#235b80}.cm-pixel-msg{white-space:pre-wrap;color:#ffd166;max-height:150px;overflow:auto;overflow-wrap:anywhere;border:1px solid rgba(255,209,102,.18);border-radius:4px;padding:3px 5px;margin:3px 0}.cm-pixel-summary{width:100%;text-align:left}.cm-pixel-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:4px 0;min-width:0}.cm-pixel-toolbar input{width:190px}.cm-pixel-stepper{display:grid;grid-template-columns:28px minmax(72px,1fr) 28px;gap:3px;align-items:center;width:100%}.cm-pixel-stepper input{width:100%;text-align:right}.cm-pixel-stepper button{min-width:28px;padding:0}.cm-pixel-visual{margin-top:6px;padding-top:5px}.cm-pixel-nudges button{min-width:32px}.cm-pixel-preview{margin-top:5px}`
+    style.textContent = `.cm-bgr-placement-overlay{position:fixed;z-index:100000;pointer-events:none;box-sizing:border-box}.cm-bgr-placement-box{position:absolute;border:2px solid #ffe66d;box-sizing:border-box}.cm-bgr-placement-origin{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;background:#ff4d6d;border-radius:50%}.cm-bgr-placement-chunk{position:absolute;top:0;bottom:0;border-left:2px dashed #66e3ff;border-right:2px dashed #66e3ff;background:rgba(102,227,255,.04)}.cm-bgr-placement-label{position:absolute;left:4px;top:4px;color:#eaf6ff;background:rgba(0,0,0,.65);font:12px monospace;padding:2px 4px}.cm-pixel-bgr-lab{position:fixed;top:8px;right:8px;bottom:8px;width:clamp(360px,34vw,520px);max-width:min(520px,calc(100vw - 96px));min-width:min(420px,calc(100vw - 96px));z-index:100001;background:rgba(4,8,16,var(--cm-bgr-lab-opacity,.94));color:#eaf6ff;border:1px solid rgba(120,220,255,.28);border-radius:8px;font:12px/1.25 ui-monospace,Menlo,Consolas,monospace;padding:8px;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;min-height:0}.cm-pixel-bgr-lab h3{margin:0;color:#8ee8ff}.cm-pixel-bgr-lab button{margin:1px;min-height:26px;padding:2px 7px;background:#12344a;color:#eaf6ff;border:1px solid #2e83aa;border-radius:4px}.cm-pixel-bgr-lab input,.cm-pixel-bgr-lab select,.cm-pixel-bgr-lab textarea{min-height:26px;background:#071521;color:#eaf6ff;border:1px solid #28516d;border-radius:3px;font:inherit;box-sizing:border-box;max-width:100%}.cm-pixel-titlebar{display:flex;gap:6px;align-items:center;justify-content:space-between;min-width:0}.cm-pixel-scene-summary{opacity:.72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cm-pixel-tabs{display:flex;gap:3px;flex-wrap:wrap;margin:6px 0}.cm-pixel-tab[aria-selected="true"]{background:#235b80;border-color:#8ee8ff;color:#fff}.cm-pixel-tab-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:2px}.cm-pixel-panel{border:1px solid rgba(120,220,255,.18);border-radius:6px;padding:5px;overflow:auto;min-height:0;margin-bottom:6px;box-sizing:border-box}.cm-pixel-props{overflow-y:visible;overflow-x:hidden}.cm-pixel-row{display:flex;gap:4px;align-items:center;margin:3px 0;min-width:0}.cm-pixel-row label{min-width:82px;opacity:.78}.cm-pixel-row input,.cm-pixel-row select{flex:1 1 auto;min-width:0}.cm-pixel-list button{display:block;width:100%;text-align:left;margin:1px 0;padding:2px 5px;overflow:hidden;text-overflow:ellipsis}.cm-pixel-list button.sel{background:#235b80}.cm-pixel-msg{white-space:pre-wrap;color:#ffd166;max-height:150px;overflow:auto;overflow-wrap:anywhere;border:1px solid rgba(255,209,102,.18);border-radius:4px;padding:3px 5px;margin:3px 0}.cm-pixel-summary{width:100%;text-align:left}.cm-pixel-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:4px 0;min-width:0}.cm-pixel-toolbar input{width:190px}.cm-pixel-stepper{display:grid;grid-template-columns:28px minmax(72px,1fr) 28px;gap:3px;align-items:center;width:100%}.cm-pixel-stepper input{width:100%;text-align:right}.cm-pixel-stepper button{min-width:28px;padding:0}.cm-pixel-visual{margin-top:6px;padding-top:5px}.cm-pixel-nudges button{min-width:32px}.cm-pixel-preview{margin-top:5px}.cm-scene-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap}.cm-scene-toolbar input[type=text]{width:160px}.cm-timeline{position:relative;height:138px;border:1px solid rgba(120,220,255,.22);border-radius:6px;margin:6px 0;background:rgba(3,12,22,.78);overflow:hidden;user-select:none}.cm-ruler{position:absolute;left:0;right:0;top:0;height:26px;border-bottom:1px solid rgba(120,220,255,.16)}.cm-ruler-tick{position:absolute;top:0;height:100%;border-left:1px solid rgba(120,220,255,.22);font-size:10px;color:#9fdff2;padding-left:3px}.cm-chunk-line{position:absolute;left:0;right:0;top:42px;height:42px;border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.035)}.cm-chunk-block{position:absolute;top:46px;height:34px;cursor:grab;border:1px solid #52d7ff;border-radius:5px;background:rgba(45,132,180,.72);color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px;box-sizing:border-box;font-size:11px}.cm-chunk-block:hover{filter:brightness(1.18)}.cm-chunk-block.dragging{cursor:grabbing;filter:brightness(1.3)}.cm-chunk-block.sel{border-color:#ffe66d;box-shadow:0 0 0 2px rgba(255,230,109,.28);background:rgba(72,153,211,.9)}.cm-chunk-handle{position:absolute;top:0;bottom:0;width:10px;background:rgba(255,255,255,.22);border:0;padding:0;min-height:0;margin:0}.cm-chunk-handle.left{left:0;cursor:ew-resize}.cm-chunk-handle.right{right:0;cursor:ew-resize}.cm-overlap{position:absolute;top:42px;height:42px;background:repeating-linear-gradient(135deg,rgba(255,75,90,.65),rgba(255,75,90,.65) 4px,rgba(255,75,90,.28) 4px,rgba(255,75,90,.28) 8px);border-left:1px solid #ff4d6d;border-right:1px solid #ff4d6d;pointer-events:none}.cm-marker-row{position:absolute;left:0;right:0;top:96px;height:30px;border-top:1px solid rgba(120,220,255,.16)}.cm-marker-dot{position:absolute;top:6px;width:8px;height:18px;margin-left:-4px;border-radius:4px;background:#a78bfa}.cm-marker-dot.chunk{background:#4ade80}.cm-cursor{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #ffd166;pointer-events:none}.cm-cursor::after{content:"";position:absolute;top:25px;left:-5px;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #ffd166}.cm-chunk-inspector{border-color:rgba(255,230,109,.28)}`
     this.root.appendChild(style);
     document.body.appendChild(this.root);
     this.unsub = subscribeBackgroundState(() => { if (!this.visible) this.render(); });
     this.render();
   }
   open(): void { if (this.visible) return; this.visible = true; this.root.style.display = ""; this.render(); this.syncOverlay(); this.notifyOpenChange(); }
-  close(): void { this.visualPlacement = false; this.endDrag(); this.removeOverlay(); if (!this.visible) { clearBackgroundPreviewState(globalThis); return; } this.visible = false; clearBackgroundPreviewState(globalThis); this.root.style.display = "none"; this.notifyOpenChange(); }
+  close(): void { this.visualPlacement = false; this.endTimelineDrag(); this.endDrag(); this.removeOverlay(); if (!this.visible) { clearBackgroundPreviewState(globalThis); return; } this.visible = false; clearBackgroundPreviewState(globalThis); this.root.style.display = "none"; this.notifyOpenChange(); }
   show(): void { this.open(); }
   hide(): void { this.close(); }
   toggle(): void { this.visible ? this.close() : this.open(); }
   isOpen(): boolean { return this.visible; }
   onOpenChange(listener: (open: boolean) => void): () => void { this.openListeners.add(listener); listener(this.visible); return () => this.openListeners.delete(listener); }
-  dispose(): void { this.endDrag(); this.removeOverlay(); this.unsub(); this.openListeners.clear(); this.root.remove(); }
+  dispose(): void { this.endTimelineDrag(); this.endDrag(); this.removeOverlay(); this.unsub(); this.openListeners.clear(); this.root.remove(); }
   private notifyOpenChange(): void { for (const listener of [...this.openListeners]) listener(this.visible); }
   private setDraft(scene: BackgroundScene, persist = true): void { this.draft = cloneScene(scene); if (persist) saveDraft(localStorage, this.draft); this.applyIfValid(); this.render(); this.syncOverlay(); }
   private applyIfValid(): void { if (validateBackgroundScene(this.draft).valid) setBackgroundScene(cloneScene(this.draft), globalThis); }
@@ -75,12 +78,15 @@ export class PixelBgrLabUI {
   private setActiveTab(tab: PixelBgrLabTab): void { this.activeTab = normalizePixelBgrLabTab(tab, this.activeTab); this.render(); }
   private render(): void {
     while (this.root.childNodes.length > 1) this.root.removeChild(this.root.lastChild!);
+    this.root.style.setProperty("--cm-bgr-lab-opacity", String(this.overlayOpacity));
     this.activeTab = normalizePixelBgrLabTab(this.activeTab, pixelBgrLabTabForSelection(Boolean(this.selectedLayer()), this.selectedLayer()?.kind));
     const titlebar = el("div", "cm-pixel-titlebar");
-    const h = el("h3"); h.textContent = "Pixel BGR Lab [F8]";
+    const h = el("h3"); h.textContent = "Scene Lab [F8]";
     const summary = el("span", "cm-pixel-scene-summary"); summary.textContent = this.draft.id || "untitled scene";
-    titlebar.append(h, summary, button("close",()=>this.close()));
+    titlebar.append(h, summary);
     this.root.appendChild(titlebar);
+    this.root.appendChild(this.renderSceneToolbar());
+    this.root.appendChild(this.renderTimelineSection());
     const tabs = el("div", "cm-pixel-tabs"); tabs.setAttribute("role", "tablist");
     for (const tab of PIXEL_BGR_LAB_TABS) {
       const b = button(PIXEL_BGR_LAB_TAB_LABELS[tab], () => this.setActiveTab(tab));
@@ -99,7 +105,99 @@ export class PixelBgrLabUI {
     else body.appendChild(this.renderProps());
     this.syncOverlay();
   }
-  private renderSceneTab(): HTMLElement { const p=el("div","cm-pixel-panel"); const validation = validateBackgroundScene(this.draft); p.append(this.row("scene id", text(this.draft.id, v=>this.setDraft({...this.draft,id:v})))); const actions=el("div","cm-pixel-toolbar"); actions.append(button("load current",()=>this.setDraft(getBackgroundScene(globalThis)??this.draft)), button("reset B2 demo",()=>{ clearDraft(localStorage); this.owner={kind:"global"}; this.selectedLayerId=""; this.setDraft(createDemoScene()); }), button("import",()=>this.importFile()), button("export",()=>this.exportFile())); p.append(actions, this.renderValidationSummary(validation.errors, validation.warnings), this.renderPreview()); return p; }
+  private renderSceneToolbar(): HTMLElement {
+    const p=el("div","cm-pixel-panel cm-scene-toolbar");
+    p.append("Scene", text(this.draft.id, v=>this.setDraft({...this.draft,id:v})),
+      button("load current",()=>this.setDraft(getBackgroundScene(globalThis)??this.draft)),
+      button("export",()=>this.exportFile()), button("import",()=>this.importFile()),
+      button("duplicate",()=>this.setDraft({...cloneScene(this.draft), id: `${this.draft.id || "scene"}-copy`})),
+      button("delete/reset",()=>{ if(confirm("Reset Scene Lab draft to the B2 demo scene?")){ clearDraft(localStorage); this.owner={kind:"global"}; this.selectedLayerId=""; this.setDraft(createDemoScene()); }}),
+      button("close",()=>this.close()));
+    const opacity = el("input"); opacity.type="range"; opacity.min="0.35"; opacity.max="1"; opacity.step="0.01"; opacity.value=String(this.overlayOpacity); opacity.oninput=()=>{ this.overlayOpacity=Number(opacity.value); this.root.style.setProperty("--cm-bgr-lab-opacity", String(this.overlayOpacity)); };
+    p.append(this.row("UI opacity", opacity));
+    return p;
+  }
+  private renderSceneTab(): HTMLElement { const p=el("div","cm-pixel-panel"); const validation = validateBackgroundScene(this.draft); p.append(this.renderValidationSummary(validation.errors, validation.warnings), this.renderPreview()); return p; }
+  private selectedChunkId(): string { return this.owner.kind === "chunk" ? (this.owner as {kind:"chunk";chunkId:string}).chunkId : ""; }
+  private selectedChunk() { const id=this.selectedChunkId(); return id ? this.draft.chunks.find(c=>c.id===id) ?? null : null; }
+  private selectChunk(chunkId: string): void { this.owner={kind:"chunk",chunkId}; this.selectedLayerId=this.currentLayers()[0]?.id ?? ""; this.activeTab="layers"; this.render(); }
+  private renderTimelineSection(): HTMLElement {
+    const p=el("div","cm-pixel-panel");
+    p.append("Chunk timeline — one line, intervals are [startX, startX + length)");
+    const preview=getBackgroundPreviewState(globalThis);
+    const scale=createTimelineScale(this.draft.chunks, preview.scrollX, 1000);
+    const timeline=el("div","cm-timeline");
+    timeline.onclick=(e)=>{ if (this.timelineDrag) return; if (e.target !== timeline && !(e.target as HTMLElement).classList.contains("cm-ruler")) return; const rect=timeline.getBoundingClientRect(); const x=Math.round(timelinePxToWorld(e.clientX-rect.left, scale)); setBackgroundPreviewState({enabled:true,paused:true,scrollX:x},globalThis); this.render(); };
+    const ruler=el("div","cm-ruler");
+    const tickStep=Math.max(100, Math.round((scale.maxX-scale.minX)/5/50)*50);
+    for(let x=Math.ceil(scale.minX/tickStep)*tickStep; x<=scale.maxX; x+=tickStep){ const t=el("div","cm-ruler-tick"); t.style.left=`${worldToTimelinePx(x,scale)/10}%`; t.textContent=String(x); ruler.appendChild(t); }
+    timeline.appendChild(ruler);
+    timeline.appendChild(el("div","cm-chunk-line"));
+    for(const r of chunkOverlapRanges(this.draft.chunks)){ const o=el("div","cm-overlap"); o.title=`Overlap ${r.startX}..${r.endX}`; o.style.left=`${worldToTimelinePx(r.startX,scale)/10}%`; o.style.width=`${(worldToTimelinePx(r.endX,scale)-worldToTimelinePx(r.startX,scale))/10}%`; timeline.appendChild(o); }
+    for(const block of chunkTimelineBlocks(this.draft.chunks,this.selectedChunkId(),scale)){ const b=button(`${block.id} ${block.startX}..${block.endX}`,()=>this.selectChunk(block.id)); b.className=`cm-chunk-block${block.selected?" sel":""}${this.timelineDrag?.chunkId===block.id?" dragging":""}`; b.style.left=`${block.leftPx/10}%`; b.style.width=`${block.widthPx/10}%`; b.onpointerdown=(e)=>this.beginTimelineDrag(e, block.id, "move", scale); const left=el("span","cm-chunk-handle left"); left.title="Drag left edge"; left.onpointerdown=(e)=>this.beginTimelineDrag(e, block.id, "resize-left", scale); const right=el("span","cm-chunk-handle right"); right.title="Drag right edge"; right.onpointerdown=(e)=>this.beginTimelineDrag(e, block.id, "resize-right", scale); b.append(left,right); timeline.appendChild(b); }
+    const markers=el("div","cm-marker-row"); markers.title="Global markers (purple) and selected chunk markers (green)";
+    for(const m of this.draft.markers ?? []){ const d=el("div","cm-marker-dot"); d.style.left=`${worldToTimelinePx(m.x,scale)/10}%`; d.title=`global ${m.id} @ ${m.x}`; markers.appendChild(d); }
+    const selected=this.selectedChunk();
+    if(selected) for(const m of selected.markers ?? []){ const d=el("div","cm-marker-dot chunk"); const x=selected.startX+m.x; d.style.left=`${worldToTimelinePx(x,scale)/10}%`; d.title=`${selected.id}/${m.id} @ ${x}`; markers.appendChild(d); }
+    timeline.appendChild(markers);
+    const cursor=el("div","cm-cursor"); cursor.style.left=`${worldToTimelinePx(preview.scrollX,scale)/10}%`; cursor.title=`Preview cursor ${preview.scrollX}`; timeline.appendChild(cursor);
+    p.appendChild(timeline);
+    const controls=el("div","cm-pixel-toolbar");
+    controls.append(button("+ chunk after last",()=>{ const next=addChunk(this.draft); const id=next.chunks[next.chunks.length - 1]?.id; if(id)this.owner={kind:"chunk",chunkId:id}; this.setDraft(next); }), this.renderPreview());
+    p.appendChild(controls);
+    p.appendChild(this.renderSelectedChunkInspector());
+    return p;
+  }
+  private renderSelectedChunkInspector(): HTMLElement {
+    const p=el("div","cm-pixel-panel cm-chunk-inspector"); const c=this.selectedChunk();
+    if(!c){ p.append("Select a chunk block to edit chunk details. Global layers remain available in the tabs below."); return p; }
+    const overlaps=overlapsForChunk(c.id,this.draft.chunks);
+    p.append(`Selected chunk inspector: ${c.id}`,
+      this.row("id",text(c.id,v=>this.setDraft(updateChunk(this.draft,c.id,{id:v})))),
+      this.row("startX",this.numericStepper({value:c.startX,step:16,onCommit:v=>this.setDraft(updateChunk(this.draft,c.id,{startX:v}))})),
+      this.row("length",this.numericStepper({value:c.length,step:16,min:1,onCommit:v=>this.setDraft(updateChunk(this.draft,c.id,{length:v}))})),
+      this.row("endX",document.createTextNode(String(chunkEndX(c)))),
+      this.row("overlaps",document.createTextNode(overlaps.length ? overlaps.map(o=>`${o.startX}..${o.endX}`).join(", ") : "none")),
+      this.row("layers",document.createTextNode(String(c.layers.length))),
+      this.row("markers",document.createTextNode(String((c.markers ?? []).length))));
+    p.append(button("chunk layers",()=>{this.activeTab="layers";this.render();}), button("add marker",()=>{ this.selectedMarkerId=""; this.activeTab="markers"; this.setDraft(addMarker(this.draft,{kind:"chunk",chunkId:c.id})); }));
+    return p;
+  }
+  private beginTimelineDrag(e: PointerEvent, chunkId: string, mode: ChunkTimelineDragMode, scale: TimelineScale): void {
+    const chunk=this.draft.chunks.find(c=>c.id===chunkId); if(!chunk) return;
+    e.preventDefault(); e.stopPropagation();
+    this.owner={kind:"chunk",chunkId}; this.selectedLayerId=this.currentLayers()[0]?.id ?? "";
+    this.timelineDrag={pointerId:e.pointerId,chunkId,mode,startClientX:e.clientX,startX:chunk.startX,length:chunk.length,scale};
+    window.addEventListener("pointermove", this.onTimelinePointerMove);
+    window.addEventListener("pointerup", this.onTimelinePointerUp);
+    window.addEventListener("pointercancel", this.onTimelinePointerUp);
+    this.render();
+  }
+  private onTimelinePointerMove = (e: PointerEvent): void => {
+    const drag=this.timelineDrag; if(!drag || e.pointerId!==drag.pointerId) return;
+    e.preventDefault();
+    const startWorld=timelinePxToWorld(0, drag.scale);
+    const endWorld=timelinePxToWorld(e.clientX-drag.startClientX, drag.scale);
+    const next=applyChunkTimelineDrag({startX:drag.startX,length:drag.length}, drag.mode, endWorld-startWorld, {snapPx:DEFAULT_CHUNK_TIMELINE_SNAP_PX,minStartX:0,minLength:MIN_CHUNK_TIMELINE_LENGTH});
+    this.setDraft(updateChunk(this.draft, drag.chunkId, next), false);
+  };
+  private onTimelinePointerUp = (e: PointerEvent): void => {
+    const drag=this.timelineDrag; if(!drag || e.pointerId!==drag.pointerId) return;
+    e.preventDefault();
+    this.timelineDrag=null;
+    window.removeEventListener("pointermove", this.onTimelinePointerMove);
+    window.removeEventListener("pointerup", this.onTimelinePointerUp);
+    window.removeEventListener("pointercancel", this.onTimelinePointerUp);
+    saveDraft(localStorage,this.draft);
+    this.render();
+  };
+  private endTimelineDrag(): void {
+    if(!this.timelineDrag) return;
+    this.timelineDrag=null;
+    window.removeEventListener("pointermove", this.onTimelinePointerMove);
+    window.removeEventListener("pointerup", this.onTimelinePointerUp);
+    window.removeEventListener("pointercancel", this.onTimelinePointerUp);
+  }
   private renderChunks(): HTMLElement { const p=el("div","cm-pixel-panel"); p.append("Chunks (authored order; end shown) "); const list=el("div","cm-pixel-list"); const g=button("Global layers",()=>this.setOwner({kind:"global"})); if(this.owner.kind==="global") g.className="sel"; list.appendChild(g); for(const c of this.draft.chunks){ const b=button(`${c.id} [${c.startX}..${c.startX+c.length}]`,()=>this.setOwner({kind:"chunk",chunkId:c.id})); if(this.owner.kind==="chunk"&&(this.owner as {kind:"chunk";chunkId:string}).chunkId===c.id)b.className="sel"; list.appendChild(b);} p.appendChild(list); p.append(button("add",()=>this.setDraft(addChunk(this.draft))),button("duplicate",()=>{if(this.owner.kind==="chunk")this.setDraft(duplicateChunk(this.draft,(this.owner as {kind:"chunk";chunkId:string}).chunkId));}),button("delete",()=>{if(this.owner.kind==="chunk"&&confirm(`Delete chunk ${(this.owner as {kind:"chunk";chunkId:string}).chunkId}?`)){this.setDraft(deleteChunk(this.draft,(this.owner as {kind:"chunk";chunkId:string}).chunkId));this.owner={kind:"global"};this.activeTab="chunks";}}),button("↑",()=>{if(this.owner.kind==="chunk")this.setDraft(moveChunk(this.draft,(this.owner as {kind:"chunk";chunkId:string}).chunkId,-1));}),button("↓",()=>{if(this.owner.kind==="chunk")this.setDraft(moveChunk(this.draft,(this.owner as {kind:"chunk";chunkId:string}).chunkId,1));})); if(this.owner.kind==="chunk"){ const c=this.draft.chunks.find(x=>x.id===(this.owner as {kind:"chunk";chunkId:string}).chunkId); if(c){ p.append(el("hr"), "Selected chunk", this.row("id",text(c.id,v=>this.setDraft(updateChunk(this.draft,c.id,{id:v})))),this.row("startX",this.numericStepper({value:c.startX,step:16,onCommit:v=>this.setDraft(updateChunk(this.draft,c.id,{startX:v}))})),this.row("length",this.numericStepper({value:c.length,step:16,min:1,onCommit:v=>this.setDraft(updateChunk(this.draft,c.id,{length:v}))}))); }} return p; }
   private renderLayers(): HTMLElement { const p=el("div","cm-pixel-panel"); p.append(`Layers: ${this.owner.kind}${this.owner.kind==="chunk" ? ` ${(this.owner as {kind:"chunk";chunkId:string}).chunkId}` : ""}`); const list=el("div","cm-pixel-list"); for(const l of this.currentLayers()){ const b=button(`${l.enabled?"✓":"·"} ${l.id} (${l.kind})`,()=>{this.selectedLayerId=l.id;this.activeTab="properties";this.render();}); if(l.id===this.selectedLayerId)b.className="sel"; list.appendChild(b);} p.appendChild(list); p.append(button("add sprite",()=>{this.activeTab="layers"; this.setDraft(addLayer(this.draft,this.owner));}),button("duplicate",()=>this.selectedLayerId&&this.setDraft(duplicateLayer(this.draft,this.owner,this.selectedLayerId))),button("delete",()=>{if(this.selectedLayerId&&confirm(`Delete layer ${this.selectedLayerId}?`)){const next=deleteLayer(this.draft,this.owner,this.selectedLayerId); const nextLayers=layerOwner(next,this.owner); this.selectedLayerId=nextLayers[0]?.id??""; this.activeTab=pixelBgrLabTabAfterLayerDelete(this.activeTab, Boolean(this.selectedLayerId)); this.setDraft(next);}}),button("toggle",()=>this.patchLayer(l=>({...l,enabled:!l.enabled} as BackgroundLayer))),button("↑",()=>this.selectedLayerId&&this.setDraft(moveLayer(this.draft,this.owner,this.selectedLayerId,-1))),button("↓",()=>this.selectedLayerId&&this.setDraft(moveLayer(this.draft,this.owner,this.selectedLayerId,1)))); return p; }
   private row(label:string,node:Node): HTMLDivElement { const r=el("div","cm-pixel-row"); const l=el("label"); l.textContent=label; r.append(l,node); return r; }
