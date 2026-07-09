@@ -91,6 +91,60 @@ export function shouldHandleTimelinePointerEvent(drag: TimelinePointerDrag | nul
   return Boolean(drag?.active && drag.pointerId === pointerId);
 }
 
+export interface CursorDragOptions {
+  dragStartClientX: number;
+  currentClientX: number;
+  dragStartCurrentX: number;
+  scale: TimelineScale;
+  minX?: number;
+  maxX?: number;
+}
+
+export interface ChunkJumpState {
+  previousX: number | null;
+  nextX: number | null;
+  canPrevious: boolean;
+  canNext: boolean;
+}
+
+export function clampTimelineX(x: number, minX: number, maxX: number): number {
+  const lo = Number.isFinite(minX) ? minX : Number.NEGATIVE_INFINITY;
+  const hi = Number.isFinite(maxX) ? Math.max(lo, maxX) : Number.POSITIVE_INFINITY;
+  const value = Number.isFinite(x) ? x : (Number.isFinite(lo) ? lo : 0);
+  return Math.min(hi, Math.max(lo, value));
+}
+
+export function sceneTimelineBounds(chunks: readonly Pick<BackgroundChunk, "startX" | "length">[], fallbackStartX = 0): TimelineRange {
+  let startX = Number.isFinite(fallbackStartX) ? fallbackStartX : 0;
+  let endX = startX;
+  for (const chunk of chunks) {
+    if (!Number.isFinite(chunk.startX) || !Number.isFinite(chunk.length)) continue;
+    startX = Math.min(startX, chunk.startX);
+    endX = Math.max(endX, chunkEndX(chunk));
+  }
+  return { startX, endX: Math.max(startX, endX) };
+}
+
+export function cursorDragCurrentX(options: CursorDragOptions): number {
+  const deltaWorld = timelinePointerDeltaWorld(options.dragStartClientX, options.currentClientX, options.scale);
+  const raw = (Number.isFinite(options.dragStartCurrentX) ? options.dragStartCurrentX : 0) + deltaWorld;
+  if (options.minX === undefined && options.maxX === undefined) return raw;
+  return clampTimelineX(raw, options.minX ?? Number.NEGATIVE_INFINITY, options.maxX ?? Number.POSITIVE_INFINITY);
+}
+
+export function clickedTimelineCurrentX(clientX: number, timelineLeft: number, scale: TimelineScale, minX?: number, maxX?: number): number {
+  const raw = timelinePxToWorld(clientX - timelineLeft, scale);
+  return minX === undefined && maxX === undefined ? raw : clampTimelineX(raw, minX ?? Number.NEGATIVE_INFINITY, maxX ?? Number.POSITIVE_INFINITY);
+}
+
+export function chunkJumpState(chunks: readonly Pick<BackgroundChunk, "startX">[], currentX: number): ChunkJumpState {
+  const starts = [...new Set(chunks.map(c => c.startX).filter(Number.isFinite))].sort((a, b) => a - b);
+  const previousCandidates = starts.filter(x => x < currentX);
+  const previousX = previousCandidates.length ? previousCandidates[previousCandidates.length - 1] : null;
+  const nextX = starts.find(x => x > currentX) ?? null;
+  return { previousX, nextX, canPrevious: previousX !== null, canNext: nextX !== null };
+}
+
 export function applyChunkTimelineDrag(
   chunk: Pick<BackgroundChunk, "startX" | "length">,
   mode: ChunkTimelineDragMode,
