@@ -35,9 +35,15 @@ The Lab visible heading now reads **Scene Lab**, while internal `PixelBgrLab*` m
 
 Overlaps are intentionally visual warnings, not blocking errors. Any interval where more than one chunk is active is rendered as a red hatched overlay on the same single-line timeline. The selected chunk inspector lists overlap ranges for the active chunk.
 
-## Cursor/play behavior
+## Unified Current X and transport behavior
 
-The preview cursor is rendered on the same X axis as chunks and markers. Clicking the ruler/timeline places the cursor by writing `BackgroundPreviewState.scrollX`, enabling preview mode, and pausing it for deterministic authoring. The preview controls include current preview X, play from cursor, pause, and reset; play resumes the existing preview scroll mechanism from the cursor position.
+The timeline now exposes one user-facing position: **Current X**. In PREVIEW mode, Current X is backed by `BackgroundPreviewState.scrollX` and drives the preview world position, chunk evaluation, marker evaluation, and the single visible cursor. In GAMEPLAY mode, Current X follows the existing gameplay/world scroll authority. The UI shows only a small `PREVIEW`/`GAMEPLAY` mode indicator plus the Current X label; it does not present competing preview/gameplay scroll values in the main timeline controls.
+
+Clicking or dragging the timeline/cursor automatically enables Preview mode, pauses preview playback, and updates Current X without copying the preview position back into gameplay state. Returning Preview mode Off restores the existing gameplay scroll authority.
+
+The transport controls are icon buttons with tooltips/ARIA labels in this order: Previous chunk, Play/Pause, Stop and return to start, Next chunk. Play starts or continues from Current X; Pause freezes at Current X; Stop pauses and returns Current X to the scene start (currently `0` unless a future scene model defines another minimum). Previous/next chunk use chunks sorted by `startX`: previous is the greatest `chunk.startX < Current X`, next is the smallest `chunk.startX > Current X`; edge buttons are disabled and jumps update the cursor/preview immediately without starting playback.
+
+Realtime cursor drag stores the drag-start pointer X and drag-start Current X. Each pointermove computes `nextX = dragStartCurrentX + screenDeltaPx / timelineScalePxPerWorldUnit`, clamps to timeline bounds, updates Current X continuously, and redraws the cursor/preview from the same value. Pointerup commits the current value without adding another delta; pointercancel clears drag state; unrelated pointer ids are ignored.
 
 ## Selected chunk inspector behavior
 
@@ -57,13 +63,13 @@ Chunk movement/resizing is provided through both reliable numeric `startX`/`leng
 
 ## UI opacity behavior
 
-A Scene toolbar opacity slider adjusts only the Lab overlay background opacity via a CSS custom property. It does not mutate scene content, background layer opacity, marker actions, renderer state, or gameplay state.
+A Scene toolbar opacity slider adjusts only the Lab overlay background opacity via the Scene Lab-owned `--cm-scene-lab-opacity` CSS custom property and a Scene Lab instance field. It does not reuse the Enemy Lab opacity selector, id, CSS variable, state, or storage key, and it does not mutate scene content, background layer opacity, marker actions, renderer state, gameplay state, or Enemy Lab UI state. The value is preserved while the Scene Lab instance remains alive, so closing and reopening the Lab during the same session keeps its own opacity.
 
 ## Files changed
 
 - `src/ui/PixelBgrLabUI.ts` — scene-first toolbar, single-line chunk timeline, marker row, preview cursor, selected chunk inspector, opacity slider.
-- `src/ui/PixelBgrTimeline.ts` — pure timeline coordinate, block, and overlap helpers.
-- `src/ui/PixelBgrTimeline.smoke.ts` — focused smoke coverage for timeline math and overlap rules.
+- `src/ui/PixelBgrTimeline.ts` — pure timeline coordinate, cursor drag math, chunk jump, block, bounds, and overlap helpers.
+- `src/ui/PixelBgrTimeline.smoke.ts` — focused smoke coverage for timeline math, opacity namespace separation, cursor drag contracts, chunk navigation, transport contracts, and unified Current X UI strings.
 - `src/smoke/runSmokes.ts` — includes the B6 timeline smoke in the broader smoke runner.
 - `docs/bgr/README.md` — adds this B6 handoff to the BGR document index.
 - `docs/bgr/handoffs/B6_SCENE_TIMELINE_CHUNK_AUTHORING.md` — this handoff.
@@ -93,11 +99,15 @@ Use Replit/iPad/external-monitor runtime verification:
 7. Add a chunk with `+ chunk after last`.
 8. Select a chunk block and confirm the selected chunk inspector updates below the timeline.
 9. Adjust `startX` and `length`; confirm `endX`, overlap info, and timeline block position/size update.
-10. Place the preview cursor by clicking the ruler/timeline.
-11. Press play from cursor, pause, and reset; confirm preview scroll behavior remains presentation-only.
-12. Confirm marker row dots align to the same ruler scale for global and selected chunk markers.
-13. Confirm the opacity slider changes Lab overlay transparency without changing scene layer opacity.
-14. Check the browser console for errors.
+10. Confirm the timeline shows a single **Current X** value and only one vertical cursor line.
+11. Confirm the mode pill switches between `GAMEPLAY` and `PREVIEW`; turning Preview mode Off returns the cursor to gameplay/world scroll authority.
+12. Click the ruler/timeline and verify Preview mode turns On, Current X changes to the clicked X, and the preview world/player position updates immediately without changing gameplay scroll.
+13. Drag the cursor left and right, including outside the timeline bounds, and verify the cursor and preview move continuously with no mouseup jump.
+14. Use Previous chunk and Next chunk; verify they jump to the greatest previous/smallest next chunk `startX`, disable at edges, update preview immediately, and do not start playback.
+15. Press Play, Pause, and Stop; verify Play starts from Current X, Pause freezes there, and Stop returns Current X to scene start.
+16. Confirm marker row dots align to the same effective X/ruler scale for global and selected chunk markers.
+17. Confirm the opacity slider changes only the Scene Lab overlay transparency, does not change Enemy Lab opacity, and persists across closing/reopening Scene Lab in the same session.
+18. Check the browser console for errors.
 
 ## Known limitations
 
