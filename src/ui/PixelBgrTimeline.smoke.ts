@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { normalizeBackgroundPreviewState, playerLevelXToPreviewScrollX, previewScrollXToPlayerLevelX, resolvePlayerScreenAnchorX, stepBackgroundPreviewState } from "../render/BackgroundState";
 import { applyChunkTimelineDrag, chunkEndX, chunkJumpState, chunkOverlapRanges, chunkTimelineBlocks, clickedTimelineCurrentX, createTimelineScale, cursorDragCurrentX, isolateTimelinePointerEvent, MIN_CHUNK_TIMELINE_LENGTH, sceneTimelineBounds, shouldHandleTimelinePointerEvent, timelineClientXToLocalPx, timelineLocalPxToWorld, timelinePointerDeltaWorld, timelinePxToWorld, worldToTimelinePx, overlapsForChunk, snapTimelineValue } from "./PixelBgrTimeline";
 import type { BackgroundChunk } from "../render/webgl/bg/layers/BackgroundSceneTypes";
 
@@ -56,14 +55,6 @@ assert.deepEqual(applyChunkTimelineDrag({ startX: 40, length: 100 }, "resize-lef
 const moved = chunks.map(c => c.id === "a" ? { ...c, ...applyChunkTimelineDrag(c, "move", 96, { snapPx: 16, minLength: 64 }) } : c);
 assert.deepEqual(chunkOverlapRanges(moved), [{ startX: 96, endX: 130 }, { startX: 130, endX: 196 }]);
 
-const anchorX = resolvePlayerScreenAnchorX(340, 220, 100);
-assert.equal(anchorX, 120, "player screen anchor is live player world X minus gameplay scroll X");
-assert.equal(resolvePlayerScreenAnchorX(Number.NaN, 220, 96), 96, "invalid anchor inputs fall back safely");
-assert.equal(playerLevelXToPreviewScrollX(640, anchorX), 520, "player level X converts to preview background/camera scroll");
-assert.equal(previewScrollXToPlayerLevelX(520, anchorX), 640, "preview background/camera scroll converts back to player level X");
-assert.deepEqual(normalizeBackgroundPreviewState({ enabled: true, paused: true, scrollX: Number.NaN, playerLevelX: Number.POSITIVE_INFINITY, speed: Number.NaN }), { enabled: true, paused: true, scrollX: 0, playerLevelX: 0, speed: 90 }, "invalid preview coordinates normalize to finite safe values");
-assert.deepEqual(stepBackgroundPreviewState({ enabled: true, paused: false, scrollX: 10, playerLevelX: 130, speed: 20 }, 0.5), { enabled: true, paused: false, scrollX: 20, playerLevelX: 140, speed: 20 }, "preview playback advances background scroll and player level X together");
-assert.deepEqual(stepBackgroundPreviewState({ enabled: true, paused: true, scrollX: 10, playerLevelX: 130, speed: 20 }, 0.5), { enabled: true, paused: true, scrollX: 10, playerLevelX: 130, speed: 20 }, "paused preview freezes background scroll and player level X together");
 
 const sceneLabSource = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 const enemyLabSource = readFileSync(new URL("../dev/DevSummoner.ts", import.meta.url), "utf8");
@@ -75,23 +66,23 @@ assert(sceneLabSource.includes("releasePointerCapture") && sceneLabSource.includ
 assert(sceneLabSource.includes("beginCursorDrag"), "Current X cursor has a drag path");
 assert(sceneLabSource.includes("Player X:"), "Scene Lab presents the user-facing value as player level X");
 assert(!sceneLabSource.includes(`scrollX",this.numericStepper`), "Scene Lab no longer exposes preview scrollX as a competing main control");
-assert(sceneLabSource.includes("PREVIEW") && sceneLabSource.includes("GAMEPLAY"), "Scene Lab shows preview/gameplay mode indicator state");
-assert(sceneLabSource.includes("Previous chunk") && sceneLabSource.includes("Stop and return to start") && sceneLabSource.includes("Next chunk"), "transport controls expose required labels");
+assert(!sceneLabSource.includes("PREVIEW") && !sceneLabSource.includes("GAMEPLAY"), "Scene Lab removes preview/gameplay mode labels");
+assert(sceneLabSource.includes("Previous chunk") && sceneLabSource.includes("Stop and return to scene start") && sceneLabSource.includes("Next chunk"), "transport controls expose required labels");
 assert(sceneLabSource.includes("timeline:get") || sceneLabSource.includes("timeline,minX"), "cursor drag stores the active timeline for absolute local coordinate mapping");
 assert(sceneLabSource.includes("cursorDragCurrentX({currentClientX:e.clientX,timelineLeft:rect.left,timelineWidthPx:rect.width"), "cursor drag maps absolute pointer X through timeline-local coordinates");
 assert(sceneLabSource.includes("pointercancel") && sceneLabSource.includes("this.onCursorPointerUp"), "pointer cancel clears cursor drag state");
 assert(sceneLabSource.includes("__CM_SCENE_TIMELINE_DRAG_ACTIVE__") && sceneLabSource.includes("isolateTimelinePointerEvent(e)"), "timeline cursor drag activates the input guard and isolates pointer events");
 assert(sceneLabSource.includes("this.cursorEl") && sceneLabSource.includes("this.currentXLabel"), "cursor drag updates cursor and Player X label immediately without waiting for full rerender");
 assert(sceneLabSource.includes("isTimelinePlacementTarget") && sceneLabSource.includes("cm-ruler"), "timeline click placement excludes child controls such as chunks and markers");
-assert(sceneLabSource.includes("enabled:true,paused:!st.paused,playerLevelX:currentX,scrollX:this.previewScrollForPlayerX(currentX)"), "Play starts from Player X and synchronizes preview scroll");
-assert(sceneLabSource.includes("playerLevelX:start,scrollX:this.previewScrollForPlayerX(start)"), "Stop returns Player X and preview scroll to scene start");
-assert(sceneLabSource.includes("playerLevelX:x,scrollX:this.previewScrollForPlayerX(x)"), "timeline click/drag writes one canonical Player X and derived preview scroll");
+assert(!sceneLabSource.includes("Preview mode:"), "Scene Lab removes the visible preview toggle");
+assert(sceneLabSource.includes("seekGameplayToPlayerX"), "timeline click/drag writes through the gameplay seek API");
+assert(sceneLabSource.includes("Stop and return to scene start"), "Stop documents seek to scene start plus pause");
 const inputManagerSource = readFileSync(new URL("../engine/input/InputManager.ts", import.meta.url), "utf8");
 assert(inputManagerSource.includes("__CM_SCENE_TIMELINE_DRAG_ACTIVE__") && inputManagerSource.includes("if (sceneTimelineDragActive()) return;"), "game/canvas input ignores active Scene Lab timeline cursor drags");
 
 const rendererSource = readFileSync(new URL("../render/webgl/WebGLSceneRenderer.ts", import.meta.url), "utf8");
-assert(rendererSource.includes("if (kind === \"player\" && preview.enabled) ix = Math.round(previewPlayerLevelX);"), "renderer applies a preview-only player transform without mutating the entity");
-assert(rendererSource.includes("resolveActiveBackgroundChunks(scene, preview.enabled ? levelX : sx, preview.enabled ? 0 : this.logicW, 0)"), "preview chunk evaluation uses canonical player level X");
-assert(rendererSource.includes("evaluateBackgroundMarkerCrossings(this.markerRuntime, sceneKey, preview.enabled ? levelX : sx, markers)"), "preview marker evaluation uses canonical player level X");
+assert(!rendererSource.includes("previewPlayerLevelX"), "renderer no longer applies a render-only preview player override");
+assert(rendererSource.includes("resolveActiveBackgroundChunks(scene, levelX, 0, 0)"), "chunk evaluation uses canonical gameplay player level X");
+assert(rendererSource.includes("evaluateBackgroundMarkerCrossings(this.markerRuntime, sceneKey, levelX, markers)"), "marker evaluation uses canonical gameplay player level X");
 
 console.log("[SMOKE] PixelBgrTimeline OK ✅");

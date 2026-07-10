@@ -35,6 +35,7 @@ import { WeaponSystem } from "../systems/WeaponSystem";
 import { applyWeaponLevelControlActions } from "../systems/WeaponLevelControls";
 import { ProjectileSystem } from "../systems/ProjectileSystem";
 import { VFXSystem } from "../vfx/VFXSystem";
+import { seekGameplayToPlayerX } from "../authoring/GameplaySeek";
 
 
 
@@ -559,6 +560,21 @@ export async function createGame(
 
   collision: {
     update: (_ctx, _events) => {
+  const seekGameplayToPlayerXForAuthoring = (targetX: number, options: { bounds?: { startX?: number; endX?: number }; pauseAfterSeek?: boolean } = {}) => seekGameplayToPlayerX(targetX, options, {
+    playerEnt,
+    playerRef,
+    store: store as any,
+    world,
+    loop: loop as any,
+    inputRt,
+    inputMgr,
+    enemyGroups,
+    particleStore,
+    vfx,
+    playerScreenAnchorX: Number(playerEnt?.pos?.x ?? 100) - Number(world?.scrollX ?? 0),
+  });
+
+  seekGameplayToPlayerX: seekGameplayToPlayerXForAuthoring,
       if (session.gameOver) return;
       collision.update(_ctx.dt);
     },
