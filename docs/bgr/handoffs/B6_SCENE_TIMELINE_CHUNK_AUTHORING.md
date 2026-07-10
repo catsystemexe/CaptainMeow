@@ -119,3 +119,72 @@ Use Replit/iPad/external-monitor runtime verification:
 ## Recommended next session
 
 Recommended next work: marker placement directly on the single-line timeline, followed by chunk/layer transition authoring or scene-structure polish. Do not combine those with a renderer rewrite or gameplay integration.
+
+## Preview player synchronization follow-up
+
+### Preview player synchronization
+
+The Scene Lab preview now treats the timeline position as the player/level coordinate rather than as an independent camera-only value. In Preview mode, every timeline click, cursor drag, transport command, and playback tick updates the canonical preview `playerLevelX`; the preview background scroll is derived from that value, and the renderer applies a presentation-only player X override so the visible player matches the same logical level position.
+
+### Canonical Player/Level X model
+
+The user-facing model is `Player X = player position in the level`. Gameplay mode reads that value from the live gameplay player entity world X. Preview mode reads it from `BackgroundPreviewState.playerLevelX`. The UI label is intentionally shown as `Player X: <value> px` to avoid presenting the value as an unexplained camera scroll.
+
+### Gameplay vs Preview ownership
+
+Gameplay mode remains owned by the live gameplay systems, including `WorldScrollSystem`, `PlayerSystem`, and the real player entity. Preview mode is owned by Scene Lab presentation state only. Enabling preview does not copy coordinates back into ECS state, does not rewind simulation, and does not affect physics, collisions, damage, weapons, FSM, input, or save-state authority.
+
+### Coordinate conversion
+
+The preview conversion is:
+
+```text
+previewScrollX = playerLevelX - playerScreenAnchorX
+playerLevelX = previewScrollX + playerScreenAnchorX
+```
+
+The conversion helpers live with background preview state so UI and renderer share the same deterministic formula and finite-value handling.
+
+### Player screen anchor
+
+The player screen anchor is resolved from the current live render relationship: `playerScreenAnchorX = livePlayer.pos.x - gameplayWorld.scrollX`. If either input is not finite, Scene Lab falls back to the established startup/player anchor of `100 px` rather than mutating gameplay state or hard-failing preview.
+
+### Live-state immutability
+
+Preview player synchronization is render-only. The renderer replaces the presentation X used for player drawing while `BackgroundPreviewState.enabled` is true, then continues through the existing world-to-screen camera subtraction. The live player entity `pos`, `posPrev`, velocity, weapons, collision radii, damage state, and gameplay world scroll are not mutated by Scene Lab preview positioning.
+
+### Transport synchronization
+
+Play advances `playerLevelX` and derived `scrollX` together. Pause freezes both values. Stop returns both the preview player X and derived scroll to scene start. Previous/Next chunk jumps call the same canonical position setter as click and drag, so the cursor, preview background, active chunk/marker position, and visible player cannot intentionally diverge through transport controls.
+
+### Marker/chunk position semantics
+
+Markers and preview chunk activation are evaluated against the same canonical player/level X while Preview mode is enabled. In Gameplay mode, the renderer keeps the existing gameplay camera-visible chunk behavior and gameplay scroll-based marker behavior. In Preview mode, marker crossing and active chunk selection use the Scene Lab player-level position so authoring feedback follows the timeline/player contract.
+
+### Tests
+
+Focused smoke coverage was extended for player-level/scroll conversion, finite fallback behavior, playback stepping of `playerLevelX` and `scrollX`, click/drag/transport integration contracts, renderer preview-only player transform usage, and preview marker/chunk evaluation against canonical player level X.
+
+### Visual verification
+
+Manual visual verification checklist for this follow-up:
+
+1. Open Scene Lab during gameplay.
+2. Confirm GAMEPLAY mode cursor follows the real player’s level progress.
+3. Enable Preview mode.
+4. Click a new timeline position.
+5. Confirm cursor, background, chunks, markers, and visible player all jump to the same logical level position.
+6. Drag the cursor slowly left and right.
+7. Confirm the player preview and background move continuously with no lag or release-time jump.
+8. Press Play and confirm player preview advances from the current cursor position.
+9. Press Pause and confirm everything freezes at the same X.
+10. Press Stop and confirm cursor/player preview return to scene start.
+11. Use Previous/Next chunk and confirm synchronized jumps.
+12. Return to GAMEPLAY mode.
+13. Confirm the real player resumes unchanged at the real gameplay position.
+14. Confirm no collision, damage, weapon, FSM, or save-state side effects.
+15. Confirm no console errors or duplicate listeners.
+
+### Known limitations
+
+This follow-up does not implement gameplay rewind, enemy preview synchronization, weapon simulation, collision replay, marker action changes, or a camera-system rewrite. Preview mode uses a render-only player X presentation override; it does not simulate a full preview ECS world.
