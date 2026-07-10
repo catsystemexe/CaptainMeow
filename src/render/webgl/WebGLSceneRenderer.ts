@@ -8,7 +8,7 @@ import { cosinePalette, MUZZLE_PALETTE, TRACER_PALETTE } from "../../game/vfx/co
 import { DemosceneBg } from "./bg/DemosceneBg";
 import { FlowRibbonBg } from "./bg/FlowRibbonBg";
 import { FlowSegmentsBg } from "./bg/FlowSegmentsBg";
-import { consumeBackgroundMarkerRuntimeReset, getBackgroundPreviewState, setBackgroundPreviewState, stepBackgroundPreviewState, getBackgroundState } from "../BackgroundState";
+import { consumeBackgroundMarkerRuntimeReset, getBackgroundPreviewState, previewScrollXToPlayerLevelX, resolvePlayerScreenAnchorX, setBackgroundPreviewState, stepBackgroundPreviewState, getBackgroundState } from "../BackgroundState";
 import type { BackgroundLayer } from "./bg/layers/BackgroundLayerTypes";
 import { resolveBackgroundLayers, selectBackgroundFallback } from "./bg/layers/backgroundLayerMath";
 import { composeBackgroundLayers, resolveActiveBackgroundChunks } from "./bg/layers/BackgroundSceneResolve";
@@ -1094,17 +1094,21 @@ export class WebGLSceneRenderer {
     const tSec = this.accumTime;
     const preview = stepBackgroundPreviewState(getBackgroundPreviewState(globalThis), dt);
     setBackgroundPreviewState(preview, globalThis);
+    const player = (window as any).__CM?.game?.playerEnt;
+    const playerAnchorX = resolvePlayerScreenAnchorX(Number(player?.pos?.x), gameplaySx, 100);
+    const previewPlayerLevelX = Number.isFinite(Number(preview.playerLevelX)) ? Number(preview.playerLevelX) : previewScrollXToPlayerLevelX(preview.scrollX, playerAnchorX);
     const sx = preview.enabled ? preview.scrollX : gameplaySx;
+    const levelX = preview.enabled ? previewPlayerLevelX : Number(player?.pos?.x ?? gameplaySx);
     const backgroundState = getBackgroundState(globalThis);
     const resetSerial = consumeBackgroundMarkerRuntimeReset(globalThis);
     if (resetSerial !== this.seenMarkerResetSerial) {
       this.seenMarkerResetSerial = resetSerial;
-      resetBackgroundMarkerRuntime(this.markerRuntime, null, sx);
+      resetBackgroundMarkerRuntime(this.markerRuntime, null, preview.enabled ? levelX : sx);
       resetBackgroundPresentationOverrides(this.presentationOverrides);
     }
     const scene = backgroundState?.source?.kind === "scene" ? backgroundState.source.scene : null;
     let layers = scene
-      ? composeBackgroundLayers(scene, resolveActiveBackgroundChunks(scene, sx, this.logicW, 0))
+      ? composeBackgroundLayers(scene, resolveActiveBackgroundChunks(scene, preview.enabled ? levelX : sx, preview.enabled ? 0 : this.logicW, 0))
       : resolveBackgroundLayers(backgroundState);
     if (scene && selectBackgroundFallback(backgroundState) === "layers") {
       const markers = resolveBackgroundMarkers(scene);
@@ -1116,7 +1120,7 @@ export class WebGLSceneRenderer {
         if (manual) applyBackgroundMarkerActions(this.presentationOverrides, manual, scene.id, tSec * 1000, layerIds);
         delete (globalThis as any).__CM_BGR_MARKER_MANUAL_FIRE__;
       }
-      for (const marker of evaluateBackgroundMarkerCrossings(this.markerRuntime, sceneKey, sx, markers)) {
+      for (const marker of evaluateBackgroundMarkerCrossings(this.markerRuntime, sceneKey, preview.enabled ? levelX : sx, markers)) {
         applyBackgroundMarkerActions(this.presentationOverrides, marker, scene.id, tSec * 1000, layerIds);
       }
       stepBackgroundPresentationOverrides(this.presentationOverrides, dt * 1000);
@@ -1267,6 +1271,7 @@ export class WebGLSceneRenderer {
         ix = Math.round(ix);
         iy = Math.round(iy);
       }
+      if (kind === "player" && preview.enabled) ix = Math.round(previewPlayerLevelX);
       // Camera: ALL gameplay entities live in WORLD space (unified contract),
       // so every entity converts world -> screen the same way.
       ix -= sx;
