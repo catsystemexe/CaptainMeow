@@ -188,3 +188,46 @@ Manual visual verification checklist for this follow-up:
 ### Known limitations
 
 This follow-up does not implement gameplay rewind, enemy preview synchronization, weapon simulation, collision replay, marker action changes, or a camera-system rewrite. Preview mode uses a render-only player X presentation override; it does not simulate a full preview ECS world.
+
+## Scene timeline cursor drag isolation follow-up
+
+### Root cause
+
+The yellow cursor drag path still used drag-start screen deltas (`dragStartCurrentX + screenDelta / scale`) from the previous timeline implementation. That was sufficient for a pure camera scroll cursor, but after the preview-player synchronization follow-up the user-facing cursor represents canonical `Player X`. While dragging, pointer movement could also continue to be observed by the game/canvas input path because the timeline drag did not publish an explicit active editor-drag guard. The result was two competing pointer interpretations: Scene Lab updated preview `Player X`, while the lower game/canvas input path could still consume the same active pointer stream and make the world appear to slide behind the UI.
+
+### Timeline coordinate conversion
+
+Cursor drag and click placement now use absolute timeline-local X as the source of truth:
+
+```text
+localX = clamp(pointerClientX - timelineRect.left, 0, timelineRect.width)
+playerLevelX = visibleTimelineStart + localX / timelinePixelsPerWorldUnit
+```
+
+The implementation lives in the `PixelBgrTimeline` pure helpers. `cursorDragCurrentX` now maps the current pointer client X through the active timeline rectangle instead of accumulating raw screen deltas from already-mutated preview state. Repeated move events and pointerup therefore resolve the same canonical `Player X` for the same pointer location.
+
+### Pointer capture and propagation isolation
+
+Cursor pointerdown prevents default behavior, stops propagation, captures the active pointer when supported, stores the pointer id, and registers capture-phase window move/up/cancel listeners for the active drag only. Move, up, and cancel ignore unrelated pointer ids and isolate propagation before applying updates. Cleanup releases pointer capture safely and removes the temporary listeners.
+
+### Game-input guard behavior
+
+Scene Lab sets `globalThis.__CM_SCENE_TIMELINE_DRAG_ACTIVE__` while the yellow cursor drag is active. `InputManager` checks that guard at its canvas pointerdown, pointermove, and pointerup entry points and returns without mutating game input state while Scene Lab owns the active cursor pointer. The guard is cleared on pointerup, pointercancel, close, and dispose through the same cursor-drag cleanup path.
+
+### Immediate cursor rendering
+
+Every valid pointermove updates the canonical preview state with `playerLevelX` plus derived `scrollX`, then updates the cursor DOM `left` style and the visible `Player X` label immediately. The background, player preview, chunks, and markers continue to read the same canonical preview `Player X`; no delayed `change`, `blur`, or pointerup commit is required.
+
+### Click behavior
+
+Empty timeline/ruler pointerdown uses the same absolute local-X mapping as drag to place the cursor and enable preview positioning immediately. Chunk blocks, resize handles, marker dots, and other child controls are excluded by target checks so they do not accidentally reposition the cursor or start a canvas/world drag.
+
+### Cleanup behavior
+
+Pointerup and pointercancel both end the active cursor drag without recomputing an extra final delta. Closing or disposing Scene Lab also releases pointer capture, removes window listeners, and clears the game-input guard.
+
+### Tests and manual verification
+
+Focused timeline smoke coverage now checks left/right/midpoint absolute mapping, positive and negative absolute pointer movement, drift-free repeated moves, no pointerup jump, wrong-pointer-id filtering, propagation isolation, the active input guard source contract, immediate cursor/label update source contract, click target isolation, and existing preview-player synchronization contracts.
+
+Manual browser verification was not performed in this non-interactive terminal session. The required manual checklist remains: drag the cursor slowly in both directions, confirm it stays under the pointer, confirm the world/player preview only follows derived `Player X`, release without a jump, cancel/release outside safely, click empty timeline space, drag chunk bodies/handles without cursor movement, exercise transport controls, exit preview, and check the console for pointer-capture/listener errors.

@@ -12,7 +12,7 @@ import { validateBackgroundScene } from "./PixelBgrLabValidation";
 import { BACKGROUND_ASSET_CATALOG } from "./PixelBgrLabAssets";
 import { clientPointToInternalPoint, layerRenderedOrigin, renderedOriginToAuthoredOffset, resolveCanvasViewportRect, type Point } from "./PixelBgrLabCoordinates";
 import { stepNumericValue, validationSummaryState, toggleValidationExpanded, type NumericStepOptions } from "./PixelBgrLabNumeric";
-import { applyChunkTimelineDrag, chunkEndX, chunkJumpState, chunkOverlapRanges, chunkTimelineBlocks, clickedTimelineCurrentX, createTimelineScale, cursorDragCurrentX, DEFAULT_CHUNK_TIMELINE_SNAP_PX, MIN_CHUNK_TIMELINE_LENGTH, overlapsForChunk, sceneTimelineBounds, shouldHandleTimelinePointerEvent, timelinePointerDeltaWorld, timelinePxToWorld, worldToTimelinePx, type ChunkTimelineDragMode, type TimelineScale } from "./PixelBgrTimeline";
+import { applyChunkTimelineDrag, chunkEndX, chunkJumpState, chunkOverlapRanges, chunkTimelineBlocks, clickedTimelineCurrentX, createTimelineScale, cursorDragCurrentX, DEFAULT_CHUNK_TIMELINE_SNAP_PX, isolateTimelinePointerEvent, MIN_CHUNK_TIMELINE_LENGTH, overlapsForChunk, sceneTimelineBounds, shouldHandleTimelinePointerEvent, timelinePointerDeltaWorld, timelinePxToWorld, worldToTimelinePx, type ChunkTimelineDragMode, type TimelineScale } from "./PixelBgrTimeline";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -44,7 +44,9 @@ export class PixelBgrLabUI {
   private nudgeStep = 1;
   private overlay: HTMLDivElement | null = null;
   private timelineDrag: { pointerId: number; chunkId: string; mode: ChunkTimelineDragMode; startClientX: number; startX: number; length: number; scale: TimelineScale; captureTarget: HTMLElement | null; active: boolean } | null = null;
-  private cursorDrag: { pointerId: number; scale: TimelineScale; startClientX: number; startCurrentX: number; minX: number; maxX: number; captureTarget: HTMLElement | null; active: boolean } | null = null;
+  private cursorDrag: { pointerId: number; scale: TimelineScale; timeline: HTMLElement; minX: number; maxX: number; captureTarget: HTMLElement | null; active: boolean } | null = null;
+  private currentXLabel: HTMLElement | null = null;
+  private cursorEl: HTMLElement | null = null;
   private drag: { pointerId: number; anchor: Point } | null = null;
   private warningsExpanded: boolean | null = null;
   private activeTab: PixelBgrLabTab = "scene";
@@ -73,6 +75,7 @@ export class PixelBgrLabUI {
   onOpenChange(listener: (open: boolean) => void): () => void { this.openListeners.add(listener); listener(this.visible); return () => this.openListeners.delete(listener); }
   dispose(): void { this.endTimelineDrag(); this.endCursorDrag(); this.endDrag(); this.removeOverlay(); this.unsub(); this.openListeners.clear(); this.root.remove(); }
   private notifyOpenChange(): void { for (const listener of [...this.openListeners]) listener(this.visible); }
+  private setTimelineInputGuard(active: boolean): void { (globalThis as any).__CM_SCENE_TIMELINE_DRAG_ACTIVE__ = active; }
   private setDraft(scene: BackgroundScene, persist = true): void { this.draft = cloneScene(scene); if (persist) saveDraft(localStorage, this.draft); this.applyIfValid(); this.render(); this.syncOverlay(); }
   private applyIfValid(): void { if (validateBackgroundScene(this.draft).valid) setBackgroundScene(cloneScene(this.draft), globalThis); }
   private currentLayers(): BackgroundLayer[] { return layerOwner(this.draft, this.owner); }
@@ -131,7 +134,7 @@ export class PixelBgrLabUI {
     const bounds=sceneTimelineBounds(this.draft.chunks, 0);
     const scale=createTimelineScale(this.draft.chunks, currentX, 1000);
     const timeline=el("div","cm-timeline");
-    timeline.onclick=(e)=>{ if (this.timelineDrag || this.cursorDrag) return; if (e.target !== timeline && !(e.target as HTMLElement).classList.contains("cm-ruler")) return; const rect=timeline.getBoundingClientRect(); const x=Math.round(clickedTimelineCurrentX(e.clientX, rect.left, scale, bounds.startX, bounds.endX)); this.setCurrentX(x, true); this.render(); };
+    timeline.onpointerdown=(e)=>{ if (this.timelineDrag || this.cursorDrag) return; if (!this.isTimelinePlacementTarget(e.target, timeline)) return; isolateTimelinePointerEvent(e); const rect=timeline.getBoundingClientRect(); const x=Math.round(clickedTimelineCurrentX(e.clientX, rect.left, scale, bounds.startX, bounds.endX, rect.width)); this.setCurrentX(x, true); this.render(); };
     const ruler=el("div","cm-ruler");
     const tickStep=Math.max(100, Math.round((scale.maxX-scale.minX)/5/50)*50);
     for(let x=Math.ceil(scale.minX/tickStep)*tickStep; x<=scale.maxX; x+=tickStep){ const t=el("div","cm-ruler-tick"); t.style.left=`${worldToTimelinePx(x,scale)/10}%`; t.textContent=String(x); ruler.appendChild(t); }
@@ -144,7 +147,7 @@ export class PixelBgrLabUI {
     const selected=this.selectedChunk();
     if(selected) for(const m of selected.markers ?? []){ const d=el("div","cm-marker-dot chunk"); const x=selected.startX+m.x; d.style.left=`${worldToTimelinePx(x,scale)/10}%`; d.title=`${selected.id}/${m.id} @ ${x}`; markers.appendChild(d); }
     timeline.appendChild(markers);
-    const cursor=el("div","cm-cursor"); cursor.style.left=`${worldToTimelinePx(currentX,scale)/10}%`; cursor.title=`Drag Current X cursor ${Math.round(currentX)}`; cursor.onpointerdown=(e)=>this.beginCursorDrag(e, timeline, scale); timeline.appendChild(cursor);
+    const cursor=el("div","cm-cursor"); cursor.style.left=`${worldToTimelinePx(currentX,scale)/10}%`; cursor.title=`Drag Current X cursor ${Math.round(currentX)}`; cursor.onpointerdown=(e)=>this.beginCursorDrag(e, timeline, scale); this.cursorEl=cursor; timeline.appendChild(cursor);
     p.appendChild(timeline);
     const controls=el("div","cm-pixel-toolbar");
     controls.append(button("+ chunk after last",()=>{ const next=addChunk(this.draft); const id=next.chunks[next.chunks.length - 1]?.id; if(id)this.owner={kind:"chunk",chunkId:id}; this.setDraft(next); }), this.renderPreview());
@@ -169,7 +172,7 @@ export class PixelBgrLabUI {
   }
   private beginTimelineDrag(e: PointerEvent, chunkId: string, mode: ChunkTimelineDragMode, scale: TimelineScale): void {
     const chunk=this.draft.chunks.find(c=>c.id===chunkId); if(!chunk) return;
-    e.preventDefault(); e.stopPropagation();
+    isolateTimelinePointerEvent(e);
     this.owner={kind:"chunk",chunkId}; this.selectedLayerId=this.currentLayers()[0]?.id ?? "";
     const captureTarget = e.currentTarget instanceof HTMLElement ? e.currentTarget : null;
     captureTarget?.setPointerCapture?.(e.pointerId);
@@ -181,14 +184,14 @@ export class PixelBgrLabUI {
   }
   private onTimelinePointerMove = (e: PointerEvent): void => {
     const drag=this.timelineDrag; if(!drag || !shouldHandleTimelinePointerEvent(drag, e.pointerId)) return;
-    e.preventDefault();
+    isolateTimelinePointerEvent(e);
     const deltaWorld=timelinePointerDeltaWorld(drag.startClientX, e.clientX, drag.scale);
     const next=applyChunkTimelineDrag({startX:drag.startX,length:drag.length}, drag.mode, deltaWorld, {snapPx:DEFAULT_CHUNK_TIMELINE_SNAP_PX,minStartX:0,minLength:MIN_CHUNK_TIMELINE_LENGTH});
     this.setDraft(updateChunk(this.draft, drag.chunkId, next), false);
   };
   private onTimelinePointerUp = (e: PointerEvent): void => {
     const drag=this.timelineDrag; if(!drag || !shouldHandleTimelinePointerEvent(drag, e.pointerId)) return;
-    e.preventDefault();
+    isolateTimelinePointerEvent(e);
     drag.captureTarget?.releasePointerCapture?.(drag.pointerId);
     this.timelineDrag=null;
     window.removeEventListener("pointermove", this.onTimelinePointerMove);
@@ -207,44 +210,54 @@ export class PixelBgrLabUI {
   }
 
   private beginCursorDrag(e: PointerEvent, timeline: HTMLElement, scale: TimelineScale): void {
-    e.preventDefault(); e.stopPropagation();
+    isolateTimelinePointerEvent(e);
     const captureTarget = e.currentTarget instanceof HTMLElement ? e.currentTarget : timeline;
     captureTarget.setPointerCapture?.(e.pointerId);
     const bounds=sceneTimelineBounds(this.draft.chunks, 0);
-    this.cursorDrag={pointerId:e.pointerId,scale,startClientX:e.clientX,startCurrentX:this.currentX(),minX:bounds.startX,maxX:bounds.endX,captureTarget,active:true};
-    window.addEventListener("pointermove", this.onCursorPointerMove);
-    window.addEventListener("pointerup", this.onCursorPointerUp);
-    window.addEventListener("pointercancel", this.onCursorPointerUp);
+    this.setTimelineInputGuard(true);
+    this.cursorDrag={pointerId:e.pointerId,scale,timeline,minX:bounds.startX,maxX:bounds.endX,captureTarget,active:true};
+    window.addEventListener("pointermove", this.onCursorPointerMove, {capture:true, passive:false});
+    window.addEventListener("pointerup", this.onCursorPointerUp, {capture:true, passive:false});
+    window.addEventListener("pointercancel", this.onCursorPointerUp, {capture:true, passive:false});
     this.updateCursorDrag(e);
   }
   private updateCursorDrag(e: PointerEvent): void {
     const drag=this.cursorDrag; if(!drag || !shouldHandleTimelinePointerEvent(drag, e.pointerId)) return;
-    const x=Math.round(cursorDragCurrentX({dragStartClientX:drag.startClientX,currentClientX:e.clientX,dragStartCurrentX:drag.startCurrentX,scale:drag.scale,minX:drag.minX,maxX:drag.maxX}));
+    const rect=drag.timeline.getBoundingClientRect();
+    const x=Math.round(cursorDragCurrentX({currentClientX:e.clientX,timelineLeft:rect.left,timelineWidthPx:rect.width,scale:drag.scale,minX:drag.minX,maxX:drag.maxX}));
     this.setCurrentX(x, true);
+    const leftPx=worldToTimelinePx(x,{...drag.scale,widthPx:Math.max(1,rect.width)});
+    if(this.cursorEl) this.cursorEl.style.left=`${leftPx}px`;
+    if(this.currentXLabel) this.currentXLabel.textContent=`Player X: ${Math.round(x)} px`;
+    this.syncOverlay();
   }
   private onCursorPointerMove = (e: PointerEvent): void => {
     if(!shouldHandleTimelinePointerEvent(this.cursorDrag, e.pointerId)) return;
-    e.preventDefault();
+    isolateTimelinePointerEvent(e);
     this.updateCursorDrag(e);
   };
   private onCursorPointerUp = (e: PointerEvent): void => {
     const drag=this.cursorDrag; if(!drag || !shouldHandleTimelinePointerEvent(drag, e.pointerId)) return;
-    e.preventDefault();
-    this.updateCursorDrag(e);
+    isolateTimelinePointerEvent(e);
     drag.captureTarget?.releasePointerCapture?.(drag.pointerId);
     this.cursorDrag=null;
-    window.removeEventListener("pointermove", this.onCursorPointerMove);
-    window.removeEventListener("pointerup", this.onCursorPointerUp);
-    window.removeEventListener("pointercancel", this.onCursorPointerUp);
+    this.setTimelineInputGuard(false);
+    window.removeEventListener("pointermove", this.onCursorPointerMove, true);
+    window.removeEventListener("pointerup", this.onCursorPointerUp, true);
+    window.removeEventListener("pointercancel", this.onCursorPointerUp, true);
     this.render();
   };
   private endCursorDrag(): void {
     if(!this.cursorDrag) return;
     this.cursorDrag.captureTarget?.releasePointerCapture?.(this.cursorDrag.pointerId);
     this.cursorDrag=null;
-    window.removeEventListener("pointermove", this.onCursorPointerMove);
-    window.removeEventListener("pointerup", this.onCursorPointerUp);
-    window.removeEventListener("pointercancel", this.onCursorPointerUp);
+    this.setTimelineInputGuard(false);
+    window.removeEventListener("pointermove", this.onCursorPointerMove, true);
+    window.removeEventListener("pointerup", this.onCursorPointerUp, true);
+    window.removeEventListener("pointercancel", this.onCursorPointerUp, true);
+  }
+  private isTimelinePlacementTarget(target: EventTarget | null, timeline: HTMLElement): boolean {
+    return target === timeline || (target instanceof HTMLElement && target.classList.contains("cm-ruler"));
   }
   private renderChunks(): HTMLElement { const p=el("div","cm-pixel-panel"); p.append("Chunks (authored order; end shown) "); const list=el("div","cm-pixel-list"); const g=button("Global layers",()=>this.setOwner({kind:"global"})); if(this.owner.kind==="global") g.className="sel"; list.appendChild(g); for(const c of this.draft.chunks){ const b=button(`${c.id} [${c.startX}..${c.startX+c.length}]`,()=>this.setOwner({kind:"chunk",chunkId:c.id})); if(this.owner.kind==="chunk"&&(this.owner as {kind:"chunk";chunkId:string}).chunkId===c.id)b.className="sel"; list.appendChild(b);} p.appendChild(list); p.append(button("add",()=>this.setDraft(addChunk(this.draft))),button("duplicate",()=>{if(this.owner.kind==="chunk")this.setDraft(duplicateChunk(this.draft,(this.owner as {kind:"chunk";chunkId:string}).chunkId));}),button("delete",()=>{if(this.owner.kind==="chunk"&&confirm(`Delete chunk ${(this.owner as {kind:"chunk";chunkId:string}).chunkId}?`)){this.setDraft(deleteChunk(this.draft,(this.owner as {kind:"chunk";chunkId:string}).chunkId));this.owner={kind:"global"};this.activeTab="chunks";}}),button("↑",()=>{if(this.owner.kind==="chunk")this.setDraft(moveChunk(this.draft,(this.owner as {kind:"chunk";chunkId:string}).chunkId,-1));}),button("↓",()=>{if(this.owner.kind==="chunk")this.setDraft(moveChunk(this.draft,(this.owner as {kind:"chunk";chunkId:string}).chunkId,1));})); if(this.owner.kind==="chunk"){ const c=this.draft.chunks.find(x=>x.id===(this.owner as {kind:"chunk";chunkId:string}).chunkId); if(c){ p.append(el("hr"), "Selected chunk", this.row("id",text(c.id,v=>this.setDraft(updateChunk(this.draft,c.id,{id:v})))),this.row("startX",this.numericStepper({value:c.startX,step:16,onCommit:v=>this.setDraft(updateChunk(this.draft,c.id,{startX:v}))})),this.row("length",this.numericStepper({value:c.length,step:16,min:1,onCommit:v=>this.setDraft(updateChunk(this.draft,c.id,{length:v}))}))); }} return p; }
   private renderLayers(): HTMLElement { const p=el("div","cm-pixel-panel"); p.append(`Layers: ${this.owner.kind}${this.owner.kind==="chunk" ? ` ${(this.owner as {kind:"chunk";chunkId:string}).chunkId}` : ""}`); const list=el("div","cm-pixel-list"); for(const l of this.currentLayers()){ const b=button(`${l.enabled?"✓":"·"} ${l.id} (${l.kind})`,()=>{this.selectedLayerId=l.id;this.activeTab="properties";this.render();}); if(l.id===this.selectedLayerId)b.className="sel"; list.appendChild(b);} p.appendChild(list); p.append(button("add sprite",()=>{this.activeTab="layers"; this.setDraft(addLayer(this.draft,this.owner));}),button("duplicate",()=>this.selectedLayerId&&this.setDraft(duplicateLayer(this.draft,this.owner,this.selectedLayerId))),button("delete",()=>{if(this.selectedLayerId&&confirm(`Delete layer ${this.selectedLayerId}?`)){const next=deleteLayer(this.draft,this.owner,this.selectedLayerId); const nextLayers=layerOwner(next,this.owner); this.selectedLayerId=nextLayers[0]?.id??""; this.activeTab=pixelBgrLabTabAfterLayerDelete(this.activeTab, Boolean(this.selectedLayerId)); this.setDraft(next);}}),button("toggle",()=>this.patchLayer(l=>({...l,enabled:!l.enabled} as BackgroundLayer))),button("↑",()=>this.selectedLayerId&&this.setDraft(moveLayer(this.draft,this.owner,this.selectedLayerId,-1))),button("↓",()=>this.selectedLayerId&&this.setDraft(moveLayer(this.draft,this.owner,this.selectedLayerId,1)))); return p; }
@@ -307,7 +320,7 @@ export class PixelBgrLabUI {
   private previewScrollForPlayerX(x: number): number { return playerLevelXToPreviewScrollX(x, this.playerScreenAnchorX()); }
   private currentX(): number { const st=getBackgroundPreviewState(globalThis); return st.enabled ? st.playerLevelX : this.gameplayX(); }
   private setCurrentX(x: number, previewMode = true): void { if(previewMode) setBackgroundPreviewState({enabled:true,paused:true,playerLevelX:x,scrollX:this.previewScrollForPlayerX(x)},globalThis); }
-  private renderPreview(): HTMLElement { const p=el("div","cm-pixel-toolbar cm-pixel-preview"); const st=getBackgroundPreviewState(globalThis); const currentX=this.currentX(); const jumps=chunkJumpState(this.draft.chunks,currentX); const mode=el("span","cm-mode-pill"); mode.textContent=st.enabled?"PREVIEW":"GAMEPLAY"; const label=el("span","cm-current-x"); label.textContent=`Player X: ${Math.round(currentX)} px`; const previewToggle=button(`Preview mode: ${st.enabled?"On":"Off"}`,()=>{setBackgroundPreviewState({enabled:!st.enabled,paused:true,playerLevelX:currentX,scrollX:this.previewScrollForPlayerX(currentX)},globalThis);this.render();}); const playPause=this.iconButton(st.paused?"Play":"Pause",st.paused?Play:Pause,st.paused?"Play":"Pause",()=>{setBackgroundPreviewState({enabled:true,paused:!st.paused,playerLevelX:currentX,scrollX:this.previewScrollForPlayerX(currentX)},globalThis);this.render();}); p.append(mode,label,previewToggle,this.iconButton("Previous chunk",SkipBack,"SkipBack",()=>{ if(jumps.previousX!==null){ this.setCurrentX(jumps.previousX,true); this.render(); }},!jumps.canPrevious),playPause,this.iconButton("Stop and return to start",Square,"Square",()=>{ const start=sceneTimelineBounds(this.draft.chunks,0).startX; setBackgroundPreviewState({enabled:true,paused:true,playerLevelX:start,scrollX:this.previewScrollForPlayerX(start)},globalThis); this.render(); }),this.iconButton("Next chunk",SkipForward,"SkipForward",()=>{ if(jumps.nextX!==null){ this.setCurrentX(jumps.nextX,true); this.render(); }},!jumps.canNext),this.row("speed",this.numericStepper({value:st.speed,step:10,onCommit:v=>setBackgroundPreviewState({speed:v},globalThis)}))); return p; }
+  private renderPreview(): HTMLElement { const p=el("div","cm-pixel-toolbar cm-pixel-preview"); const st=getBackgroundPreviewState(globalThis); const currentX=this.currentX(); const jumps=chunkJumpState(this.draft.chunks,currentX); const mode=el("span","cm-mode-pill"); mode.textContent=st.enabled?"PREVIEW":"GAMEPLAY"; const label=el("span","cm-current-x"); label.textContent=`Player X: ${Math.round(currentX)} px`; this.currentXLabel=label; const previewToggle=button(`Preview mode: ${st.enabled?"On":"Off"}`,()=>{setBackgroundPreviewState({enabled:!st.enabled,paused:true,playerLevelX:currentX,scrollX:this.previewScrollForPlayerX(currentX)},globalThis);this.render();}); const playPause=this.iconButton(st.paused?"Play":"Pause",st.paused?Play:Pause,st.paused?"Play":"Pause",()=>{setBackgroundPreviewState({enabled:true,paused:!st.paused,playerLevelX:currentX,scrollX:this.previewScrollForPlayerX(currentX)},globalThis);this.render();}); p.append(mode,label,previewToggle,this.iconButton("Previous chunk",SkipBack,"SkipBack",()=>{ if(jumps.previousX!==null){ this.setCurrentX(jumps.previousX,true); this.render(); }},!jumps.canPrevious),playPause,this.iconButton("Stop and return to start",Square,"Square",()=>{ const start=sceneTimelineBounds(this.draft.chunks,0).startX; setBackgroundPreviewState({enabled:true,paused:true,playerLevelX:start,scrollX:this.previewScrollForPlayerX(start)},globalThis); this.render(); }),this.iconButton("Next chunk",SkipForward,"SkipForward",()=>{ if(jumps.nextX!==null){ this.setCurrentX(jumps.nextX,true); this.render(); }},!jumps.canNext),this.row("speed",this.numericStepper({value:st.speed,step:10,onCommit:v=>setBackgroundPreviewState({speed:v},globalThis)}))); return p; }
 
   private selectedChunkStart(): number { if (this.owner.kind !== "chunk") return 0; const chunkId=(this.owner as {kind:"chunk";chunkId:string}).chunkId; return this.draft.chunks.find(c=>c.id===chunkId)?.startX ?? 0; }
   private selectedChunkEnd(): number { if (this.owner.kind !== "chunk") return this.logicW; const chunkId=(this.owner as {kind:"chunk";chunkId:string}).chunkId; const c = this.draft.chunks.find(x=>x.id===chunkId); return c ? c.startX + c.length : this.logicW; }

@@ -6,6 +6,7 @@ export interface ChunkTimelineBlock extends TimelineRange { id: string; leftPx: 
 export type ChunkTimelineDragMode = "move" | "resize-left" | "resize-right";
 export interface ChunkTimelineDragOptions { snapPx?: number; minStartX?: number; minLength?: number }
 export interface TimelinePointerDrag { pointerId: number; active: boolean }
+export interface TimelinePointerLike { preventDefault(): void; stopPropagation(): void }
 
 const DEFAULT_LENGTH = 720;
 const MIN_SPAN = 1;
@@ -44,6 +45,17 @@ export function worldToTimelinePx(x: number, scale: TimelineScale): number {
 export function timelinePxToWorld(px: number, scale: TimelineScale): number {
   const span = Math.max(MIN_SPAN, scale.maxX - scale.minX);
   return scale.minX + (px / Math.max(1, scale.widthPx)) * span;
+}
+
+export function timelineClientXToLocalPx(clientX: number, timelineLeft: number, timelineWidthPx: number): number {
+  const left = Number.isFinite(timelineLeft) ? timelineLeft : 0;
+  const width = Math.max(1, Number.isFinite(timelineWidthPx) ? timelineWidthPx : 1);
+  const localX = (Number.isFinite(clientX) ? clientX : left) - left;
+  return Math.min(width, Math.max(0, localX));
+}
+
+export function timelineLocalPxToWorld(localX: number, scale: TimelineScale): number {
+  return timelinePxToWorld(timelineClientXToLocalPx(localX, 0, scale.widthPx), scale);
 }
 
 export function chunkTimelineBlocks(chunks: readonly BackgroundChunk[], selectedChunkId: string, scale: TimelineScale): ChunkTimelineBlock[] {
@@ -92,12 +104,16 @@ export function shouldHandleTimelinePointerEvent(drag: TimelinePointerDrag | nul
 }
 
 export interface CursorDragOptions {
-  dragStartClientX: number;
   currentClientX: number;
-  dragStartCurrentX: number;
+  timelineLeft: number;
+  timelineWidthPx: number;
   scale: TimelineScale;
   minX?: number;
   maxX?: number;
+  /** @deprecated Cursor dragging is absolute timeline-local mapping; retained for source compatibility only. */
+  dragStartClientX?: number;
+  /** @deprecated Cursor dragging is absolute timeline-local mapping; retained for source compatibility only. */
+  dragStartCurrentX?: number;
 }
 
 export interface ChunkJumpState {
@@ -126,15 +142,20 @@ export function sceneTimelineBounds(chunks: readonly Pick<BackgroundChunk, "star
 }
 
 export function cursorDragCurrentX(options: CursorDragOptions): number {
-  const deltaWorld = timelinePointerDeltaWorld(options.dragStartClientX, options.currentClientX, options.scale);
-  const raw = (Number.isFinite(options.dragStartCurrentX) ? options.dragStartCurrentX : 0) + deltaWorld;
+  const localX = timelineClientXToLocalPx(options.currentClientX, options.timelineLeft, options.timelineWidthPx);
+  const raw = timelineLocalPxToWorld(localX, { ...options.scale, widthPx: Math.max(1, options.timelineWidthPx) });
   if (options.minX === undefined && options.maxX === undefined) return raw;
   return clampTimelineX(raw, options.minX ?? Number.NEGATIVE_INFINITY, options.maxX ?? Number.POSITIVE_INFINITY);
 }
 
-export function clickedTimelineCurrentX(clientX: number, timelineLeft: number, scale: TimelineScale, minX?: number, maxX?: number): number {
-  const raw = timelinePxToWorld(clientX - timelineLeft, scale);
+export function clickedTimelineCurrentX(clientX: number, timelineLeft: number, scale: TimelineScale, minX?: number, maxX?: number, timelineWidthPx = scale.widthPx): number {
+  const raw = timelineLocalPxToWorld(timelineClientXToLocalPx(clientX, timelineLeft, timelineWidthPx), { ...scale, widthPx: Math.max(1, timelineWidthPx) });
   return minX === undefined && maxX === undefined ? raw : clampTimelineX(raw, minX ?? Number.NEGATIVE_INFINITY, maxX ?? Number.POSITIVE_INFINITY);
+}
+
+export function isolateTimelinePointerEvent(event: TimelinePointerLike): void {
+  event.preventDefault();
+  event.stopPropagation();
 }
 
 export function chunkJumpState(chunks: readonly Pick<BackgroundChunk, "startX">[], currentX: number): ChunkJumpState {
