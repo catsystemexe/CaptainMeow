@@ -231,3 +231,52 @@ Pointerup and pointercancel both end the active cursor drag without recomputing 
 Focused timeline smoke coverage now checks left/right/midpoint absolute mapping, positive and negative absolute pointer movement, drift-free repeated moves, no pointerup jump, wrong-pointer-id filtering, propagation isolation, the active input guard source contract, immediate cursor/label update source contract, click target isolation, and existing preview-player synchronization contracts.
 
 Manual browser verification was not performed in this non-interactive terminal session. The required manual checklist remains: drag the cursor slowly in both directions, confirm it stays under the pointer, confirm the world/player preview only follows derived `Player X`, release without a jump, cancel/release outside safely, click empty timeline space, drag chunk bodies/handles without cursor movement, exercise transport controls, exit preview, and check the console for pointer-capture/listener errors.
+
+## Single Gameplay Authoring Mode follow-up
+
+### Unified authoring model
+
+Scene Lab now uses a single Gameplay Authoring Mode. The timeline cursor represents the live gameplay `Player X`; the visible Preview toggle and `PREVIEW`/`GAMEPLAY` mode labels were removed. There is no second user-facing preview position and no yellow render-only preview cursor.
+
+### Canonical Player X authority and seek API
+
+The canonical position is the actual gameplay player entity `pos.x`. Scene Lab timeline clicks, cursor drags, Previous chunk, Next chunk, and Stop route through the gameplay seek API exposed on the game runtime as `seekGameplayToPlayerX(targetX, options)`. The API clamps to supplied scene bounds, pauses during the transaction, writes the real player position, synchronizes world scroll, clears transient runtime state, resets authoring input state, and restores the requested paused/running state.
+
+### Player/world scroll synchronization
+
+Seek keeps the existing player screen anchor stable by deriving `world.scrollX = playerX - playerScreenAnchorX`. The renderer now evaluates authored scene chunks and markers from the gameplay player level X and reads normal gameplay entity state for the player; the previous render-only preview player X override is no longer authoritative.
+
+### Transient cleanup policy
+
+Gameplay seek clears short-lived old-location state: projectile, enemyProjectile, bomb, particle, fx, laser, enemy, and pickup entities are marked and cleaned up while preserving the player slot. `ParticleStore.clear()`, `VFXSystem.clear()`, and enemy group runtime reset are also called when available. This prevents obvious stale shots, VFX, explosions, and encounter remnants from persisting after a large authoring seek.
+
+### Persistent player-state policy
+
+Seek preserves persistent player state by default, including health/energy, bombs, weapons/upgrades, score/session state, lives, and progression. It resets only positional/transient player fields needed for a safe seek: X, `posPrev`, horizontal velocity, pending kill, and stale input/button state.
+
+### Marker seek/reset policy
+
+Seek requests a background marker runtime reset and establishes the target Player X as the new baseline. Seeking does not traverse intermediate markers, so markers between the old and new X do not retro-fire. Future forward movement fires markers normally from the new baseline, with repeatable/once behavior governed by the existing marker runtime contract.
+
+### Enemy/spawn limitations
+
+This follow-up does not add a deterministic encounter reconstruction, save-state rewind, replay system, or new spawn timeline. The minimal safe behavior is to clear stale enemy/group runtime state at seek time and resume existing director/spawn/gameplay systems from the target Player X. Already-passed authored encounters are not reconstructed by this implementation.
+
+### Input restoration
+
+During cursor drag, Scene Lab owns the pointer stream and the existing `__CM_SCENE_TIMELINE_DRAG_ACTIVE__` guard keeps canvas pointer input from consuming the drag. Pointerup and pointercancel clear the guard. The seek API clears stale pointer/button state so keyboard/gamepad/player controls can be sampled normally after the drag ends.
+
+### Transport semantics
+
+- Previous chunk: seek the live player to the previous chunk start and preserve the current paused/running state.
+- Play/Pause: toggle the real fixed-step loop pause state.
+- Stop: seek to the scene start and pause.
+- Next chunk: seek the live player to the next chunk start and preserve the current paused/running state.
+
+### Tests and validation
+
+Added `src/game/authoring/GameplaySeek.smoke.ts` for clamp behavior, Player X to scroll synchronization, transient cleanup, persistent player-state preservation, input reset, and marker baseline semantics. Updated `src/ui/PixelBgrTimeline.smoke.ts` for the single-mode UI and renderer contract. The broad smoke runner still reaches the known pre-existing `BombExplosionChain.smoke.ts` / `DamageSystem.rules.onExplosion` failure after the new focused smokes pass.
+
+### Manual verification
+
+Browser-level visual/runtime verification was not performed in this non-interactive terminal session. The manual checklist remains required in a browser/Replit runtime: confirm the Preview toggle and mode labels are gone, the blue cursor seeks the real player, Previous/Next/Stop move the actual player, Play/Pause controls the loop, input resumes after drag, markers do not retro-fire on seek, and stale projectiles/VFX are cleared.

@@ -284,6 +284,19 @@ export class InputManager {
     );
   }
 
+  public clearTransientPointerState(): void {
+    this.mouseDownL = false;
+    this.mouseDownR = false;
+    this.bombDown = false;
+    this.mouseMoveActive = false;
+    this.prevBombDown = false;
+    this.prevGamepadBombDown = false;
+    this.prevToggleW1WeaponDown = false;
+    this.prevGamepadToggleW1WeaponDown = false;
+    this.prevCycleW1Down = false;
+    this.prevCycleW2Down = false;
+  }
+
   public getAimTargetNow(logicW: number, logicH: number): { x: number; y: number } {
     return this.clientToLogic(logicW, logicH);
   }

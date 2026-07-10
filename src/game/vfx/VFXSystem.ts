@@ -285,6 +285,17 @@ export class VFXSystem {
     }
   }
   
+  clear(): void {
+    for (const fx of this.muzzle) fx.alive = false;
+    for (const fx of this.tracers) fx.alive = false;
+    for (const fx of this.hits) fx.alive = false;
+    for (const fx of this.explosions) fx.alive = false;
+    this.idx = 0;
+    this.hIdx = 0;
+    this.tIdx = 0;
+    this.eIdx = 0;
+  }
+
   getMuzzle(): readonly MuzzleFlash[] {
     return this.muzzle;
   }
