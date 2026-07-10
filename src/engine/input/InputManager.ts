@@ -157,6 +157,8 @@ export class InputManager {
     (c.style as any).webkitTouchCallout = "none";
     c.style.cursor = "none";
 
+    const sceneTimelineDragActive = () => Boolean((globalThis as any).__CM_SCENE_TIMELINE_DRAG_ACTIVE__);
+
     const syncButtons = (buttons: number) => {
       this.mouseDownL = (buttons & 1) !== 0;
       this.mouseDownR = (buttons & 2) !== 0;
@@ -167,6 +169,7 @@ export class InputManager {
     c.addEventListener(
       "pointermove",
       (e) => {
+        if (sceneTimelineDragActive()) return;
         e.preventDefault();
         e.stopPropagation();
 
@@ -182,6 +185,7 @@ export class InputManager {
     c.addEventListener(
       "pointerdown",
       (e) => {
+        if (sceneTimelineDragActive()) return;
         e.preventDefault();
         e.stopPropagation();
 
@@ -216,6 +220,7 @@ export class InputManager {
     c.addEventListener(
       "pointerup",
       (e) => {
+        if (sceneTimelineDragActive()) return;
         e.preventDefault();
         e.stopPropagation();
 

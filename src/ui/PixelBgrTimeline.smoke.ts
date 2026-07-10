@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { normalizeBackgroundPreviewState, playerLevelXToPreviewScrollX, previewScrollXToPlayerLevelX, resolvePlayerScreenAnchorX, stepBackgroundPreviewState } from "../render/BackgroundState";
-import { applyChunkTimelineDrag, chunkEndX, chunkJumpState, chunkOverlapRanges, chunkTimelineBlocks, clickedTimelineCurrentX, createTimelineScale, cursorDragCurrentX, MIN_CHUNK_TIMELINE_LENGTH, sceneTimelineBounds, shouldHandleTimelinePointerEvent, timelinePointerDeltaWorld, timelinePxToWorld, worldToTimelinePx, overlapsForChunk, snapTimelineValue } from "./PixelBgrTimeline";
+import { applyChunkTimelineDrag, chunkEndX, chunkJumpState, chunkOverlapRanges, chunkTimelineBlocks, clickedTimelineCurrentX, createTimelineScale, cursorDragCurrentX, isolateTimelinePointerEvent, MIN_CHUNK_TIMELINE_LENGTH, sceneTimelineBounds, shouldHandleTimelinePointerEvent, timelineClientXToLocalPx, timelineLocalPxToWorld, timelinePointerDeltaWorld, timelinePxToWorld, worldToTimelinePx, overlapsForChunk, snapTimelineValue } from "./PixelBgrTimeline";
 import type { BackgroundChunk } from "../render/webgl/bg/layers/BackgroundSceneTypes";
 
 const chunks: BackgroundChunk[] = [
@@ -21,13 +21,19 @@ assert.equal(shouldHandleTimelinePointerEvent({ pointerId: 7, active: false }, 7
 assert.equal(shouldHandleTimelinePointerEvent(null, 7), false);
 
 const dragScale = { minX: 0, maxX: 1000, widthPx: 1000 };
-assert.equal(cursorDragCurrentX({ dragStartClientX: 100, currentClientX: 140, dragStartCurrentX: 200, scale: dragScale }), 240, "positive mouse delta moves Current X forward from drag-start value");
-assert.equal(cursorDragCurrentX({ dragStartClientX: 100, currentClientX: 60, dragStartCurrentX: 200, scale: dragScale }), 160, "negative mouse delta moves Current X backward from drag-start value");
-assert.equal(cursorDragCurrentX({ dragStartClientX: 100, currentClientX: 120, dragStartCurrentX: 200, scale: dragScale }), 220, "first move uses total pointer delta");
-assert.equal(cursorDragCurrentX({ dragStartClientX: 100, currentClientX: 130, dragStartCurrentX: 200, scale: dragScale }), 230, "repeated pointermove events do not accumulate from previous mutations");
-assert.equal(cursorDragCurrentX({ dragStartClientX: 100, currentClientX: 130, dragStartCurrentX: 200, scale: dragScale }), 230, "mouseup recomputes the same value without another jump");
+assert.equal(timelineClientXToLocalPx(50, 50, 1000), 0, "left edge maps to timeline-local start");
+assert.equal(timelineClientXToLocalPx(1050, 50, 1000), 1000, "right edge maps to timeline-local end");
+assert.equal(timelineLocalPxToWorld(500, dragScale), 500, "midpoint maps to the midpoint world/player X");
+assert.equal(cursorDragCurrentX({ currentClientX: 190, timelineLeft: 50, timelineWidthPx: 1000, scale: dragScale }), 140, "positive pointer movement maps from absolute timeline position");
+assert.equal(cursorDragCurrentX({ currentClientX: 110, timelineLeft: 50, timelineWidthPx: 1000, scale: dragScale }), 60, "negative pointer movement maps from absolute timeline position");
+assert.equal(cursorDragCurrentX({ currentClientX: 170, timelineLeft: 50, timelineWidthPx: 1000, scale: dragScale }), 120, "first move uses absolute local pointer X");
+assert.equal(cursorDragCurrentX({ currentClientX: 180, timelineLeft: 50, timelineWidthPx: 1000, scale: dragScale }), 130, "repeated pointermove events do not accumulate from previous mutations");
+assert.equal(cursorDragCurrentX({ currentClientX: 180, timelineLeft: 50, timelineWidthPx: 1000, scale: dragScale }), 130, "pointerup does not add another delta or jump");
 assert.equal(clickedTimelineCurrentX(250, 50, dragScale), 200, "click places cursor at expected timeline X");
-assert.equal(cursorDragCurrentX({ dragStartClientX: 100, currentClientX: -100, dragStartCurrentX: 50, scale: dragScale, minX: 0, maxX: 1000 }), 0, "cursor drag clamps to scene start");
+assert.equal(cursorDragCurrentX({ currentClientX: -100, timelineLeft: 50, timelineWidthPx: 1000, scale: dragScale, minX: 0, maxX: 1000 }), 0, "cursor drag clamps to scene start");
+const isolated: string[] = [];
+isolateTimelinePointerEvent({ preventDefault: () => isolated.push("prevent"), stopPropagation: () => isolated.push("stop") });
+assert.deepEqual(isolated, ["prevent", "stop"], "timeline interaction stops propagation and prevents default input routing");
 assert.deepEqual(sceneTimelineBounds(chunks, 0), { startX: 0, endX: 200 });
 assert.deepEqual(chunkJumpState(chunks, 80), { previousX: 0, nextX: 130, canPrevious: true, canNext: true }, "previous and next chunk selection use sorted startX values");
 assert.deepEqual(chunkJumpState(chunks, 0), { previousX: null, nextX: 80, canPrevious: false, canNext: true }, "previous edge button is disabled");
@@ -71,12 +77,17 @@ assert(sceneLabSource.includes("Player X:"), "Scene Lab presents the user-facing
 assert(!sceneLabSource.includes(`scrollX",this.numericStepper`), "Scene Lab no longer exposes preview scrollX as a competing main control");
 assert(sceneLabSource.includes("PREVIEW") && sceneLabSource.includes("GAMEPLAY"), "Scene Lab shows preview/gameplay mode indicator state");
 assert(sceneLabSource.includes("Previous chunk") && sceneLabSource.includes("Stop and return to start") && sceneLabSource.includes("Next chunk"), "transport controls expose required labels");
-assert(sceneLabSource.includes("startClientX:e.clientX") && sceneLabSource.includes("startCurrentX:this.currentX()"), "cursor drag stores drag-start pointer X and drag-start Current X");
-assert(sceneLabSource.includes("cursorDragCurrentX"), "cursor drag uses drag-start value plus total pointer delta");
+assert(sceneLabSource.includes("timeline:get") || sceneLabSource.includes("timeline,minX"), "cursor drag stores the active timeline for absolute local coordinate mapping");
+assert(sceneLabSource.includes("cursorDragCurrentX({currentClientX:e.clientX,timelineLeft:rect.left,timelineWidthPx:rect.width"), "cursor drag maps absolute pointer X through timeline-local coordinates");
 assert(sceneLabSource.includes("pointercancel") && sceneLabSource.includes("this.onCursorPointerUp"), "pointer cancel clears cursor drag state");
+assert(sceneLabSource.includes("__CM_SCENE_TIMELINE_DRAG_ACTIVE__") && sceneLabSource.includes("isolateTimelinePointerEvent(e)"), "timeline cursor drag activates the input guard and isolates pointer events");
+assert(sceneLabSource.includes("this.cursorEl") && sceneLabSource.includes("this.currentXLabel"), "cursor drag updates cursor and Player X label immediately without waiting for full rerender");
+assert(sceneLabSource.includes("isTimelinePlacementTarget") && sceneLabSource.includes("cm-ruler"), "timeline click placement excludes child controls such as chunks and markers");
 assert(sceneLabSource.includes("enabled:true,paused:!st.paused,playerLevelX:currentX,scrollX:this.previewScrollForPlayerX(currentX)"), "Play starts from Player X and synchronizes preview scroll");
 assert(sceneLabSource.includes("playerLevelX:start,scrollX:this.previewScrollForPlayerX(start)"), "Stop returns Player X and preview scroll to scene start");
 assert(sceneLabSource.includes("playerLevelX:x,scrollX:this.previewScrollForPlayerX(x)"), "timeline click/drag writes one canonical Player X and derived preview scroll");
+const inputManagerSource = readFileSync(new URL("../engine/input/InputManager.ts", import.meta.url), "utf8");
+assert(inputManagerSource.includes("__CM_SCENE_TIMELINE_DRAG_ACTIVE__") && inputManagerSource.includes("if (sceneTimelineDragActive()) return;"), "game/canvas input ignores active Scene Lab timeline cursor drags");
 
 const rendererSource = readFileSync(new URL("../render/webgl/WebGLSceneRenderer.ts", import.meta.url), "utf8");
 assert(rendererSource.includes("if (kind === \"player\" && preview.enabled) ix = Math.round(previewPlayerLevelX);"), "renderer applies a preview-only player transform without mutating the entity");

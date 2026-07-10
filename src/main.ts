@@ -427,6 +427,7 @@ async function main() {
   window.addEventListener(
     "pointerdown",
     (e) => {
+      if (Boolean((globalThis as any).__CM_SCENE_TIMELINE_DRAG_ACTIVE__) || (e.target instanceof HTMLElement && Boolean(e.target.closest(".cm-pixel-bgr-lab")))) return;
       // First tap arms the Web Audio context (iPad's only gesture path).
       void armAudio();
       // start only from TITLE; also prevent wrapper drag/select
