@@ -19,7 +19,7 @@ Use the approved project-specific profile and shared cross-project framework:
 - static/runtime distinction;
 - cost/model policy.
 
-The versioned project profile is now canonical in `docs/project/06-chatgpt-project-profile.md`; actual ChatGPT Project UI configuration must remain aligned with it.
+The versioned project profile is canonical in `docs/project/06-chatgpt-project-profile.md`; actual ChatGPT Project UI configuration must remain aligned with it.
 
 ### CM-GOV-002 — Restructure `AGENTS.md`
 Status: COMPLETE
@@ -27,43 +27,46 @@ Status: COMPLETE
 Completed via PR #125. `AGENTS.md` is now repository-local engineering/executor guidance with dynamic X/Y branch roles, snapshot/working-tree safety, runtime invariants and accurate validation semantics.
 
 ### CM-GOV-003 — Classify and reconcile stale/duplicate documentation
-Status: IN PROGRESS — C3
+Status: COMPLETE
 
-Current C3 scope:
-- refresh README stale gameplay claim;
-- retire `CM_Architecture_v3.1.md` obsolete SSOT claim;
-- retire stale GraphicsMode ADR;
-- classify root FSM lineage, June audits and BGR audit/handoff lineage through `docs/HISTORICAL_DOCUMENTS.md`;
-- preserve all historical material rather than deleting it.
+Completed via PR #126:
+- README current-state framing fixed;
+- obsolete architecture global-SSOT claim retired;
+- stale GraphicsMode ADR classified historical/not implemented;
+- `docs/HISTORICAL_DOCUMENTS.md` now classifies preserved FSM/audit/handoff lineages without destructive rewriting.
 
 ## Workflow hardening
 
 ### CM-WF-001 — Normalize Replit remote
-Status: PENDING
+Status: NEXT / RUNTIME WORKSPACE ACTION
 
-Change Replit `origin` from historical `catsystemexe/MGoD` to canonical `catsystemexe/CaptainMeow` after confirming the runtime workspace is on the intended branch with a clean/preserved working tree.
+Change Replit `origin` from historical `catsystemexe/MGoD` to canonical `catsystemexe/CaptainMeow` only after confirming the live runtime workspace has the intended branch/HEAD and a clean or safely preserved working tree.
 
-### CM-WF-002 — Add dirty-tree preservation gate
-Status: DOCUMENTED / ACTIVE POLICY
+This is not a repository-file change and must not be inferred from GitHub state alone.
 
-The preservation gate is now present in canonical workflow and `AGENTS.md`:
+### CM-WF-002 — Dirty-tree preservation gate
+Status: COMPLETE / ACTIVE POLICY
+
+The preservation gate is present in canonical workflow and `AGENTS.md`:
 - inspect status;
 - preserve valuable local changes;
 - commit/push as appropriate;
 - verify remote preservation before risky synchronization/switching.
 
-### CM-WF-003 — Add minimal GitHub CI
-Status: PENDING DESIGN/IMPLEMENTATION
+### CM-WF-003 — Minimal GitHub CI
+Status: IN PROGRESS — C4
 
-Candidate required checks:
-- `npm run typecheck` with its actual scope documented;
-- `npm run build`;
-- selected stable smoke/test set.
+C4 adds `.github/workflows/static-verify.yml` with conservative gates:
+- PR + manual trigger;
+- Node 20;
+- `npm ci`;
+- `npm run typecheck`;
+- `npm run build`.
 
-Do not require the full smoke runner as green until known baseline failures are repaired/classified.
+`npm run test` remains one targeted smoke, and the broader `npm run smoke` is not a CI gate until its baseline failures/suite semantics are reconciled.
 
 ### CM-WF-004 — PR/push authorization policy
-Status: DOCUMENTED / ACTIVE POLICY
+Status: COMPLETE / ACTIVE POLICY
 
 Focused task branches remain preferred. Push/hosted-PR creation follows the current implementation batch/task authorization. Merge, force-push, history rewrite, branch deletion and deployment require explicit authorization.
 
@@ -80,16 +83,16 @@ Status: PENDING
 Define one-way synchronization for canonical project docs. Drive mirror must not become a competing edit authority.
 
 ### CM-DOC-003 — Mark/classify historical docs
-Status: IN PROGRESS — C3
+Status: COMPLETE
 
-Canonical classification index: `docs/HISTORICAL_DOCUMENTS.md`.
+Canonical classification index: `docs/HISTORICAL_DOCUMENTS.md`, integrated via PR #126.
 
-Large historical documents are intentionally preserved without noisy full-file rewrites where a central authoritative classification is sufficient.
+Large historical documents remain preserved where a central authoritative classification is sufficient.
 
 ### CM-DOC-004 — Update README
-Status: IN PROGRESS — C3
+Status: COMPLETE
 
-Replace obsolete “no gameplay implemented” framing with a concise current entry point linking to canonical docs and historical classification.
+Current entry-point README integrated via PR #126.
 
 ## Branch reconciliation
 
