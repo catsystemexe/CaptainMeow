@@ -420,6 +420,33 @@ export async function createGame(
   const impact = new ImpactPhaseSystem(damage, caImpact);
   const collision = new CollisionSystem(bus, store as any, world);
 
+
+    const seekGameplayToPlayerXForAuthoring = (
+      targetX: number,
+      options: {
+        bounds?: {
+          startX?: number;
+          endX?: number;
+        };
+        pauseAfterSeek?: boolean;
+      } = {},
+    ) =>
+      seekGameplayToPlayerX(targetX, options, {
+        playerEnt,
+        playerRef,
+        store: store as any,
+        world,
+        loop: loop as any,
+        inputRt,
+        inputMgr,
+        enemyGroups,
+        particleStore,
+        vfx,
+        playerScreenAnchorX:
+          Number(playerEnt?.pos?.x ?? 100) -
+          Number(world?.scrollX ?? 0),
+      });
+
   // ---- Soft reset (no reload), keeps refs stable
   const RESET_CFG = {
     startLives: 3,
@@ -558,48 +585,32 @@ export async function createGame(
       },
     },
 
-  collision: {
-    update: (_ctx, _events) => {
-  const seekGameplayToPlayerXForAuthoring = (targetX: number, options: { bounds?: { startX?: number; endX?: number }; pauseAfterSeek?: boolean } = {}) => seekGameplayToPlayerX(targetX, options, {
-    playerEnt,
-    playerRef,
-    store: store as any,
-    world,
-    loop: loop as any,
-    inputRt,
-    inputMgr,
-    enemyGroups,
-    particleStore,
-    vfx,
-    playerScreenAnchorX: Number(playerEnt?.pos?.x ?? 100) - Number(world?.scrollX ?? 0),
-  });
+        collision: {
+          update: (_ctx, _events) => {
+            if (session.gameOver) return;
+            collision.update(_ctx.dt);
+          },
+        },
 
-  seekGameplayToPlayerX: seekGameplayToPlayerXForAuthoring,
-      if (session.gameOver) return;
-      collision.update(_ctx.dt);
-    },
-  },
+        impact: {
+          update: (ctx, events) => {
+            if (session.gameOver) return;
+            (impact as any).update(ctx, events as any);
+          },
+        },
 
-  impact: {
-    update: (ctx, events) => {
-      if (session.gameOver) return;
-      (impact as any).update(ctx, events as any);
-    },
-  },
+        flow: {
+          update: (ctx, events) => {
+            flow.update(ctx, events as any);
+          },
+        },
 
-  flow: {
-    update: (ctx, events) => {
-      flow.update(ctx, events as any);
-    },
-  },
-
-  cleanup: {
-    update: (_ctx, _events) => {
-      store.cleanup();
-    },
-  },
-  });
-
+        cleanup: {
+          update: (_ctx, _events) => {
+            store.cleanup();
+          },
+        },
+        });
 return {
   bus,
   loop,
@@ -615,6 +626,7 @@ return {
   playerEnt,
   spawn,
   world,
+    seekGameplayToPlayerX: seekGameplayToPlayerXForAuthoring,
 };
 }
 }
