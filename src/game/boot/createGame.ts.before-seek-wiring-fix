@@ -420,33 +420,6 @@ export async function createGame(
   const impact = new ImpactPhaseSystem(damage, caImpact);
   const collision = new CollisionSystem(bus, store as any, world);
 
-
-    const seekGameplayToPlayerXForAuthoring = (
-      targetX: number,
-      options: {
-        bounds?: {
-          startX?: number;
-          endX?: number;
-        };
-        pauseAfterSeek?: boolean;
-      } = {},
-    ) =>
-      seekGameplayToPlayerX(targetX, options, {
-        playerEnt,
-        playerRef,
-        store: store as any,
-        world,
-        loop: loop as any,
-        inputRt,
-        inputMgr,
-        enemyGroups,
-        particleStore,
-        vfx,
-        playerScreenAnchorX:
-          Number(playerEnt?.pos?.x ?? 100) -
-          Number(world?.scrollX ?? 0),
-      });
-
   // ---- Soft reset (no reload), keeps refs stable
   const RESET_CFG = {
     startLives: 3,
@@ -626,7 +599,6 @@ return {
   playerEnt,
   spawn,
   world,
-    seekGameplayToPlayerX: seekGameplayToPlayerXForAuthoring,
 };
 }
 }
