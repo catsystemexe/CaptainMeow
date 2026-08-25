@@ -7,35 +7,34 @@ This backlog records approved consolidation and workflow-hardening work. Product
 
 ## Active / next
 
-### CM-GOV-001 — Apply Captain Meow Project Instructions revision
-Status: READY
+### CM-GOV-001 — Align ChatGPT Project Instructions
+Status: READY / MANUAL CONFIG ALIGNMENT
 
-Replace the current expanding instruction block with the approved project-specific profile:
+Use the approved project-specific profile and shared cross-project framework:
 - source authority;
-- role framework reference;
+- `[DESIGNER]`, `[INSTRUCTIONS]`, `[IMPLEMENTATION]` roles;
+- Code mode overlay;
 - GitHub/Codex/Replit capability ownership;
 - preservation rules;
 - static/runtime distinction;
-- Code mode overlay;
 - cost/model policy.
 
-### CM-GOV-002 — Restructure `AGENTS.md`
-Status: READY AFTER CANONICAL BOOTSTRAP
+The versioned project profile is now canonical in `docs/project/06-chatgpt-project-profile.md`; actual ChatGPT Project UI configuration must remain aligned with it.
 
-Keep repository-local engineering invariants and executor safety. Remove/supersede stale project-wide workflow constitution content, especially fixed branch authority.
+### CM-GOV-002 — Restructure `AGENTS.md`
+Status: COMPLETE
+
+Completed via PR #125. `AGENTS.md` is now repository-local engineering/executor guidance with dynamic X/Y branch roles, snapshot/working-tree safety, runtime invariants and accurate validation semantics.
 
 ### CM-GOV-003 — Classify and reconcile stale/duplicate documentation
-Status: READY AFTER CM-GOV-002
+Status: IN PROGRESS — C3
 
-Includes:
-- README stale gameplay claim;
-- `CM_Architecture_v3.1.md` obsolete SSOT claim;
-- root FSM lineage;
-- June audit snapshots;
-- BGR handoffs/audits;
-- historical Drive `___docs`.
-
-Do not delete historical material before classification.
+Current C3 scope:
+- refresh README stale gameplay claim;
+- retire `CM_Architecture_v3.1.md` obsolete SSOT claim;
+- retire stale GraphicsMode ADR;
+- classify root FSM lineage, June audits and BGR audit/handoff lineage through `docs/HISTORICAL_DOCUMENTS.md`;
+- preserve all historical material rather than deleting it.
 
 ## Workflow hardening
 
@@ -45,13 +44,13 @@ Status: PENDING
 Change Replit `origin` from historical `catsystemexe/MGoD` to canonical `catsystemexe/CaptainMeow` after confirming the runtime workspace is on the intended branch with a clean/preserved working tree.
 
 ### CM-WF-002 — Add dirty-tree preservation gate
-Status: APPROVED / DOCUMENT IN WORKFLOW
+Status: DOCUMENTED / ACTIVE POLICY
 
-Before runtime branch switching/synchronization/reset-like operations:
+The preservation gate is now present in canonical workflow and `AGENTS.md`:
 - inspect status;
 - preserve valuable local changes;
 - commit/push as appropriate;
-- verify remote preservation.
+- verify remote preservation before risky synchronization/switching.
 
 ### CM-WF-003 — Add minimal GitHub CI
 Status: PENDING DESIGN/IMPLEMENTATION
@@ -63,39 +62,41 @@ Candidate required checks:
 
 Do not require the full smoke runner as green until known baseline failures are repaired/classified.
 
-### CM-WF-004 — Define PR/push authorization policy
-Status: PENDING FINALIZATION
+### CM-WF-004 — PR/push authorization policy
+Status: DOCUMENTED / ACTIVE POLICY
 
-Keep focused task branches and reviewable changes. Make remote actions explicit per implementation batch rather than relying on stale universal assumptions.
+Focused task branches remain preferred. Push/hosted-PR creation follows the current implementation batch/task authorization. Merge, force-push, history rewrite, branch deletion and deployment require explicit authorization.
 
 ## Documentation / synchronization
 
 ### CM-DOC-001 — Establish `docs/project/*`
-Status: IN PROGRESS
+Status: COMPLETE
 
-Bootstrap canonical state, architecture, roadmap, backlog, decisions, development workflow and ChatGPT project profile.
+Canonical project state, architecture, roadmap, backlog, decisions, development workflow and ChatGPT project profile were integrated via PR #124.
 
 ### CM-DOC-002 — GitHub → Drive mirror
 Status: PENDING
 
 Define one-way synchronization for canonical project docs. Drive mirror must not become a competing edit authority.
 
-### CM-DOC-003 — Mark historical docs
-Status: PENDING
+### CM-DOC-003 — Mark/classify historical docs
+Status: IN PROGRESS — C3
 
-Add explicit status markers/indexing to historical/stale documentation after canonical replacements exist.
+Canonical classification index: `docs/HISTORICAL_DOCUMENTS.md`.
+
+Large historical documents are intentionally preserved without noisy full-file rewrites where a central authoritative classification is sufficient.
 
 ### CM-DOC-004 — Update README
-Status: PENDING
+Status: IN PROGRESS — C3
 
-Replace obsolete “no gameplay implemented”/early-project framing with a concise current entry point that links to canonical docs.
+Replace obsolete “no gameplay implemented” framing with a concise current entry point linking to canonical docs and historical classification.
 
 ## Branch reconciliation
 
 ### CM-GIT-001 — Analyze five `main`-unique commits
 Status: PENDING / PRESERVE
 
-`main` diverges from `pixel_bgr` and contains five unique commits relative to merge base `7d1e4857c1dceb828a3421f4450033c02c3f8b06`.
+`main` diverged from the active integration line and contained five unique commits relative to the audited merge base `7d1e4857c1dceb828a3421f4450033c02c3f8b06`.
 
 Classify each before any cleanup or branch normalization.
 
@@ -122,6 +123,7 @@ Treat existing artifacts as preservation/technical-debt evidence. Do not delete 
 ## Backlog rules
 
 - `READY` means approved and sequenced, not yet implemented.
+- `IN PROGRESS` means a focused change set exists but is not yet integrated.
 - `PENDING` means known work requiring a focused future batch or decision.
 - `PRESERVE` means no destructive action until evidence is reconciled.
-- Close items only after the corresponding state is implemented and verified.
+- `COMPLETE` means integrated/verified according to the applicable workflow.
