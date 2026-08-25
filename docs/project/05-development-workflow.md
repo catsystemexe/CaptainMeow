@@ -78,6 +78,21 @@ Current command semantics:
 
 Reports must name exactly which checks ran and distinguish pre-existing failures.
 
+### GitHub CI baseline
+
+Repository CI is intentionally minimal and conservative:
+- workflow: `.github/workflows/static-verify.yml`;
+- trigger: pull requests and manual `workflow_dispatch`;
+- runtime: Node 20;
+- install: `npm ci` using the committed lockfile;
+- gates: `npm run typecheck` and `npm run build`.
+
+The CI job is named `Typecheck + build` under workflow `Static Verify`.
+
+This workflow does **not** imply full test coverage. `npm run test` is currently a single targeted smoke, while the broader `npm run smoke` is not promoted to a CI gate until its known baseline failures and suite semantics are reconciled.
+
+Do not hard-code a permanent integration branch into the CI trigger merely to mirror today's branch name. The pull-request trigger validates proposed changes independently of which approved branch currently acts as X.
+
 ## Runtime verification
 
 Use Replit only when runtime evidence adds value:
@@ -106,7 +121,7 @@ Do not ask the user to copy/paste information that connected tools can inspect d
 Prefer for non-trivial code changes requiring execution-backed static verification and focused implementation commits.
 
 ### GitHub
-Canonical source for implementation history, branches, diffs/PRs and versioned docs. Future CI belongs here.
+Canonical source for implementation history, branches, diffs/PRs and versioned docs. Static CI belongs here.
 
 ### Replit
 Runtime/Shell/Preview/environment-specific verification. Replit Agent is not required.
