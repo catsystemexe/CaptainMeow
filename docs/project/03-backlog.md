@@ -54,14 +54,16 @@ The preservation gate is present in canonical workflow and `AGENTS.md`:
 - verify remote preservation before risky synchronization/switching.
 
 ### CM-WF-003 — Minimal GitHub CI
-Status: IN PROGRESS — C4
+Status: INTEGRATED / RUNTIME VALIDATION IN PROGRESS
 
-C4 adds `.github/workflows/static-verify.yml` with conservative gates:
-- PR + manual trigger;
+PR #127 integrated `.github/workflows/static-verify.yml` into `pixel_bgr` with conservative gates:
+- pull-request trigger + manual `workflow_dispatch`;
 - Node 20;
 - `npm ci`;
 - `npm run typecheck`;
 - `npm run build`.
+
+This follow-up PR exists specifically to exercise the newly integrated pull-request workflow against the default branch. Do not mark CI COMPLETE until the resulting GitHub Actions run is confirmed green.
 
 `npm run test` remains one targeted smoke, and the broader `npm run smoke` is not a CI gate until its baseline failures/suite semantics are reconciled.
 
