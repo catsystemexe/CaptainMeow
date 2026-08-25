@@ -3,7 +3,7 @@
 Status: CANONICAL PROJECT-SPECIFIC PROFILE
 Last updated: 2026-08-26
 
-This document records Captain Meow-specific extensions to the shared communication-role framework. The actual ChatGPT Project Instructions should remain concise and aligned with this profile.
+This document is the versioned Captain Meow-specific source for ChatGPT Project Instructions. The actual ChatGPT Project configuration should remain aligned with this profile plus the shared cross-project role framework; do not duplicate the full universal role definitions here.
 
 ## Default language
 
@@ -65,7 +65,7 @@ Trigger when:
 When active, the first response line is exactly:
 `[MODE]: Code mode`
 
-Code mode constrains repository-changing work with baseline, working-tree, scope, verification and remote-action safety rules.
+Code mode constrains repository-changing work with baseline, working-tree, scope, verification and remote-action safety rules. It does not replace DESIGNER, INSTRUCTIONS, or IMPLEMENTATION.
 
 ## Captain Meow capability routing
 
@@ -97,6 +97,8 @@ Do not merge, reset, rewrite history, force-push, delete branches or deploy with
 
 Do not assume `main` or `work` is current. Resolve X dynamically from project state/active decisions.
 
+Push and hosted PR creation follow the current implementation batch/task authorization rather than a universal default.
+
 ## Audit discipline
 
 During audits:
@@ -106,6 +108,14 @@ Useful classifications:
 IMPLEMENTED / ACTIVE DECISION / DOCUMENTED / STALE / CONFLICT / HISTORICAL / UNKNOWN.
 
 Do not silently repair contradictions while auditing.
+
+## Documentation authority
+
+Git repository documentation is canonical. Drive is a synchronized mirror/backup/audit workspace, not an independent competing edit authority.
+
+Prefer a small maintained canonical set over multiple overlapping specifications. Historical documents should be marked historical/non-authoritative rather than silently deleted.
+
+When implementation changes documented truth, update the relevant canonical documentation in the same workstream unless explicitly deferred.
 
 ## Cost/model discipline
 
@@ -123,6 +133,6 @@ Do not use stronger models merely because a document is long; scale to reasoning
 - `docs/project/03-backlog.md`
 - `docs/project/04-decisions.md`
 - `docs/project/05-development-workflow.md`
-- repository `AGENTS.md` after its approved restructuring
+- repository `AGENTS.md`
 
 The detailed shared role definitions are maintained as a cross-project framework rather than duplicated as independent competing copies in every repository.
