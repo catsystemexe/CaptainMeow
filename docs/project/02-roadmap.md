@@ -72,17 +72,19 @@ Result:
 - no new architecture or runtime conflict;
 - all commits after implementation checkpoint `940358eb...` through the C7 audit checkpoint were documentation-only;
 - operating model is internally consistent;
-- a small final tracking/provenance closeout is required in canonical docs and the Drive mirror manifest.
+- final canonical tracking closeout and Drive mirror provenance synchronization were completed.
 
 Audit evidence: `___CaptainMeow/___AUDIT/07_FINAL_CONSISTENCY_AUDIT`.
 
-## Final closeout
+## Consolidation program status — COMPLETE
 
-After this documentation closeout is integrated:
-1. synchronize affected canonical docs to Drive;
-2. update `README_MIRROR` so its provenance reflects the actual final synchronization checkpoint;
-3. treat the consolidation program as closed;
-4. move remaining work to ordinary maintenance/hygiene or product development.
+- canonical implementation/documentation authority is established in Git;
+- canonical tracking reflects completed C1–C7 work;
+- affected Drive mirror documents were synchronized after the C7 closeout;
+- `README_MIRROR` records the exact synchronized Git checkpoint;
+- Replit is normalized to the canonical repository and retained as runtime/verification environment;
+- branch unique-content reconciliation is complete;
+- remaining work has moved to ordinary maintenance/hygiene or product development.
 
 ## Post-audit maintenance / hygiene
 
