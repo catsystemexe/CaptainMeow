@@ -24,46 +24,41 @@ The versioned project profile is canonical in `docs/project/06-chatgpt-project-p
 ### CM-GOV-002 — Restructure `AGENTS.md`
 Status: COMPLETE
 
-Completed via PR #125. `AGENTS.md` is now repository-local engineering/executor guidance with dynamic X/Y branch roles, snapshot/working-tree safety, runtime invariants and accurate validation semantics.
+Completed via PR #125.
 
 ### CM-GOV-003 — Classify and reconcile stale/duplicate documentation
 Status: COMPLETE
 
-Completed via PR #126:
-- README current-state framing fixed;
-- obsolete architecture global-SSOT claim retired;
-- stale GraphicsMode ADR classified historical/not implemented;
-- `docs/HISTORICAL_DOCUMENTS.md` now classifies preserved FSM/audit/handoff lineages without destructive rewriting.
+Completed via PR #126.
 
 ## Workflow hardening
 
 ### CM-WF-001 — Normalize Replit remote
-Status: NEXT / RUNTIME WORKSPACE ACTION
+Status: COMPLETE
 
-Change Replit `origin` from historical `catsystemexe/MGoD` to canonical `catsystemexe/CaptainMeow` only after confirming the live runtime workspace has the intended branch/HEAD and a clean or safely preserved working tree.
+Verified live workspace before mutation, preserved existing backup branch, changed `origin` to `https://github.com/catsystemexe/CaptainMeow`, fetched/pruned, switched to `pixel_bgr` and fast-forwarded safely to `940358eb9f35c73d9172c6962e483f8f1f6d51bb`.
 
-This is not a repository-file change and must not be inferred from GitHub state alone.
+`gitsafe-backup` was not modified.
 
 ### CM-WF-002 — Dirty-tree preservation gate
 Status: COMPLETE / ACTIVE POLICY
 
-The preservation gate is present in canonical workflow and `AGENTS.md`:
-- inspect status;
-- preserve valuable local changes;
-- commit/push as appropriate;
-- verify remote preservation before risky synchronization/switching.
+The preservation gate is present in canonical workflow and `AGENTS.md`.
 
 ### CM-WF-003 — Minimal GitHub CI
-Status: IN PROGRESS — C4
+Status: COMPLETE
 
-C4 adds `.github/workflows/static-verify.yml` with conservative gates:
-- PR + manual trigger;
+`.github/workflows/static-verify.yml` is integrated and runtime-verified.
+
+Required CI baseline:
 - Node 20;
 - `npm ci`;
 - `npm run typecheck`;
 - `npm run build`.
 
-`npm run test` remains one targeted smoke, and the broader `npm run smoke` is not a CI gate until its baseline failures/suite semantics are reconciled.
+The first live validation exposed a pre-existing malformed block in `src/game/boot/createGame.ts`. PR #129 repaired the root cause and passed the complete Static Verify sequence before merge.
+
+`npm run test` remains one targeted smoke and the broader `npm run smoke` is not a required CI gate until its baseline/suite semantics are reconciled.
 
 ### CM-WF-004 — PR/push authorization policy
 Status: COMPLETE / ACTIVE POLICY
@@ -75,31 +70,27 @@ Focused task branches remain preferred. Push/hosted-PR creation follows the curr
 ### CM-DOC-001 — Establish `docs/project/*`
 Status: COMPLETE
 
-Canonical project state, architecture, roadmap, backlog, decisions, development workflow and ChatGPT project profile were integrated via PR #124.
+Integrated via PR #124.
 
 ### CM-DOC-002 — GitHub → Drive mirror
-Status: PENDING
+Status: IN PROGRESS — C5
 
-Define one-way synchronization for canonical project docs. Drive mirror must not become a competing edit authority.
+Create a dedicated one-way mirror of all seven canonical `docs/project/*` documents. Git remains canonical. Drive mirror copies must carry clear source/authority metadata and must not become competing edit authority.
 
 ### CM-DOC-003 — Mark/classify historical docs
 Status: COMPLETE
 
 Canonical classification index: `docs/HISTORICAL_DOCUMENTS.md`, integrated via PR #126.
 
-Large historical documents remain preserved where a central authoritative classification is sufficient.
-
 ### CM-DOC-004 — Update README
 Status: COMPLETE
 
-Current entry-point README integrated via PR #126.
+Integrated via PR #126.
 
 ## Branch reconciliation
 
 ### CM-GIT-001 — Analyze five `main`-unique commits
 Status: PENDING / PRESERVE
-
-`main` diverged from the active integration line and contained five unique commits relative to the audited merge base `7d1e4857c1dceb828a3421f4450033c02c3f8b06`.
 
 Classify each before any cleanup or branch normalization.
 
@@ -111,10 +102,10 @@ Commit: `4b4fb32988ce92a2a16e8fcc309ac9584bedaca3`
 
 Determine whether/how to resume the unfinished change. Do not merge automatically.
 
-### CM-GIT-003 — Codex branch retention policy
+### CM-GIT-003 — Branch retention policy
 Status: DEFERRED
 
-There are many historical `codex/*` branches. Define retention/cleanup only after authority and unique-content reconciliation.
+There are many historical `codex/*`, consolidation and fix branches. Define retention/cleanup only after unique-content reconciliation.
 
 ## Technical hygiene
 
@@ -126,7 +117,7 @@ Treat existing artifacts as preservation/technical-debt evidence. Do not delete 
 ## Backlog rules
 
 - `READY` means approved and sequenced, not yet implemented.
-- `IN PROGRESS` means a focused change set exists but is not yet integrated.
+- `IN PROGRESS` means a focused change set exists but is not yet integrated/completed.
 - `PENDING` means known work requiring a focused future batch or decision.
 - `PRESERVE` means no destructive action until evidence is reconciled.
 - `COMPLETE` means integrated/verified according to the applicable workflow.

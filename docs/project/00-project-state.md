@@ -9,9 +9,9 @@ This document summarizes the currently verified project state. It does not overr
 
 Canonical repository: `catsystemexe/CaptainMeow`.
 
-Current saved integration baseline after canonical-doc and instruction-authority integration:
+Current saved integration baseline:
 - branch: `pixel_bgr`
-- commit: `d4529ca39ea5f763549c0e8f5e939eeef04e91e6`
+- commit: `940358eb9f35c73d9172c6962e483f8f1f6d51bb`
 - GitHub default branch: `pixel_bgr`
 
 `work` is an older ancestor of the active integration line and must not be assumed to be current.
@@ -43,7 +43,7 @@ Verified implementation families include:
 - Pixel/Scene BGR authoring tools, timeline and gameplay seek support;
 - developer UI/labs and smoke checks.
 
-The BGR B1–B6 line is already represented in `pixel_bgr`. The preserved Replit branch contains a later unfinished follow-up, not the whole BGR implementation.
+The BGR B1–B6 line is already represented in `pixel_bgr`. The preservation branch contains a later unfinished follow-up, not the whole BGR implementation.
 
 ## Runtime environment
 
@@ -57,15 +57,37 @@ Replit is not a source of repository authority. Its intended role is:
 
 Replit Agent is not a required workflow dependency.
 
-At the audit checkpoint Replit `origin` still used the historical repository name `catsystemexe/MGoD`; GitHub redirected it to `catsystemexe/CaptainMeow`. Normalization remains pending.
+Replit workspace normalization is complete:
+- active branch: `pixel_bgr`;
+- HEAD: `940358eb9f35c73d9172c6962e483f8f1f6d51bb`;
+- working tree: clean at the normalization checkpoint;
+- `origin`: `https://github.com/catsystemexe/CaptainMeow`;
+- preservation branch remains intact;
+- `gitsafe-backup` remains untouched.
+
+## Static verification / CI
+
+Minimal GitHub CI is active at `.github/workflows/static-verify.yml`.
+
+The validated baseline is:
+- Node 20;
+- `npm ci`;
+- `npm run typecheck`;
+- `npm run build`.
+
+A pre-existing malformed authoring-seek wiring block in `src/game/boot/createGame.ts` was detected by CI and repaired through PR #129. The repair passed the full Static Verify sequence before merge.
+
+This CI does not imply full test coverage. `npm run test` remains a targeted smoke and the broader smoke suite is not a required green gate until its semantics/baseline are reconciled.
 
 ## Documentation state
 
-Canonical maintained project documentation is now established under `docs/project/`.
+Canonical maintained project documentation is established under `docs/project/`.
 
 Repository-local executor/engineering authority is the consolidated `AGENTS.md`.
 
-Historical/stale material is preserved and classified through `docs/HISTORICAL_DOCUMENTS.md`. Key classes include:
+Historical/stale material is preserved and classified through `docs/HISTORICAL_DOCUMENTS.md`.
+
+Key classifications include:
 - root FSM audit/proposal/final/session documents as historical lineage rather than current global authority;
 - June repository audit documents as historical snapshots;
 - `docs/architecture/CM_Architecture_v3.1.md` as superseded global authority;
@@ -73,16 +95,16 @@ Historical/stale material is preserved and classified through `docs/HISTORICAL_D
 - BGR handoffs as implementation/session evidence;
 - historical Drive `___docs` material.
 
-`README.md` is being refreshed in C3 to point to current canonical sources instead of the obsolete “no gameplay implemented” description.
-
 ## Audit and consolidation status
 
 Pre-consolidation audit phases P0, P1, F0, F1, F2, F3 and F4 are complete.
 
 Integrated post-gate work:
-1. C1 canonical `docs/project/*` bootstrap — merged via PR #124.
-2. C2 instruction-authority consolidation — merged via PR #125.
-3. C3 documentation migration/historical classification — active focused change set.
+1. C1 canonical `docs/project/*` bootstrap — PR #124.
+2. C2 instruction-authority consolidation — PR #125.
+3. C3 documentation migration/historical classification — PR #126.
+4. C4 workflow normalization/minimal CI — PR #127 plus baseline repair PR #129.
+5. Replit remote/branch normalization — complete and independently reconciled to GitHub `pixel_bgr`.
 
 Approved operating model:
 1. Git repository = canonical implementation and versioned project documentation.
@@ -96,10 +118,10 @@ Approved operating model:
 
 ## Current next work
 
-After C3 integration, remaining governance/workflow priorities are:
-- align actual ChatGPT Project Instructions UI with the versioned project profile/shared framework;
-- normalize the Replit `origin` after confirming/preserving runtime workspace state;
-- introduce minimal GitHub CI with accurate validation semantics;
-- establish one-way GitHub → Drive canonical-doc synchronization;
-- reconcile `main`-unique commits and preserved unfinished BGR work before branch cleanup;
+Current consolidation phase: C5 GitHub → Drive one-way canonical-doc mirror.
+
+After C5, remaining priorities are:
+- reconcile `main`-unique commits;
+- review preserved unfinished BGR follow-up before any cleanup;
+- define branch-retention policy;
 - perform final consistency audit.
