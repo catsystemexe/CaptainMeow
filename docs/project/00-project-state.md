@@ -99,6 +99,17 @@ Key classifications include:
 - BGR handoffs as implementation/session evidence;
 - historical Drive `___docs` material.
 
+## Drive canonical mirror
+
+C5 GitHub → Drive synchronization is complete.
+
+Dedicated mirror location:
+- `___CaptainMeow/___CANONICAL_MIRROR`
+- initial synchronized Git snapshot: `bd468a98d216e941175a7ba14481efb5d2e63390`
+- contents: all seven canonical `docs/project/*` documents plus `README_MIRROR` manifest.
+
+Git remains canonical. Drive copies are one-way mirror/backup only and must not become an independent edit authority.
+
 ## Audit and consolidation status
 
 Pre-consolidation audit phases P0, P1, F0, F1, F2, F3 and F4 are complete.
@@ -109,6 +120,7 @@ Integrated post-gate work:
 3. C3 documentation migration/historical classification — PR #126.
 4. C4 workflow normalization/minimal CI — PR #127 plus baseline repair PR #129.
 5. Replit remote/branch normalization — complete and independently reconciled to GitHub `pixel_bgr`.
+6. C5 GitHub → Drive canonical mirror — complete.
 
 Approved operating model:
 1. Git repository = canonical implementation and versioned project documentation.
@@ -122,10 +134,11 @@ Approved operating model:
 
 ## Current next work
 
-Current consolidation phase: C5 GitHub → Drive one-way canonical-doc mirror.
+Current consolidation phase: C6 branch reconciliation and cleanup planning.
 
-After C5, remaining priorities are:
+Priorities:
 - reconcile `main`-unique commits;
 - review preserved unfinished BGR follow-up before any cleanup;
 - define branch-retention policy;
-- perform final consistency audit.
+- perform only explicitly approved branch cleanup;
+- then perform final consistency audit.
