@@ -20,17 +20,17 @@ Documentation-only commits may advance `pixel_bgr` beyond that checkpoint. There
 
 `work` is an older ancestor of the active integration line and must not be assumed to be current.
 
-`main` diverges from `pixel_bgr`. At the audit checkpoint it contained five commits not present on `pixel_bgr`; therefore it remains preserved until those commits are classified/reconciled.
+`main` was reconciled during C6. Its five commits not present on `pixel_bgr` are historical merge-topology only; the final `main` tree contributes no net unique file-state content requiring promotion. Retaining or deleting the branch is therefore a historical-retention choice rather than a data-preservation requirement.
 
 The active integration branch is a resolved project-state fact, not a permanent hard-coded branch name. Current work must verify the approved integration branch before implementation.
 
-## Preserved unfinished Replit work
+## Preserved Replit evidence
 
-A newer unfinished Replit-only BGR Lab change was preserved before consolidation:
+A Replit-only BGR Lab state was preserved before consolidation:
 - branch: `backup/replit-bgr-lab-preaudit-20260825`
 - commit: `4b4fb32988ce92a2a16e8fcc309ac9584bedaca3`
 
-This branch is PRESERVED UNFINISHED EVIDENCE. It is not automatically the canonical implementation branch and must not be merged without explicit review.
+Its functional `createGame.ts` seek-wiring intent was subsequently promoted to canonical integration through PR #129 and passed Static Verify. The branch now remains preservation/history evidence only; it must not be merged automatically.
 
 ## Current implementation shape
 
@@ -47,7 +47,7 @@ Verified implementation families include:
 - Pixel/Scene BGR authoring tools, timeline and gameplay seek support;
 - developer UI/labs and smoke checks.
 
-The BGR B1–B6 line is already represented in `pixel_bgr`. The preservation branch contains a later unfinished follow-up, not the whole BGR implementation.
+The BGR B1–B6 line is represented in `pixel_bgr`.
 
 ## Runtime environment
 
@@ -61,7 +61,7 @@ Replit is not a source of repository authority. Its intended role is:
 
 Replit Agent is not a required workflow dependency.
 
-Replit workspace normalization is complete at the verified checkpoint:
+Last verified live Replit checkpoint:
 - active branch: `pixel_bgr`;
 - HEAD: `940358eb9f35c73d9172c6962e483f8f1f6d51bb`;
 - working tree: clean;
@@ -69,11 +69,13 @@ Replit workspace normalization is complete at the verified checkpoint:
 - preservation branch remains intact;
 - `gitsafe-backup` remains untouched.
 
+All Git commits between that checkpoint and the C7 audit checkpoint were documentation-only, so this is not an implementation/runtime divergence.
+
 ## Static verification / CI
 
 Minimal GitHub CI is active at `.github/workflows/static-verify.yml`.
 
-The validated baseline is:
+Validated baseline:
 - Node 20;
 - `npm ci`;
 - `npm run typecheck`;
@@ -101,14 +103,13 @@ Key classifications include:
 
 ## Drive canonical mirror
 
-C5 GitHub → Drive synchronization is complete.
-
 Dedicated mirror location:
 - `___CaptainMeow/___CANONICAL_MIRROR`
-- initial synchronized Git snapshot: `bd468a98d216e941175a7ba14481efb5d2e63390`
 - contents: all seven canonical `docs/project/*` documents plus `README_MIRROR` manifest.
 
 Git remains canonical. Drive copies are one-way mirror/backup only and must not become an independent edit authority.
+
+The C7 audit found the mirror content aligned with the pre-C6 canonical Git state, while `README_MIRROR` provenance still referenced the earlier initial snapshot. After this final canonical closeout is integrated, affected mirror files and the manifest must be synchronized to the resulting Git checkpoint.
 
 ## Audit and consolidation status
 
@@ -121,6 +122,8 @@ Integrated post-gate work:
 4. C4 workflow normalization/minimal CI — PR #127 plus baseline repair PR #129.
 5. Replit remote/branch normalization — complete and independently reconciled to GitHub `pixel_bgr`.
 6. C5 GitHub → Drive canonical mirror — complete.
+7. C6 branch unique-content reconciliation — complete; six obsolete historical PRs closed without merge; physical branch deletion remains optional hygiene.
+8. C7 final consistency audit — complete; no new architecture/runtime conflict found.
 
 Approved operating model:
 1. Git repository = canonical implementation and versioned project documentation.
@@ -130,15 +133,14 @@ Approved operating model:
 5. Codex = preferred execution-backed environment for non-trivial code changes.
 6. Cross-project roles = `[DESIGNER]`, `[INSTRUCTIONS]`, `[IMPLEMENTATION]`; Code mode is a process/safety overlay.
 7. Active integration branch is dynamically resolved; fixed `work/main` authority is retired.
-8. Branch cleanup occurs only after unique-content reconciliation.
+8. Branch cleanup follows unique-content reconciliation and explicit authorization.
 
 ## Current next work
 
-Current consolidation phase: C6 branch reconciliation and cleanup planning.
-
-Priorities:
-- reconcile `main`-unique commits;
-- review preserved unfinished BGR follow-up before any cleanup;
-- define branch-retention policy;
-- perform only explicitly approved branch cleanup;
-- then perform final consistency audit.
+The consolidation/audit program is at final closeout. Remaining items are non-blocking maintenance/hygiene unless explicitly promoted:
+- synchronize final canonical closeout docs and `README_MIRROR` to Drive after Git integration;
+- optionally delete already-classified historical task branches;
+- decide long-term retention of `main` and the Replit preservation branch;
+- triage dependency/security findings and GitHub Actions runtime-maintenance warnings;
+- reconcile broader smoke-suite baseline/semantics;
+- review `.bak`, dump and `_patch` preservation artifacts before any deletion.
