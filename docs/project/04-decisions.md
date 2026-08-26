@@ -48,7 +48,7 @@ Decision:
 - X = currently approved active integration branch resolved from current repository state/decision;
 - Y = focused task branch created from verified X;
 - do not hard-code `main` or `work` as integration authority;
-- at the audit checkpoint `pixel_bgr` is the saved current integration baseline, but this is not a permanent naming rule.
+- `pixel_bgr` is the current approved integration line at the consolidation checkpoint, but this is not a permanent naming rule.
 
 ## D-006 — Canonical project document set
 Status: ACTIVE
@@ -100,12 +100,15 @@ Decision:
 - implementation reports name the exact verification performed;
 - user visual feedback is authoritative for UX acceptance where automated checks cannot establish visual correctness.
 
-## D-011 — Minimal CI should replace repeated manual static verification
-Status: ACTIVE DIRECTION / IMPLEMENTATION PENDING
+## D-011 — Minimal CI replaces repeated manual baseline verification
+Status: ACTIVE / IMPLEMENTED
 
-Decision direction:
-- add GitHub CI for stable type/build/test checks;
-- do not make known-broken full smoke behavior a mandatory green gate until its baseline is repaired/classified.
+Decision:
+- GitHub Actions workflow `.github/workflows/static-verify.yml` provides the minimal repository CI baseline;
+- required sequence is Node 20 → `npm ci` → `npm run typecheck` → `npm run build`;
+- the workflow is runtime-verified and successfully passed after the baseline repair in PR #129;
+- `npm run test` remains a targeted smoke rather than a complete test suite;
+- the broader smoke suite is not a mandatory green gate until its baseline/suite semantics are reconciled.
 
 ## D-012 — Cross-project role framework is shared, project instructions extend it
 Status: ACTIVE
