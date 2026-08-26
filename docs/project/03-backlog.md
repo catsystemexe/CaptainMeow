@@ -5,13 +5,13 @@ Last updated: 2026-08-26
 
 This backlog records approved consolidation and workflow-hardening work. Product/gameplay feature backlog items may later be maintained separately if needed.
 
-## Active / next
+## Governance
 
 ### CM-GOV-001 — Align ChatGPT Project Instructions
-Status: READY / MANUAL CONFIG ALIGNMENT
+Status: COMPLETE / MINOR WORDING NORMALIZATION OPTIONAL
 
-Use the approved project-specific profile and shared cross-project framework:
-- source authority;
+The active ChatGPT Project Instructions substantively match the approved project-specific profile and shared cross-project framework:
+- Git-first source authority;
 - `[DESIGNER]`, `[INSTRUCTIONS]`, `[IMPLEMENTATION]` roles;
 - Code mode overlay;
 - GitHub/Codex/Replit capability ownership;
@@ -19,7 +19,7 @@ Use the approved project-specific profile and shared cross-project framework:
 - static/runtime distinction;
 - cost/model policy.
 
-The versioned project profile is canonical in `docs/project/06-chatgpt-project-profile.md`; actual ChatGPT Project UI configuration must remain aligned with it.
+The versioned project profile is canonical in `docs/project/06-chatgpt-project-profile.md`. C7 found only minor non-material wording drift in how `AGENTS.md` appears in the top-level source-priority wording.
 
 ### CM-GOV-002 — Restructure `AGENTS.md`
 Status: COMPLETE
@@ -73,13 +73,11 @@ Status: COMPLETE
 Integrated via PR #124.
 
 ### CM-DOC-002 — GitHub → Drive mirror
-Status: COMPLETE
+Status: COMPLETE / FINAL RESYNC PENDING CLOSEOUT MERGE
 
-Dedicated one-way mirror created at `___CaptainMeow/___CANONICAL_MIRROR` from Git snapshot `bd468a98d216e941175a7ba14481efb5d2e63390`.
+Dedicated one-way mirror exists at `___CaptainMeow/___CANONICAL_MIRROR` with all seven canonical `docs/project/*` documents plus `README_MIRROR`.
 
-Contents:
-- all seven canonical `docs/project/*` documents;
-- `README_MIRROR` manifest recording source repository/branch/commit and the rule that Git remains canonical.
+C7 found that mirror content tracks the pre-C6 Git documentation state, but the manifest still names the earlier initial source snapshot. After the final canonical documentation closeout is merged, resynchronize affected files and update manifest provenance to that resulting Git checkpoint.
 
 Drive `___docs` remains historical and separate.
 
@@ -96,29 +94,65 @@ Integrated via PR #126.
 ## Branch reconciliation
 
 ### CM-GIT-001 — Analyze five `main`-unique commits
-Status: NEXT / PRESERVE
+Status: COMPLETE
 
-Classify each before any cleanup or branch normalization.
+C6 finding: unique commit topology exists, but the final `main` tree is identical to the relevant merge-base tree. No content promotion is required. Retain/delete is now only a historical-retention choice.
 
 ### CM-GIT-002 — Review preserved unfinished BGR follow-up
-Status: NEXT / PRESERVE
+Status: COMPLETE / PRESERVATION RETENTION OPTIONAL
 
 Branch: `backup/replit-bgr-lab-preaudit-20260825`
 Commit: `4b4fb32988ce92a2a16e8fcc309ac9584bedaca3`
 
-Determine whether/how to resume the unfinished change. Do not merge automatically.
+Its functional seek-wiring intent was promoted through PR #129 and CI verified. The branch remains preservation/history evidence only; no merge is required.
 
 ### CM-GIT-003 — Branch retention policy
-Status: DEFERRED UNTIL RECONCILIATION
+Status: COMPLETE / PHYSICAL CLEANUP PARTIAL
 
-There are many historical `codex/*`, consolidation and fix branches. Define retention/cleanup only after unique-content reconciliation.
+Policy:
+- keep the current approved integration branch;
+- preserve evidence until unique content is classified;
+- merged/reachable task branches are cleanup candidates after fresh verification;
+- superseded branches may be removed once their replacement is proven;
+- branch deletion remains explicitly authorized/destructive work.
 
-## Technical hygiene
+C6 classified historical exceptions and closed obsolete open PRs #1, #2, #4, #5, #11 and #22 without merge. Physical branch deletion remains optional hygiene because the current connected GitHub capability does not expose branch-ref deletion.
+
+## Final audit
+
+### CM-AUDIT-001 — Final consistency audit
+Status: COMPLETE
+
+C7 found no new architecture/runtime conflict. Required closeout is limited to canonical tracking updates plus final Drive mirror/provenance synchronization.
+
+Audit evidence: `___CaptainMeow/___AUDIT/07_FINAL_CONSISTENCY_AUDIT`.
+
+## Technical hygiene / maintenance
 
 ### CM-HYG-001 — Review `.bak`, dump and `_patch` artifacts
-Status: DEFERRED
+Status: DEFERRED / NON-BLOCKING
 
 Treat existing artifacts as preservation/technical-debt evidence. Do not delete until their uniqueness/value is checked.
+
+### CM-HYG-002 — Historical branch physical cleanup
+Status: OPTIONAL / NON-BLOCKING
+
+Delete already-classified historical task branches only through an execution path that supports real branch-ref deletion and after the usual fresh safety check.
+
+### CM-HYG-003 — Dependency/security triage
+Status: PENDING / NON-BLOCKING
+
+A CI `npm ci` run reported dependency audit findings. Triage deliberately; do not apply blind automated upgrade/fix changes as part of documentation consolidation.
+
+### CM-HYG-004 — GitHub Actions runtime maintenance
+Status: PENDING / NON-BLOCKING
+
+Review the GitHub Actions warning observed during CI about older action runtime targeting and update action versions when justified.
+
+### CM-HYG-005 — Broader smoke-suite baseline
+Status: PENDING / NON-BLOCKING
+
+Reconcile current smoke-runner semantics and known baseline failures before promoting the broader suite to a required CI gate.
 
 ## Backlog rules
 
