@@ -109,7 +109,7 @@ Dedicated mirror location:
 
 Git remains canonical. Drive copies are one-way mirror/backup only and must not become an independent edit authority.
 
-The C7 audit found the mirror content aligned with the pre-C6 canonical Git state, while `README_MIRROR` provenance still referenced the earlier initial snapshot. After this final canonical closeout is integrated, affected mirror files and the manifest must be synchronized to the resulting Git checkpoint.
+Final C7 closeout synchronization is complete. `README_MIRROR` records the exact synchronized Git checkpoint. Future canonical documentation changes continue to synchronize one-way Git → Drive.
 
 ## Audit and consolidation status
 
@@ -125,6 +125,8 @@ Integrated post-gate work:
 7. C6 branch unique-content reconciliation — complete; six obsolete historical PRs closed without merge; physical branch deletion remains optional hygiene.
 8. C7 final consistency audit — complete; no new architecture/runtime conflict found.
 
+The audit and consolidation program is COMPLETE.
+
 Approved operating model:
 1. Git repository = canonical implementation and versioned project documentation.
 2. Drive = synchronized mirror/backup plus audit workspace.
@@ -137,8 +139,7 @@ Approved operating model:
 
 ## Current next work
 
-The consolidation/audit program is at final closeout. Remaining items are non-blocking maintenance/hygiene unless explicitly promoted:
-- synchronize final canonical closeout docs and `README_MIRROR` to Drive after Git integration;
+The audit/consolidation program is COMPLETE. Remaining items are non-blocking maintenance/hygiene unless explicitly promoted:
 - optionally delete already-classified historical task branches;
 - decide long-term retention of `main` and the Replit preservation branch;
 - triage dependency/security findings and GitHub Actions runtime-maintenance warnings;
