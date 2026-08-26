@@ -73,11 +73,11 @@ Status: COMPLETE
 Integrated via PR #124.
 
 ### CM-DOC-002 — GitHub → Drive mirror
-Status: COMPLETE / FINAL RESYNC PENDING CLOSEOUT MERGE
+Status: COMPLETE
 
 Dedicated one-way mirror exists at `___CaptainMeow/___CANONICAL_MIRROR` with all seven canonical `docs/project/*` documents plus `README_MIRROR`.
 
-C7 found that mirror content tracks the pre-C6 Git documentation state, but the manifest still names the earlier initial source snapshot. After the final canonical documentation closeout is merged, resynchronize affected files and update manifest provenance to that resulting Git checkpoint.
+Final C7 closeout mirror synchronization is complete. `README_MIRROR` records the exact synchronized Git checkpoint; future canonical changes continue through one-way Git → Drive synchronization.
 
 Drive `___docs` remains historical and separate.
 
@@ -123,7 +123,7 @@ C6 classified historical exceptions and closed obsolete open PRs #1, #2, #4, #5,
 ### CM-AUDIT-001 — Final consistency audit
 Status: COMPLETE
 
-C7 found no new architecture/runtime conflict. Required closeout is limited to canonical tracking updates plus final Drive mirror/provenance synchronization.
+C7 found no new architecture/runtime conflict. Canonical tracking and final Drive mirror/provenance synchronization are complete.
 
 Audit evidence: `___CaptainMeow/___AUDIT/07_FINAL_CONSISTENCY_AUDIT`.
 
