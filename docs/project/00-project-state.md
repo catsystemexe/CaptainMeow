@@ -9,10 +9,14 @@ This document summarizes the currently verified project state. It does not overr
 
 Canonical repository: `catsystemexe/CaptainMeow`.
 
-Current saved integration baseline:
+Current active integration line:
 - branch: `pixel_bgr`
-- commit: `940358eb9f35c73d9172c6962e483f8f1f6d51bb`
 - GitHub default branch: `pixel_bgr`
+
+Last implementation-bearing checkpoint independently verified by CI and Replit synchronization:
+- commit: `940358eb9f35c73d9172c6962e483f8f1f6d51bb`
+
+Documentation-only commits may advance `pixel_bgr` beyond that checkpoint. Therefore this document does not treat a pinned documentation HEAD SHA as a self-updating source of truth; current HEAD must be resolved from GitHub when needed.
 
 `work` is an older ancestor of the active integration line and must not be assumed to be current.
 
@@ -57,10 +61,10 @@ Replit is not a source of repository authority. Its intended role is:
 
 Replit Agent is not a required workflow dependency.
 
-Replit workspace normalization is complete:
+Replit workspace normalization is complete at the verified checkpoint:
 - active branch: `pixel_bgr`;
 - HEAD: `940358eb9f35c73d9172c6962e483f8f1f6d51bb`;
-- working tree: clean at the normalization checkpoint;
+- working tree: clean;
 - `origin`: `https://github.com/catsystemexe/CaptainMeow`;
 - preservation branch remains intact;
 - `gitsafe-backup` remains untouched.
