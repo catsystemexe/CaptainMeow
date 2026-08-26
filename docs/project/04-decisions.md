@@ -76,9 +76,13 @@ Decision:
 Status: ACTIVE
 
 Decision:
-- `main`, the Replit preservation branch and historical task branches remain preserved until unique-content reconciliation;
-- branch cleanup happens late in consolidation;
-- no destructive cleanup is performed merely to make the repository look tidy.
+- unique-content reconciliation must precede destructive branch cleanup;
+- once a branch has been proven to contain no unpromoted valuable content, retention becomes an explicit historical/hygiene choice rather than an unresolved authority requirement;
+- the current integration branch must be retained;
+- preservation/evidence branches may remain after functional intent is promoted when their audit value is still useful;
+- branch deletion remains explicitly authorized destructive work and is never performed merely to make the repository look tidy.
+
+C6 completed the required reconciliation for `main`, the Replit preservation branch, and the inspected historical task-branch exceptions. Their remaining retention/deletion decisions therefore follow this post-reconciliation rule.
 
 ## D-009 — Manual Replit changes must be preserved promptly in Git
 Status: ACTIVE
