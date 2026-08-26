@@ -73,9 +73,15 @@ Status: COMPLETE
 Integrated via PR #124.
 
 ### CM-DOC-002 — GitHub → Drive mirror
-Status: IN PROGRESS — C5
+Status: COMPLETE
 
-Create a dedicated one-way mirror of all seven canonical `docs/project/*` documents. Git remains canonical. Drive mirror copies must carry clear source/authority metadata and must not become competing edit authority.
+Dedicated one-way mirror created at `___CaptainMeow/___CANONICAL_MIRROR` from Git snapshot `bd468a98d216e941175a7ba14481efb5d2e63390`.
+
+Contents:
+- all seven canonical `docs/project/*` documents;
+- `README_MIRROR` manifest recording source repository/branch/commit and the rule that Git remains canonical.
+
+Drive `___docs` remains historical and separate.
 
 ### CM-DOC-003 — Mark/classify historical docs
 Status: COMPLETE
@@ -90,12 +96,12 @@ Integrated via PR #126.
 ## Branch reconciliation
 
 ### CM-GIT-001 — Analyze five `main`-unique commits
-Status: PENDING / PRESERVE
+Status: NEXT / PRESERVE
 
 Classify each before any cleanup or branch normalization.
 
 ### CM-GIT-002 — Review preserved unfinished BGR follow-up
-Status: PENDING / PRESERVE
+Status: NEXT / PRESERVE
 
 Branch: `backup/replit-bgr-lab-preaudit-20260825`
 Commit: `4b4fb32988ce92a2a16e8fcc309ac9584bedaca3`
@@ -103,7 +109,7 @@ Commit: `4b4fb32988ce92a2a16e8fcc309ac9584bedaca3`
 Determine whether/how to resume the unfinished change. Do not merge automatically.
 
 ### CM-GIT-003 — Branch retention policy
-Status: DEFERRED
+Status: DEFERRED UNTIL RECONCILIATION
 
 There are many historical `codex/*`, consolidation and fix branches. Define retention/cleanup only after unique-content reconciliation.
 
