@@ -44,36 +44,57 @@ Completed outcomes:
 Completed outcomes:
 - canonical status refreshed before mirroring through PRs #130 and #131;
 - dedicated Drive mirror folder `___CaptainMeow/___CANONICAL_MIRROR` created;
-- all seven canonical `docs/project/*` documents mirrored from Git snapshot `bd468a98d216e941175a7ba14481efb5d2e63390`;
-- `README_MIRROR` records source repository/branch/commit and one-way authority rule;
-- Drive `___docs` remains historical and separate;
-- mirror inventory verified at 7/7 canonical files plus manifest.
+- all seven canonical `docs/project/*` documents mirrored;
+- Drive `___docs` remains historical and separate.
 
-## Current phase — C6 Branch reconciliation and cleanup planning
+### C6 Branch reconciliation — COMPLETE
 
-Goal: reconcile preserved unique content before any destructive branch hygiene.
+Completed outcomes:
+- `main` five-commit divergence classified as historical merge topology only; no net unique file-state content requires promotion;
+- preservation branch functional seek-wiring intent confirmed as already promoted through PR #129;
+- 111 historical `codex/*` branches inventoried at audit time;
+- six historical open PRs (#1, #2, #4, #5, #11, #22) individually classified and then closed without merge after explicit authorization;
+- merged/reachable and superseded task branches classified as cleanup candidates;
+- physical branch deletion left as optional hygiene because the connected GitHub capability does not expose branch-ref deletion.
 
-Tasks:
-- inspect the five `main`-unique commits relative to the audited lineage;
-- classify each as preserve/promote/supersede;
-- review preservation branch `backup/replit-bgr-lab-preaudit-20260825` separately;
-- define retention policy for merged `codex/*`, consolidation and fix branches;
-- identify any branch that still carries unique valuable content;
-- propose cleanup only after reconciliation;
-- require explicit authorization before deleting or normalizing branches.
+### C7 Final consistency audit — COMPLETE
 
-## C7 Final consistency audit
-
-Verify:
+C7 verified:
 - code vs canonical docs;
-- Project Instructions vs workflow docs;
-- AGENTS vs current code;
+- Project Instructions vs versioned profile/workflow;
+- AGENTS vs current repository model;
 - GitHub vs Drive mirror;
-- Replit remote/branch expectations;
+- Replit implementation checkpoint vs Git history;
 - CI semantics;
-- remaining historical/stale authority claims;
-- branch/preservation state after any approved reconciliation.
+- branch/preservation state.
+
+Result:
+- no new architecture or runtime conflict;
+- all commits after implementation checkpoint `940358eb...` through the C7 audit checkpoint were documentation-only;
+- operating model is internally consistent;
+- a small final tracking/provenance closeout is required in canonical docs and the Drive mirror manifest.
+
+Audit evidence: `___CaptainMeow/___AUDIT/07_FINAL_CONSISTENCY_AUDIT`.
+
+## Final closeout
+
+After this documentation closeout is integrated:
+1. synchronize affected canonical docs to Drive;
+2. update `README_MIRROR` so its provenance reflects the actual final synchronization checkpoint;
+3. treat the consolidation program as closed;
+4. move remaining work to ordinary maintenance/hygiene or product development.
+
+## Post-audit maintenance / hygiene
+
+Non-blocking items:
+- optional deletion of already-classified historical task branches;
+- long-term retention decision for `main`;
+- long-term retention decision for `backup/replit-bgr-lab-preaudit-20260825`;
+- review `.bak`, dump and `_patch` artifacts before deletion;
+- dependency/security triage from CI `npm audit` findings;
+- GitHub Actions action-runtime maintenance warning review;
+- broader smoke-suite baseline and semantics reconciliation.
 
 ## Ordering rule
 
-Do not move branch cleanup ahead of unique-content reconciliation. Do not convert historical documents into authority merely to simplify cleanup.
+Destructive cleanup remains evidence-driven and explicitly authorized. Historical material does not become current authority merely because it is retained.
