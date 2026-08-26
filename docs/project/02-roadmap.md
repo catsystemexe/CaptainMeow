@@ -15,72 +15,51 @@ This roadmap tracks repository/workflow/documentation consolidation and near-ter
 - F3 Instruction authority audit — COMPLETE
 - F4 Consolidation proposal — COMPLETE / APPROVED
 
-## Current phase — C1 Canonical bootstrap
+## Completed post-gate consolidation
 
-Goal: establish a small authoritative `docs/project/` set without deleting historical material.
+### C1 Canonical docs bootstrap — COMPLETE
 
-Tasks:
-- create canonical project-state summary;
-- create canonical architecture summary;
-- create consolidation roadmap/backlog/decision register;
-- create canonical development workflow;
-- create project-specific ChatGPT profile;
-- keep old documents intact until classification/migration is complete.
+Seven canonical `docs/project/*` documents established and integrated through PR #124.
 
-## C2 Instruction consolidation
+### C2 Instruction consolidation — COMPLETE
 
-Goal: align project and repository-local instructions with the approved role/workflow model.
+Project/repository instruction authority aligned. `AGENTS.md` reduced to repository-local engineering/executor rules and dynamic X/Y branch model. Integrated through PR #125.
 
-Tasks:
-- apply updated Captain Meow Project Instructions;
-- restructure/shorten `AGENTS.md` around repository-local engineering invariants;
-- remove fixed `main → work → X → Y` authority assumptions;
-- retain dynamic X/Y task model;
-- keep Code mode as process/safety overlay;
-- avoid duplicating cross-project role definitions.
+### C3 Documentation migration — COMPLETE
 
-## C3 Documentation consolidation
+README/current entry point corrected, historical documentation centrally classified, obsolete global authority claims retired. Integrated through PR #126.
 
-Goal: remove competing authority while preserving useful history.
+### C4 Workflow normalization / CI — COMPLETE
 
-Tasks:
-- classify existing repo documentation against `docs/project/`;
-- mark stale/historical docs explicitly;
-- promote still-valid design decisions into canonical docs/decision records;
-- update stale README claims;
-- define handoff lifecycle so handoffs remain evidence rather than permanent authority;
-- preserve historical audits instead of silently deleting them.
+Completed outcomes:
+- minimal GitHub `Static Verify` CI integrated through PR #127;
+- CI runtime verified through actual Actions execution;
+- pre-existing `createGame.ts` syntax failure detected and repaired through PR #129;
+- repair passed `npm ci` → `npm run typecheck` → `npm run build`;
+- Replit `origin` normalized from historical `catsystemexe/MGoD` to `catsystemexe/CaptainMeow`;
+- Replit workspace fast-forwarded safely to `pixel_bgr@940358eb9f35c73d9172c6962e483f8f1f6d51bb` with preservation branch intact.
 
-## C4 Repository/runtime workflow hardening
-
-Goal: reduce manual synchronization risk.
-
-Tasks:
-- normalize Replit `origin` from historical `catsystemexe/MGoD` to `catsystemexe/CaptainMeow`;
-- establish explicit dirty-tree preservation gate in runtime workflow;
-- define integration/PR authorization clearly;
-- add minimal GitHub CI for stable static checks;
-- keep known-broken smoke behavior out of mandatory green gates until repaired.
-
-## C5 Drive synchronization
+## Current phase — C5 Drive synchronization
 
 Goal: make Git canonical and Drive a one-way mirror/backup plus audit workspace.
 
 Tasks:
-- define which canonical `docs/project/*` files are mirrored;
-- synchronize GitHub → Drive;
-- label Drive `___docs` historical;
-- prevent Drive copies from becoming competing write authorities.
+- refresh canonical status docs before mirroring;
+- mirror all seven `docs/project/*` documents into a dedicated Drive mirror location;
+- preserve filenames and Git source metadata;
+- keep Drive `___docs` explicitly historical;
+- prevent Drive mirror copies from becoming competing edit authority;
+- verify mirrored content against the Git source revision.
 
 ## C6 Branch reconciliation and cleanup
 
-Run only after documentation/instruction authority is stable.
+Run only after documentation/instruction authority and Drive mirror are stable.
 
 Tasks:
-- inspect the five `main`-unique commits relative to the shared baseline;
-- decide preserve/promote/supersede for each unique change;
+- inspect the five `main`-unique commits relative to the audited lineage;
+- classify each as preserve/promote/supersede;
 - review preservation branch `backup/replit-bgr-lab-preaudit-20260825` separately;
-- define retention policy for merged `codex/*` branches;
+- define retention policy for merged `codex/*` and consolidation/fix branches;
 - delete/normalize branches only through an explicit approved cleanup batch.
 
 ## C7 Final consistency audit
@@ -92,7 +71,8 @@ Verify:
 - GitHub vs Drive mirror;
 - Replit remote/branch expectations;
 - CI semantics;
-- remaining historical/stale authority claims.
+- remaining historical/stale authority claims;
+- branch/preservation state after any approved reconciliation.
 
 ## Ordering rule
 
