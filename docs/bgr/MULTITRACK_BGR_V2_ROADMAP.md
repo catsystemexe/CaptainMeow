@@ -331,7 +331,14 @@ Exact persisted type names and module placement are implementation decisions wit
 
 ## M1 — V2 domain model + shared evaluator foundation
 
-Status: NEXT
+Status: COMPLETE
+
+### Implementation checkpoint (2026-09-03)
+
+- Added pure V2 domain contracts in `src/render/bg/v2/BackgroundV2Types.ts`, coordinate/projection/rebase helpers in `BackgroundV2Math.ts`, and the shared deterministic evaluator in `BackgroundV2Evaluator.ts`.
+- Added Node-compatible M1 coverage in `BackgroundV2.smoke.ts` for transforms, projection/rebase failure handling, filtering, gameplay-boundary classification, ordering, determinism, and source immutability.
+- Repeat-instance materialization, viewport culling, V1 adaptation, persistence, renderer/resource integration, and Pixel BGR Lab integration remain explicitly deferred.
+- STATIC VERIFY: targeted V2 smoke, `npm run typecheck`, `npm run build`, and `git diff --check` passed.
 
 ### Objective
 
@@ -384,7 +391,7 @@ Not required for M1 because no live runtime/UI/render wiring changes are permitt
 
 ## M2 — Coordinate contract + parallax rebase semantics
 
-Status: PLANNED
+Status: NEXT
 
 ### Objective
 
