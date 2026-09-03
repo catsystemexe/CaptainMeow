@@ -169,7 +169,7 @@ export function adaptBackgroundSceneV1ToV2(scene: BackgroundScene): BackgroundV1
   const chunkIds = new Set<string>();
   const validChunks = scene.chunks.map((chunk, index) => ({ chunk, index })).filter(({ chunk, index }) => {
     if (!isValidChunkInterval(chunk)) {
-      diagnostic("invalid-source-data", `Invalid chunk interval at source index ${index}.`, { scope: "chunk", chunkId: chunk?.id });
+      diagnostic("invalid-source-data", `Invalid chunk interval at source index ${index}.`, { scope: "chunk", chunkId: typeof (chunk as { id?: unknown })?.id === "string" ? (chunk as { id: string }).id : undefined });
       return false;
     }
     if (chunkIds.has(chunk.id)) diagnostic("ambiguous-legacy-state", `Duplicate chunk id: ${chunk.id}`, { scope: "chunk", chunkId: chunk.id });
@@ -190,7 +190,7 @@ export function adaptBackgroundSceneV1ToV2(scene: BackgroundScene): BackgroundV1
   let markerOrder = 0;
   const visitMarker = (marker: BackgroundMarker, owner: BackgroundMarkerOwner, runtimeId: string, worldX: number, scope: "global" | "chunk", chunkId?: string) => {
     if (!isValidBackgroundMarker(marker)) {
-      diagnostic("invalid-source-data", "Invalid marker was not preserved.", { scope, chunkId, markerId: marker?.id });
+      diagnostic("invalid-source-data", "Invalid marker was not preserved.", { scope, chunkId, markerId: typeof (marker as { id?: unknown })?.id === "string" ? (marker as { id: string }).id : undefined });
       return;
     }
     const preserved = cloneMarker(marker);

@@ -1,4 +1,5 @@
 import type { BackgroundScene } from "./BackgroundSceneTypes";
+import type { BackgroundSceneV2 } from "../../../bg/v2/BackgroundV2Types";
 
 export type BackgroundBlendMode = "normal" | "additive";
 export type BackgroundLayerKind = "shader" | "flow-ribbon" | "flow-segments" | "sprite";
@@ -44,7 +45,8 @@ export type BackgroundLayer = ShaderBackgroundLayer | FlowBackgroundLayer | Spri
 
 export type BackgroundRuntimeSource =
   | { kind: "layers"; layers: BackgroundLayer[] }
-  | { kind: "scene"; scene: BackgroundScene };
+  | { kind: "scene"; scene: BackgroundScene }
+  | { kind: "scene-v2"; scene: BackgroundSceneV2 };
 
 export interface BackgroundState {
   enabled: boolean;

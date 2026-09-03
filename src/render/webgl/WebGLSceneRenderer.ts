@@ -16,6 +16,9 @@ import { resolveBackgroundMarkers } from "./bg/layers/BackgroundMarkerResolve";
 import { createBackgroundMarkerRuntime, evaluateBackgroundMarkerCrossings, resetBackgroundMarkerRuntime } from "./bg/layers/BackgroundMarkerRuntime";
 import { applyBackgroundMarkerActions, applyBackgroundPresentationOverrides, createBackgroundPresentationOverrides, resetBackgroundPresentationOverrides, stepBackgroundPresentationOverrides } from "./bg/layers/BackgroundPresentationOverrides";
 import { SpriteBackgroundLayerRenderer, type SpriteTextureInfo } from "./bg/layers/SpriteBackgroundLayerRenderer";
+import { evaluateBackgroundScene } from "../bg/v2/BackgroundV2Evaluator";
+import { materializeBackgroundFrameCommands, type BackgroundSpriteDrawCommand } from "./bg/v2/BackgroundV2RenderCommands";
+import { BackgroundV2SpriteRenderer } from "./bg/v2/BackgroundV2SpriteRenderer";
 import type { FlowDisturbance } from "./bg/flowStep";
 import { createAtmosphericFXPass, type AtmosphericFXPass } from "./AtmosphericFXPass";
 import { createSdfPass, type SdfPass } from "./SdfPass";
@@ -412,6 +415,7 @@ export class WebGLSceneRenderer {
   private bgFlowRibbon: FlowRibbonBg;
   private bgFlowSegments: FlowSegmentsBg;
   private spriteBackground: SpriteBackgroundLayerRenderer;
+  private spriteBackgroundV2: BackgroundV2SpriteRenderer;
   private atmosphericFX: AtmosphericFXPass;
   private sdfPass: SdfPass | null;
   private meshPass: MeshPass | null = null;
@@ -513,7 +517,9 @@ export class WebGLSceneRenderer {
     this.bgFlowRibbon = new FlowRibbonBg(gl);
     this.bgFlowSegments = new FlowSegmentsBg(gl);
     this.spriteBackground = new SpriteBackgroundLayerRenderer(gl);
+    this.spriteBackgroundV2 = new BackgroundV2SpriteRenderer(gl);
     (globalThis as any).__CM_BGR_SPRITE_TEXTURES__ = () => this.spriteBackground.getTextureInfoSnapshot();
+    (globalThis as any).__CM_BGR_V2_TEXTURES__ = () => this.spriteBackgroundV2.getTextureInfoSnapshot();
     this.atmosphericFX = createAtmosphericFXPass(gl);
     // SDF vector pass — restores to the main program/VAO/uLogic after each draw.
     // Defensive: a shader compile/link failure must NOT blank the whole scene —
@@ -1096,6 +1102,16 @@ export class WebGLSceneRenderer {
     const sx = gameplaySx;
     const levelX = Number(player?.pos?.x ?? gameplaySx);
     const backgroundState = getBackgroundState(globalThis);
+    const sceneV2 = backgroundState?.source?.kind === "scene-v2" ? backgroundState.source.scene : null;
+    const v2Commands = sceneV2 && backgroundState?.enabled
+      ? materializeBackgroundFrameCommands(evaluateBackgroundScene(sceneV2, {
+          playerWorldX: levelX,
+          cameraScrollX: sx,
+          cameraScrollY: sy,
+          viewportWidth: this.logicW,
+          viewportHeight: this.logicH,
+        }), { playerWorldX: levelX })
+      : { behindGameplay: [] as BackgroundSpriteDrawCommand[], foreground: [] as BackgroundSpriteDrawCommand[] };
     const resetSerial = consumeBackgroundMarkerRuntimeReset(globalThis);
     if (resetSerial !== this.seenMarkerResetSerial) {
       this.seenMarkerResetSerial = resetSerial;
@@ -1126,7 +1142,10 @@ export class WebGLSceneRenderer {
       resetBackgroundMarkerRuntime(this.markerRuntime, null, sx);
       resetBackgroundPresentationOverrides(this.presentationOverrides);
     }
-    if (selectBackgroundFallback(backgroundState) === "layers") {
+    if (sceneV2 && backgroundState?.enabled) {
+      this.spriteBackground.retainLayerIds(new Set());
+      this.spriteBackgroundV2.draw(v2Commands.behindGameplay, { logicW: this.logicW, logicH: this.logicH });
+    } else if (selectBackgroundFallback(backgroundState) === "layers") {
       this.drawBackgroundLayers(resolveBackgroundLayers({ enabled: true, source: { kind: "layers", layers } }), tSec, sx, sy);
     } else {
       this.spriteBackground.retainLayerIds(new Set());
@@ -1692,6 +1711,8 @@ export class WebGLSceneRenderer {
 
     this.drawDebugCollisionRings(debugCollisionCircles);
 
+    this.spriteBackgroundV2.draw(v2Commands.foreground, { logicW: this.logicW, logicH: this.logicH });
+    this.spriteBackgroundV2.retainCommands([...v2Commands.behindGameplay, ...v2Commands.foreground]);
     gl.bindVertexArray(null);
   }
 // --- BG flow disturbances: blast/hit ripples that perturb the flow field ---

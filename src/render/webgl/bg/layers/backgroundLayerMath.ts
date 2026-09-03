@@ -28,12 +28,13 @@ function getDirectLayers(state: BackgroundState | null | undefined): unknown[] |
   if (!state?.enabled) return null;
   if (state.source?.kind === "layers") return state.source.layers;
   if (!state.source && Array.isArray(state.layers)) return state.layers;
-  if (state.source?.kind === "scene") return null;
+  if (state.source?.kind === "scene" || state.source?.kind === "scene-v2") return null;
   return Array.isArray(state.layers) ? state.layers : null;
 }
 
 export function selectBackgroundFallback(state: BackgroundState | null | undefined): BackgroundFallback {
   if (!state?.enabled) return "legacy";
+  if (state.source?.kind === "scene-v2") return state.source.scene?.id ? "layers" : "legacy";
   if (state.source?.kind === "scene") return state.source.scene?.id ? "layers" : "legacy";
   const layers = getDirectLayers(state);
   if (!layers || layers.length === 0) return "legacy";

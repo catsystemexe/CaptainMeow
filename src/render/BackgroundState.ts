@@ -1,5 +1,6 @@
 import { createB1SpriteParallaxDemoState, createB2BackgroundSceneDemoState, type BackgroundState } from "./webgl/bg/layers/BackgroundLayerTypes";
 import type { BackgroundScene } from "./webgl/bg/layers/BackgroundSceneTypes";
+import type { BackgroundSceneV2 } from "./bg/v2/BackgroundV2Types";
 
 const STATE_KEY = "__CM_BACKGROUND_STATE__";
 const PREVIEW_KEY = "__CM_BACKGROUND_PREVIEW__";
@@ -50,6 +51,17 @@ export function setBackgroundScene(scene: BackgroundScene, root: any = globalThi
   const next: BackgroundState = { enabled: true, source: { kind: "scene", scene } };
   setBackgroundState(next, root);
   return next;
+}
+
+export function setBackgroundSceneV2(scene: BackgroundSceneV2, root: any = globalThis): BackgroundState {
+  const next: BackgroundState = { enabled: true, source: { kind: "scene-v2", scene } };
+  setBackgroundState(next, root);
+  return next;
+}
+
+export function getBackgroundSceneV2(root: any = globalThis): BackgroundSceneV2 | null {
+  const current = getBackgroundState(root);
+  return current?.source?.kind === "scene-v2" ? current.source.scene : null;
 }
 
 export function clearBackgroundState(root: any = globalThis): void {
@@ -140,6 +152,28 @@ export function enableB2BackgroundSceneDemo(root: any = globalThis): BackgroundS
   const next = createB2BackgroundSceneDemoState();
   setBackgroundState(next, root);
   return next;
+}
+
+/** Deterministic console hook for the M4 post-PR browser verification. */
+export function enableM4BackgroundV2Demo(root: any = globalThis): BackgroundState {
+  const asset = { id: "m4-shared-stars", url: "/assets/bg/b1_pixel_stars.svg" };
+  return setBackgroundSceneV2({
+    version: 2,
+    id: "m4-render-instance-resource-demo",
+    environment: {},
+    tracks: [
+      { id: "far", name: "Far shared resource", role: "far", mode: "sequence", enabled: true, parallax: { x: 0.15, y: 0.1 }, zBase: -10, segments: [], objects: [
+        { id: "normal", asset: { ...asset }, startTrackX: 0, y: 0, width: 320, height: 180, localZ: 0, opacity: 0.35, blend: "normal", enabled: true },
+        { id: "additive", asset: { ...asset }, startTrackX: 320, y: 40, width: 160, height: 120, localZ: 1, opacity: 0.8, blend: "additive", enabled: true },
+      ] },
+      { id: "near", name: "Explicit segment clip", role: "near", mode: "sequence", enabled: true, parallax: { x: 0.7, y: 0.35 }, zBase: 10, segments: [
+        { id: "clip", startTrackX: 120, widthPx: 180, asset: { ...asset }, offsetY: 80, opacity: 0.7, blend: "normal", localZ: 0, enabled: true },
+      ], objects: [] },
+      { id: "foreground", name: "Foreground", role: "foreground", mode: "sequence", enabled: true, parallax: { x: 0.9, y: 0.6 }, zBase: 0, segments: [], objects: [
+        { id: "front", asset: { ...asset }, startTrackX: 180, y: 120, width: 140, height: 90, localZ: 0, opacity: 0.55, blend: "additive", enabled: true },
+      ] },
+    ],
+  }, root);
 }
 
 export function disableTypedBackground(root: any = globalThis): void {
