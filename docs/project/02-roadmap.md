@@ -1,9 +1,18 @@
 # Captain Meow — Roadmap
 
 Status: CANONICAL DEVELOPMENT / CONSOLIDATION ROADMAP
-Last updated: 2026-08-26
+Last updated: 2026-09-03
 
 This roadmap tracks repository/workflow/documentation consolidation and near-term engineering governance. It is not a substitute for a product/gameplay feature roadmap.
+
+## Active product workstream
+
+Multitrack Pixel BGR Engine V2 is the current focused product-development workstream.
+
+Canonical workstream roadmap:
+- `docs/bgr/MULTITRACK_BGR_V2_ROADMAP.md`
+
+Detailed BGR architecture, milestone scope, acceptance criteria, and STATIC/RUNTIME verification gates are maintained there rather than duplicated in this project-level roadmap.
 
 ## Completed audit sequence
 
