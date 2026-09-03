@@ -468,7 +468,15 @@ Required before declaring compatibility complete: live BGR scenes compared again
 
 ## M4 — Renderer instance/resource model
 
-Status: NEXT
+Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
+
+### M4 static implementation checkpoint (2026-09-03)
+
+- Added a pure evaluated-instance to sprite-command boundary with normalized URL resource identity, deterministic ordering preservation, explicit/native sizing, V1 compatibility activation/repeat materialization, and explicit segment/object clipping commands.
+- Added a dedicated V2 WebGL sprite renderer whose texture cache is keyed by resource rather than instance, retains native metadata/error state, uses nearest/clamped shared textures, and materializes per-instance repeat positions on the CPU.
+- Added the typed `scene-v2` runtime source, evaluator-backed behind-gameplay and foreground passes, resource metadata debug snapshot, and deterministic `window.__CM.bgrM4Demo.v2()` / `.compatibility()` verification hooks.
+- Kept V1 scenes/layers, marker presentation, shader/flow passthrough, and the existing layer-keyed texture metadata API on their proven legacy rendering path during this controlled integration.
+- Static checks pass. Browser/Replit verification remains mandatory; M3 runtime compatibility also remains pending until representative V1 scenes are visually checked.
 
 ### Objective
 
@@ -499,7 +507,7 @@ Required: browser/manual visual verification of ordering, repeated assets, opaci
 
 ## M5 — Read-only multitrack Pixel BGR Lab
 
-Status: PLANNED
+Status: BLOCKED ON M4 RUNTIME VERIFY
 
 ### Objective
 

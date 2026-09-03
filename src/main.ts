@@ -11,7 +11,7 @@ if ((window as any).__CM.__rafId) {
 (document.title = `CM boot#${bootN}`);
 
 
-import { clearBackgroundPreviewState, disableTypedBackground, enableB2BackgroundSceneDemo, getBackgroundState } from "./render/BackgroundState";
+import { clearBackgroundPreviewState, disableTypedBackground, enableB2BackgroundSceneDemo, enableM4BackgroundV2Demo, getBackgroundState } from "./render/BackgroundState";
 import { createPixelBgrLabToggleButton, togglePixelBgrLab } from "./ui/PixelBgrLabAccess";
 import { VFXSystem } from "./game/vfx/VFXSystem";
 
@@ -22,6 +22,11 @@ import { handleCollisionOverlayKeydown } from "./debug/CollisionOverlayToggle";
 export {};
 
 console.log("[BOOT] main.ts running");
+(window as any).__CM.bgrM4Demo = {
+  v2: () => enableM4BackgroundV2Demo(globalThis),
+  compatibility: () => enableB2BackgroundSceneDemo(globalThis),
+  clear: () => disableTypedBackground(globalThis),
+};
 
 document.body.style.userSelect = "none";
 (document.body.style as any).webkitUserSelect = "none";
