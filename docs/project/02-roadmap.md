@@ -1,9 +1,18 @@
 # Captain Meow — Roadmap
 
 Status: CANONICAL DEVELOPMENT / CONSOLIDATION ROADMAP
-Last updated: 2026-08-26
+Last updated: 2026-09-03
 
 This roadmap tracks repository/workflow/documentation consolidation and near-term engineering governance. It is not a substitute for a product/gameplay feature roadmap.
+
+## Active product workstream
+
+Multitrack Pixel BGR Engine V2 is the current focused product-development workstream.
+
+Canonical workstream roadmap:
+- `docs/bgr/MULTITRACK_BGR_V2_ROADMAP.md`
+
+Detailed BGR architecture, milestone scope, acceptance criteria, and STATIC/RUNTIME verification gates are maintained there rather than duplicated in this project-level roadmap.
 
 ## Completed audit sequence
 
@@ -50,12 +59,13 @@ Completed outcomes:
 ### C6 Branch reconciliation — COMPLETE
 
 Completed outcomes:
-- `main` five-commit divergence classified as historical merge topology only; no net unique file-state content requires promotion;
+- `main` five-commit divergence classified as historical merge topology only; no net unique file-state content required promotion;
 - preservation branch functional seek-wiring intent confirmed as already promoted through PR #129;
 - 111 historical `codex/*` branches inventoried at audit time;
-- six historical open PRs (#1, #2, #4, #5, #11, #22) individually classified and then closed without merge after explicit authorization;
-- merged/reachable and superseded task branches classified as cleanup candidates;
-- physical branch deletion left as optional hygiene because the connected GitHub capability does not expose branch-ref deletion.
+- six historical open PRs (#1, #2, #4, #5, #11, #22) individually classified and closed without merge after explicit authorization;
+- merged/reachable and superseded task branches classified by unique-content evidence;
+- post-audit physical cleanup completed on 2026-09-03: historical/superseded remote branches and `main` were deleted after checkpointing and individual safety review;
+- retained remote branches are `pixel_bgr`, `backup/replit-bgr-lab-preaudit-20260825`, `bgr`, and `feature/gameplay-polish`.
 
 ### C7 Final consistency audit — COMPLETE
 
@@ -83,15 +93,14 @@ Audit evidence: `___CaptainMeow/___AUDIT/07_FINAL_CONSISTENCY_AUDIT`.
 - affected Drive mirror documents were synchronized after the C7 closeout;
 - `README_MIRROR` records the exact synchronized Git checkpoint;
 - Replit is normalized to the canonical repository and retained as runtime/verification environment;
-- branch unique-content reconciliation is complete;
+- branch unique-content reconciliation and authorized branch cleanup are complete;
 - remaining work has moved to ordinary maintenance/hygiene or product development.
 
 ## Post-audit maintenance / hygiene
 
 Non-blocking items:
-- optional deletion of already-classified historical task branches;
-- long-term retention decision for `main`;
 - long-term retention decision for `backup/replit-bgr-lab-preaudit-20260825`;
+- explicit resolution/port-or-retire decisions for the retained reference branches `bgr` and `feature/gameplay-polish`;
 - review `.bak`, dump and `_patch` artifacts before deletion;
 - dependency/security triage from CI `npm audit` findings;
 - GitHub Actions action-runtime maintenance warning review;
