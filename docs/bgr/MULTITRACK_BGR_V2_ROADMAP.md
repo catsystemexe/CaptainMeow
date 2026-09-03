@@ -391,7 +391,15 @@ Not required for M1 because no live runtime/UI/render wiring changes are permitt
 
 ## M2 — Coordinate contract + parallax rebase semantics
 
-Status: NEXT
+Status: COMPLETE
+
+### Implementation checkpoint (2026-09-03)
+
+- Hardened named track, screen, camera-scroll, and X projection contracts while retaining the M1 evaluator behavior.
+- Added explicit non-invertible-parallax results for zero, `NaN`, and infinite parallax; finite negative parallax remains supported and round-trippable.
+- Added explicit preserve-world-timing and preserve-track-geometry operations, including complete interval rebasing of both start and extent.
+- STATIC VERIFY: targeted V2 smoke, `npm run typecheck`, `npm run build`, and `git diff --check` passed.
+- V1 adaptation, repeat materialization, renderer/runtime wiring, UI, and persistence remain deferred.
 
 ### Objective
 
@@ -420,7 +428,7 @@ Not required unless implementation touches existing runtime wiring.
 
 ## M3 — V1 compatibility adapter
 
-Status: PLANNED
+Status: NEXT
 
 ### Objective
 
@@ -686,6 +694,6 @@ Renderer-specific numeric Z boundaries, clipping details, texture cache key norm
 
 ## Next safe implementation task
 
-**M1 — V2 domain model + shared evaluator foundation.**
+**M3 — V1 compatibility adapter.**
 
 No runtime/visual verification is required until V2 begins affecting live renderer or UI behavior.
