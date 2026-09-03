@@ -1,25 +1,57 @@
-export interface BackgroundPoint {
+export interface TrackPoint {
   x: number;
   y: number;
 }
 
-export type ProjectionResult =
-  | { ok: true; value: number }
+/** @deprecated Prefer the coordinate-space-specific point types. */
+export type BackgroundPoint = TrackPoint;
+
+export interface CameraScroll {
+  x: number;
+  y: number;
+}
+
+export interface TrackParallax {
+  x: number;
+  y: number;
+}
+
+export interface TrackScroll {
+  x: number;
+  y: number;
+}
+
+export interface ScreenPoint {
+  x: number;
+  y: number;
+}
+
+export interface TrackXInterval {
+  startTrackX: number;
+  widthPx: number;
+}
+
+export type ProjectionResult<Value = number> =
+  | { ok: true; value: Value }
   | { ok: false; reason: "non-invertible-parallax" };
 
-function isInvertibleParallax(parallax: number): boolean {
+export function isFiniteScalar(value: number): boolean {
+  return Number.isFinite(value);
+}
+
+export function isInvertibleParallax(parallax: number): boolean {
   return Number.isFinite(parallax) && parallax !== 0;
 }
 
-export function calculateTrackScroll(cameraScroll: BackgroundPoint, parallax: BackgroundPoint): BackgroundPoint {
+export function calculateTrackScroll(cameraScroll: CameraScroll, parallax: TrackParallax): TrackScroll {
   return { x: cameraScroll.x * parallax.x, y: cameraScroll.y * parallax.y };
 }
 
 export function trackPointToScreen(
-  trackPoint: BackgroundPoint,
-  cameraScroll: BackgroundPoint,
-  parallax: BackgroundPoint,
-): BackgroundPoint {
+  trackPoint: TrackPoint,
+  cameraScroll: CameraScroll,
+  parallax: TrackParallax,
+): ScreenPoint {
   const trackScroll = calculateTrackScroll(cameraScroll, parallax);
   return { x: trackPoint.x - trackScroll.x, y: trackPoint.y - trackScroll.y };
 }
@@ -49,17 +81,45 @@ export function calculateSegmentOverlap(
 
 /** Rebase placement while retaining its position on the gameplay/world timeline. */
 export function rebaseTrackXPreservingWorldTiming(
-  trackX: number,
+  oldTrackX: number,
   oldParallaxX: number,
   newParallaxX: number,
 ): ProjectionResult {
-  if (!isInvertibleParallax(oldParallaxX) || !isInvertibleParallax(newParallaxX)) {
-    return { ok: false, reason: "non-invertible-parallax" };
-  }
-  return { ok: true, value: (trackX / oldParallaxX) * newParallaxX };
+  const worldX = trackXToWorldX(oldTrackX, oldParallaxX);
+  if (!worldX.ok) return worldX;
+  return worldXToTrackX(worldX.value, newParallaxX);
 }
 
 /** Explicit alternative to rebasing: retain the authored track-space geometry. */
-export function preserveTrackGeometry(trackX: number): number {
-  return trackX;
+export function preserveTrackGeometry(oldTrackX: number): number {
+  return oldTrackX;
+}
+
+/** Rebase both endpoints so the complete authored interval retains its world-timeline extent. */
+export function rebaseTrackXIntervalPreservingWorldTiming(
+  oldInterval: TrackXInterval,
+  oldParallaxX: number,
+  newParallaxX: number,
+): ProjectionResult<TrackXInterval> {
+  const newStartTrackX = rebaseTrackXPreservingWorldTiming(
+    oldInterval.startTrackX,
+    oldParallaxX,
+    newParallaxX,
+  );
+  if (!newStartTrackX.ok) return newStartTrackX;
+
+  const newEndTrackX = rebaseTrackXPreservingWorldTiming(
+    oldInterval.startTrackX + oldInterval.widthPx,
+    oldParallaxX,
+    newParallaxX,
+  );
+  if (!newEndTrackX.ok) return newEndTrackX;
+
+  return {
+    ok: true,
+    value: {
+      startTrackX: newStartTrackX.value,
+      widthPx: newEndTrackX.value - newStartTrackX.value,
+    },
+  };
 }
