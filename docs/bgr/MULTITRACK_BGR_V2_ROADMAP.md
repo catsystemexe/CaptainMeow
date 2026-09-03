@@ -428,7 +428,15 @@ Not required unless implementation touches existing runtime wiring.
 
 ## M3 — V1 compatibility adapter
 
-Status: NEXT
+Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
+
+### Implementation checkpoint (2026-09-03)
+
+- Added a pure V1 compatibility adapter that maps each valid sprite layer to one V2 custom track/object while preserving placement, parallax, presentation properties, source identity, and deterministic compatibility Z order.
+- Preserved half-open chunk activation intervals, exact per-axis repeat flags (with repeat materialization deferred), V1 markers/actions, and unsupported shader/flow layers as explicit compatibility metadata.
+- Added typed deterministic diagnostics for unsupported layers/repeat semantics, unresolved marker targets, ambiguous identities, and invalid source data.
+- Added Node-compatible static equivalence coverage for global/chunk sprite transforms through the V2 evaluator, deterministic output, source immutability, and preservation without silent repeat expansion.
+- Live renderer/runtime equivalence remains deferred to the first M4 integration gate; no visual or runtime compatibility is claimed by this checkpoint.
 
 ### Objective
 
@@ -460,7 +468,7 @@ Required before declaring compatibility complete: live BGR scenes compared again
 
 ## M4 — Renderer instance/resource model
 
-Status: PLANNED
+Status: NEXT
 
 ### Objective
 
