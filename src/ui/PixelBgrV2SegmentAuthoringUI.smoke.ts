@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
+assert.match(source,/V2 · SEGMENT AUTHORING/);
+assert.match(source,/track\.mode==="sequence"/);
+assert.match(source,/Repeat segment authoring is limited\/read-only/);
+assert.match(source,/Gameplay chunks\/markers: unavailable in current gameplay model/);
+assert.match(source,/objects, environment, gameplay reference, and track structure remain read-only/);
+assert.match(source,/setBackgroundSceneV2\(result\.scene,globalThis\)/);
+assert.match(source,/private renderSceneToolbar\(\)/,"V1 authoring path remains present");
+assert.doesNotMatch(source,/updateV2Object|updateV2Environment|saveV2|exportV2/);
+console.log("[SMOKE] PixelBgrV2SegmentAuthoringUI OK ✅");

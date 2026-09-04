@@ -574,9 +574,17 @@ Completed by the M5 runtime verification checkpoint above.
 
 ## M6 — Segment authoring
 
-Status: PLANNED
+Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
 
-M5 completion removes the prerequisite blocker; M6 is ready for implementation without changing its planned scope or acceptance criteria.
+### M6 static implementation checkpoint (2026-09-04)
+
+- Added a pure immutable V2 segment edit path for lookup/selection, create, duplicate, delete, move, resize, property validation, stable identity, and geometric overlap calculation.
+- Scene Lab now provides sequence-track selection and segment controls, isolated timeline move/edge-resize dragging, independent per-track geometry, overlap visualization, and a focused selected-segment inspector.
+- Repeat tracks remain explicitly read-only for M6 placement semantics; track modes are visible and are never silently converted.
+- Track parallax remains read-only, with the required future semantic choice surfaced: keep authored track-space positions or preserve visual alignment using an explicitly defined rebase.
+- Successful edits replace the active authoritative `BackgroundSceneV2` through the typed in-memory state write path for live renderer observation. M6 adds no file or local-storage persistence.
+- Focused editing/projection/timeline/Lab/gameplay-seek/V2 smokes, typecheck, and production build pass. The broad smoke runner reaches the documented unrelated `BombExplosionChain.smoke.ts` / `DamageSystem.rules.onExplosion` baseline failure after the M6 smokes pass.
+- Runtime browser verification remains pending; M6 is not complete until the manual authoring workflow is verified.
 
 ### Objective
 
