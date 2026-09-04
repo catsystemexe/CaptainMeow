@@ -19,6 +19,7 @@ import { applyV2SegmentDrag, calculateV2SegmentOverlaps, canAuthorV2Segments, cr
 import { createV2Object, deleteV2Object, duplicateV2Object, findV2Object, moveV2Object, updateV2Object, type V2ObjectEditResult, type V2ObjectPatch } from "./PixelBgrV2ObjectEditing";
 import { screenPointToV2TrackPoint, v2TrackPointToScreen } from "./PixelBgrV2PlacementCoordinates";
 import type { BackgroundObject, BackgroundSceneV2, BackgroundSegment } from "../render/bg/v2/BackgroundV2Types";
+import { PixelBgrRenderCoordinator } from "./PixelBgrRenderCoordinator";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -65,6 +66,7 @@ export class PixelBgrLabUI {
   private overlayOpacity = 0.94;
   private readonly logicW = 896;
   private readonly logicH = 504;
+  private readonly renderCoordinator = new PixelBgrRenderCoordinator();
 
   constructor() {
     const activeState = getBackgroundState(globalThis);
@@ -86,6 +88,7 @@ export class PixelBgrLabUI {
   hide(): void { this.close(); }
   toggle(): void { this.visible ? this.close() : this.open(); }
   isOpen(): boolean { return this.visible; }
+  updateRuntimeOverlay(): void { if (this.visible && this.overlay) this.syncOverlay(); }
   onOpenChange(listener: (open: boolean) => void): () => void { this.openListeners.add(listener); listener(this.visible); return () => this.openListeners.delete(listener); }
   dispose(): void { this.endTimelineDrag(); this.endV2SegmentDrag(); this.endCursorDrag(); this.endDrag(); this.removeOverlay(); this.unsub(); this.openListeners.clear(); this.root.remove(); }
   private notifyOpenChange(): void { for (const listener of [...this.openListeners]) listener(this.visible); }
@@ -97,6 +100,9 @@ export class PixelBgrLabUI {
   private setOwner(owner: LayerOwner): void { this.owner = owner; this.selectedLayerId = this.currentLayers()[0]?.id ?? ""; this.activeTab = owner.kind === "chunk" ? "layers" : "chunks"; this.render(); }
   private setActiveTab(tab: PixelBgrLabTab): void { this.activeTab = normalizePixelBgrLabTab(tab, this.activeTab); this.render(); }
   private render(): void {
+    this.renderCoordinator.run(() => this.renderOwned());
+  }
+  private renderOwned(): void {
     while (this.root.childNodes.length > 1) this.root.removeChild(this.root.lastChild!);
     this.root.style.setProperty("--cm-scene-lab-opacity", String(this.overlayOpacity));
     this.activeTab = normalizePixelBgrLabTab(this.activeTab, pixelBgrLabTabForSelection(Boolean(this.selectedLayer()), this.selectedLayer()?.kind));

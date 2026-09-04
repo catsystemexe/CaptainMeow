@@ -630,6 +630,8 @@ async function main() {
         }
       });
 
+      (globalThis as any).__CM_PIXEL_BGR_LAB_UI__?.updateRuntimeOverlay?.();
+
       // Event-driven chromatic aberration: peak CA over active VFX, decaying
       // with each effect's TTL. Explosion adds up to +0.008 (~3.5x baseline),
       // hit spark up to +0.004. Falls back to baseline when nothing is active.

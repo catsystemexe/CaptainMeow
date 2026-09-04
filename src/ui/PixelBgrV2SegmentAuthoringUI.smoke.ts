@@ -11,6 +11,8 @@ assert.match(source,/Object inspector/);
 assert.match(source,/place segment on canvas/);
 assert.match(source,/place object on canvas/);
 assert.match(source,/V2 canvas selection/);
+assert.match(source,/updateRuntimeOverlay/,"the existing game frame can synchronize the overlay with runtime camera motion");
+assert.match(source,/moveV2Object\(scene,track\.id,this\.v2SelectedObjectId,authored\.x,authored\.y\)/,"object canvas placement writes both authored axes");
 assert.match(source,/duplicateV2Object/);
 assert.match(source,/deleteV2Object/);
 assert.match(source,/private renderSceneToolbar\(\)/,"V1 authoring path remains present");
