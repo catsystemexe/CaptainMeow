@@ -3,7 +3,7 @@
 Status: ACTIVE WORKSTREAM / IMPLEMENTATION CONTROL DOCUMENT
 Baseline branch: `pixel_bgr`
 Baseline checkpoint at roadmap creation: `b1d0443bfe927eee4f00af5479dece0b8442d797`
-Last updated: 2026-09-03
+Last updated: 2026-09-04
 
 ## Purpose
 
@@ -514,7 +514,7 @@ Completed by the M4 runtime verification checkpoint above.
 
 ## M5 — Read-only multitrack Pixel BGR Lab
 
-Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
+Status: COMPLETE — STATIC + RUNTIME VERIFIED
 
 ### M5 static implementation checkpoint (2026-09-04)
 
@@ -522,7 +522,16 @@ Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
 - Added a horizontally scrollable read-only multitrack UI with shared GameplaySeek-backed Player X cursor, finite segment blocks, point/width-aware object markers, environment information, and no V2 authoring controls.
 - Prevented Scene Lab construction from applying its persisted V1 draft over an active V2 source; the existing V1 draft and authoring path remains unchanged when V2 is not active.
 - Gameplay reference uses current gameplay-owned data only. Because no gameplay-owned chunk/marker source currently exists, those overlays are deferred and the lane states their unavailability; legacy V1 `BackgroundScene` chunks/markers are not reinterpreted as gameplay data.
-- Focused projection, source-preservation, V1 regression, GameplaySeek, and V2 checks pass, as do typecheck and production build. Browser/manual verification remains pending.
+- Focused projection, source-preservation, V1 regression, GameplaySeek, and V2 checks pass, as do typecheck and production build.
+
+### M5 runtime verification checkpoint (2026-09-04)
+
+- Local VS Code browser/runtime verification passed for V2 source preservation, read-only mode, lane projection, segments, objects, the environment lane, the gameplay reference lane, shared Player X cursor / GameplaySeek synchronization, horizontal timeline scrolling, V1 regression, and cleanup.
+- The active `scene-v2` source remained active when Scene Lab opened; `V2 · READ ONLY` was visible, and no V2 edit, delete, duplicate, resize, or drag controls were exposed.
+- Environment, Far, Mid, Near, Gameplay reference, and Foreground lanes rendered; finite segment `segment-boundary` rendered at its authored `360..488` span; unavailable gameplay-owned chunks/markers were reported without reclassifying V1 background data.
+- Clicking or dragging the single shared Player X cursor changed the authoritative gameplay Player X and world scroll; horizontal timeline scrolling preserved lane alignment and cursor synchronization.
+- V1 Scene Lab reopened with its existing authoring controls intact. No page errors or new M5-specific console/runtime errors were observed.
+- Known baseline renderer warning: `WebGL: INVALID_OPERATION: uniform4f: location is not from the associated program`. This remains a separate baseline defect, is not M5-specific, and does not block M5 completion; no fix is claimed here.
 
 ### Objective
 
@@ -559,13 +568,15 @@ Custom tracks may also be shown according to role/order.
 
 ### RUNTIME VERIFY
 
-Required: browser/manual visual verification of lane projection, cursor synchronization, scrolling, and gameplay reference alignment.
+Completed by the M5 runtime verification checkpoint above.
 
 ---
 
 ## M6 — Segment authoring
 
 Status: PLANNED
+
+M5 completion removes the prerequisite blocker; M6 is ready for implementation without changing its planned scope or acceptance criteria.
 
 ### Objective
 
