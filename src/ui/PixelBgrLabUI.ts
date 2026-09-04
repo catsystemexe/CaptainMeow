@@ -1,4 +1,5 @@
-import { clearBackgroundPreviewState, getBackgroundScene, requestBackgroundMarkerRuntimeReset, setBackgroundScene, subscribeBackgroundState } from "../render/BackgroundState";
+import { clearBackgroundPreviewState, getBackgroundScene, getBackgroundSceneV2, getBackgroundState, requestBackgroundMarkerRuntimeReset, setBackgroundScene, subscribeBackgroundState } from "../render/BackgroundState";
+import type { BackgroundState } from "../render/webgl/bg/layers/BackgroundLayerTypes";
 import { Pause, Play, SkipBack, SkipForward, Square } from "lucide";
 import { createLucideIcon } from "../dev/ui/lucideIcon";
 import type { BackgroundLayer, SpriteBackgroundLayer } from "../render/webgl/bg/layers/BackgroundLayerTypes";
@@ -13,6 +14,7 @@ import { BACKGROUND_ASSET_CATALOG } from "./PixelBgrLabAssets";
 import { clientPointToInternalPoint, layerRenderedOrigin, renderedOriginToAuthoredOffset, resolveCanvasViewportRect, type Point } from "./PixelBgrLabCoordinates";
 import { stepNumericValue, validationSummaryState, toggleValidationExpanded, type NumericStepOptions } from "./PixelBgrLabNumeric";
 import { applyChunkTimelineDrag, chunkEndX, chunkJumpState, chunkOverlapRanges, chunkTimelineBlocks, clickedTimelineCurrentX, createTimelineScale, cursorDragCurrentX, DEFAULT_CHUNK_TIMELINE_SNAP_PX, isolateTimelinePointerEvent, MIN_CHUNK_TIMELINE_LENGTH, overlapsForChunk, sceneTimelineBounds, shouldHandleTimelinePointerEvent, timelinePointerDeltaWorld, timelinePxToWorld, worldToTimelinePx, type ChunkTimelineDragMode, type TimelineScale } from "./PixelBgrTimeline";
+import { projectBackgroundV2Timeline, type V2TimelineProjection } from "./PixelBgrV2TimelineProjection";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -27,6 +29,7 @@ export const PIXEL_BGR_LAB_TAB_LABELS: Record<PixelBgrLabTab, string> = { scene:
 export function normalizePixelBgrLabTab(value: unknown, fallback: PixelBgrLabTab = "scene"): PixelBgrLabTab { return typeof value === "string" && (PIXEL_BGR_LAB_TABS as readonly string[]).includes(value) ? value as PixelBgrLabTab : fallback; }
 export function pixelBgrLabTabForSelection(hasSelectedLayer: boolean, selectedLayerKind?: string, placementRequested = false): PixelBgrLabTab { if (placementRequested && selectedLayerKind === "sprite") return "placement"; return hasSelectedLayer ? "properties" : "scene"; }
 export function pixelBgrLabTabAfterLayerDelete(current: PixelBgrLabTab, hasSelectedLayer: boolean): PixelBgrLabTab { return hasSelectedLayer ? current : current === "properties" || current === "placement" ? "layers" : current; }
+export function shouldApplyPixelBgrV1Draft(state: BackgroundState | null): boolean { return state?.source?.kind !== "scene-v2"; }
 
 export class PixelBgrLabUI {
   private root: HTMLDivElement;
@@ -55,15 +58,17 @@ export class PixelBgrLabUI {
   private readonly logicH = 504;
 
   constructor() {
+    const activeState = getBackgroundState(globalThis);
     this.draft = loadDraft(localStorage) ?? getBackgroundScene(globalThis) ?? createDemoScene();
-    this.applyIfValid();
+    if (shouldApplyPixelBgrV1Draft(activeState)) this.applyIfValid();
     this.root = el("div", "cm-pixel-bgr-lab");
     this.root.style.display = "none";
     const style = el("style");
     style.textContent = `.cm-bgr-placement-overlay{position:fixed;z-index:100000;pointer-events:none;box-sizing:border-box}.cm-bgr-placement-box{position:absolute;border:2px solid #ffe66d;box-sizing:border-box}.cm-bgr-placement-origin{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;background:#ff4d6d;border-radius:50%}.cm-bgr-placement-chunk{position:absolute;top:0;bottom:0;border-left:2px dashed #66e3ff;border-right:2px dashed #66e3ff;background:rgba(102,227,255,.04)}.cm-bgr-placement-label{position:absolute;left:4px;top:4px;color:#eaf6ff;background:rgba(0,0,0,.65);font:12px monospace;padding:2px 4px}.cm-pixel-bgr-lab{position:fixed;top:8px;right:8px;bottom:8px;width:clamp(360px,34vw,520px);max-width:min(520px,calc(100vw - 96px));min-width:min(420px,calc(100vw - 96px));z-index:100001;background:rgba(4,8,16,var(--cm-scene-lab-opacity,.94));color:#eaf6ff;border:1px solid rgba(120,220,255,.28);border-radius:8px;font:12px/1.25 ui-monospace,Menlo,Consolas,monospace;padding:8px;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;min-height:0}.cm-pixel-bgr-lab h3{margin:0;color:#8ee8ff}.cm-pixel-bgr-lab button{margin:1px;min-height:26px;padding:2px 7px;background:#12344a;color:#eaf6ff;border:1px solid #2e83aa;border-radius:4px}.cm-pixel-bgr-lab input,.cm-pixel-bgr-lab select,.cm-pixel-bgr-lab textarea{min-height:26px;background:#071521;color:#eaf6ff;border:1px solid #28516d;border-radius:3px;font:inherit;box-sizing:border-box;max-width:100%}.cm-pixel-titlebar{display:flex;gap:6px;align-items:center;justify-content:space-between;min-width:0}.cm-pixel-scene-summary{opacity:.72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cm-pixel-tabs{display:flex;gap:3px;flex-wrap:wrap;margin:6px 0}.cm-pixel-tab[aria-selected="true"]{background:#235b80;border-color:#8ee8ff;color:#fff}.cm-pixel-tab-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:2px}.cm-pixel-panel{border:1px solid rgba(120,220,255,.18);border-radius:6px;padding:5px;overflow:auto;min-height:0;margin-bottom:6px;box-sizing:border-box}.cm-pixel-props{overflow-y:visible;overflow-x:hidden}.cm-pixel-row{display:flex;gap:4px;align-items:center;margin:3px 0;min-width:0}.cm-pixel-row label{min-width:82px;opacity:.78}.cm-pixel-row input,.cm-pixel-row select{flex:1 1 auto;min-width:0}.cm-pixel-list button{display:block;width:100%;text-align:left;margin:1px 0;padding:2px 5px;overflow:hidden;text-overflow:ellipsis}.cm-pixel-list button.sel{background:#235b80}.cm-pixel-msg{white-space:pre-wrap;color:#ffd166;max-height:150px;overflow:auto;overflow-wrap:anywhere;border:1px solid rgba(255,209,102,.18);border-radius:4px;padding:3px 5px;margin:3px 0}.cm-pixel-summary{width:100%;text-align:left}.cm-pixel-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:4px 0;min-width:0}.cm-pixel-toolbar input{width:190px}.cm-pixel-stepper{display:grid;grid-template-columns:28px minmax(72px,1fr) 28px;gap:3px;align-items:center;width:100%}.cm-pixel-stepper input{width:100%;text-align:right}.cm-pixel-stepper button{min-width:28px;padding:0}.cm-pixel-visual{margin-top:6px;padding-top:5px}.cm-pixel-nudges button{min-width:32px}.cm-pixel-preview{margin-top:5px}.cm-scene-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap}.cm-scene-toolbar input[type=text]{width:160px}.cm-timeline{position:relative;height:138px;border:1px solid rgba(120,220,255,.22);border-radius:6px;margin:6px 0;background:rgba(3,12,22,.78);overflow:hidden;user-select:none}.cm-ruler{position:absolute;left:0;right:0;top:0;height:26px;border-bottom:1px solid rgba(120,220,255,.16)}.cm-ruler-tick{position:absolute;top:0;height:100%;border-left:1px solid rgba(120,220,255,.22);font-size:10px;color:#9fdff2;padding-left:3px}.cm-chunk-line{position:absolute;left:0;right:0;top:42px;height:42px;border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.035)}.cm-chunk-block{position:absolute;top:46px;height:34px;cursor:grab;border:1px solid #52d7ff;border-radius:5px;background:rgba(45,132,180,.72);color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px;box-sizing:border-box;font-size:11px}.cm-chunk-block:hover{filter:brightness(1.18)}.cm-chunk-block.dragging{cursor:grabbing;filter:brightness(1.3)}.cm-chunk-block.sel{border-color:#ffe66d;box-shadow:0 0 0 2px rgba(255,230,109,.28);background:rgba(72,153,211,.9)}.cm-chunk-handle{position:absolute;top:0;bottom:0;width:10px;background:rgba(255,255,255,.22);border:0;padding:0;min-height:0;margin:0}.cm-chunk-handle.left{left:0;cursor:ew-resize}.cm-chunk-handle.right{right:0;cursor:ew-resize}.cm-overlap{position:absolute;top:42px;height:42px;background:repeating-linear-gradient(135deg,rgba(255,75,90,.65),rgba(255,75,90,.65) 4px,rgba(255,75,90,.28) 4px,rgba(255,75,90,.28) 8px);border-left:1px solid #ff4d6d;border-right:1px solid #ff4d6d;pointer-events:none}.cm-marker-row{position:absolute;left:0;right:0;top:96px;height:30px;border-top:1px solid rgba(120,220,255,.16)}.cm-marker-dot{position:absolute;top:6px;width:8px;height:18px;margin-left:-4px;border-radius:4px;background:#a78bfa}.cm-marker-dot.chunk{background:#4ade80}.cm-transport-button{display:inline-grid;place-items:center;min-width:28px;width:28px;padding:0}.cm-transport-button svg{width:16px;height:16px}.cm-mode-pill{padding:2px 6px;border:1px solid rgba(255,209,102,.35);border-radius:999px;color:#ffd166}.cm-current-x{font-weight:700;color:#fff}.cm-cursor{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #45a3ff;pointer-events:auto;cursor:ew-resize}.cm-cursor::after{content:"";position:absolute;top:25px;left:-5px;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #45a3ff}.cm-chunk-inspector{border-color:rgba(255,230,109,.28)}`
+    style.textContent += `.cm-v2-panel{flex:1 1 auto}.cm-v2-timeline-scroll{max-width:100%;overflow-x:auto;margin-top:6px;border:1px solid rgba(120,220,255,.22);border-radius:6px}.cm-v2-timeline{position:relative;background:rgba(3,12,22,.78);user-select:none}.cm-v2-ruler{pointer-events:auto}.cm-v2-lane{position:absolute;left:0;right:0;border-top:1px solid rgba(120,220,255,.13);box-sizing:border-box;overflow:hidden}.cm-v2-lane-label{position:sticky;left:4px;z-index:4;display:inline-block;width:132px;padding:3px 4px;color:#8ee8ff;background:rgba(3,12,22,.92);white-space:nowrap;pointer-events:none}.cm-v2-track-label{position:sticky;left:144px;z-index:3;display:inline-block;max-width:190px;padding:3px 4px;color:#bad7e3;background:rgba(3,12,22,.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}.cm-v2-segment,.cm-v2-object{position:absolute;top:17px;height:16px;box-sizing:border-box;border:1px solid #52d7ff;border-radius:3px;background:rgba(45,132,180,.78);color:#fff;font-size:10px;padding:1px 3px;overflow:hidden;white-space:nowrap;pointer-events:none}.cm-v2-object{top:5px;height:12px;border-color:#c084fc;background:rgba(126,72,170,.82)}.cm-v2-segment.disabled,.cm-v2-object.disabled{opacity:.35;filter:saturate(.3)}.cm-v2-info{display:inline-block;padding:3px 6px;color:#b6cbd4;opacity:.8;pointer-events:none}.cm-v2-gameplay{background:rgba(69,163,255,.055)}.cm-v2-foreground{background:rgba(255,209,102,.04)}.cm-v2-cursor{z-index:8}`;
     this.root.appendChild(style);
     document.body.appendChild(this.root);
-    this.unsub = subscribeBackgroundState(() => { if (!this.visible) this.render(); });
+    this.unsub = subscribeBackgroundState(() => { if (this.visible) this.render(); });
     this.render();
   }
   open(): void { if (this.visible) return; this.visible = true; this.root.style.display = ""; this.render(); this.syncOverlay(); this.notifyOpenChange(); }
@@ -88,9 +93,15 @@ export class PixelBgrLabUI {
     this.activeTab = normalizePixelBgrLabTab(this.activeTab, pixelBgrLabTabForSelection(Boolean(this.selectedLayer()), this.selectedLayer()?.kind));
     const titlebar = el("div", "cm-pixel-titlebar");
     const h = el("h3"); h.textContent = "Scene Lab [F8]";
-    const summary = el("span", "cm-pixel-scene-summary"); summary.textContent = this.draft.id || "untitled scene";
+    const v2Scene = getBackgroundSceneV2(globalThis);
+    const summary = el("span", "cm-pixel-scene-summary"); summary.textContent = v2Scene?.id ?? this.draft.id ?? "untitled scene";
     titlebar.append(h, summary);
     this.root.appendChild(titlebar);
+    if (v2Scene) {
+      this.removeOverlay();
+      this.root.append(this.renderV2Toolbar(), this.renderV2Timeline(projectBackgroundV2Timeline(v2Scene, {}, this.currentX())));
+      return;
+    }
     this.root.appendChild(this.renderSceneToolbar());
     this.root.appendChild(this.renderTimelineSection());
     const tabs = el("div", "cm-pixel-tabs"); tabs.setAttribute("role", "tablist");
@@ -110,6 +121,51 @@ export class PixelBgrLabUI {
     else if (this.activeTab === "markers") body.appendChild(this.renderMarkersTab());
     else body.appendChild(this.renderProps());
     this.syncOverlay();
+  }
+  private renderV2Toolbar(): HTMLElement {
+    const p=el("div","cm-pixel-panel cm-scene-toolbar");
+    const badge=el("span","cm-mode-pill"); badge.textContent="V2 · READ ONLY";
+    p.append(badge, button("close",()=>this.close()));
+    const opacity=el("input"); opacity.type="range"; opacity.min="0.35"; opacity.max="1"; opacity.step="0.01"; opacity.value=String(this.overlayOpacity); opacity.oninput=()=>{ this.overlayOpacity=Number(opacity.value); this.root.style.setProperty("--cm-scene-lab-opacity",String(this.overlayOpacity)); };
+    p.append(this.row("UI opacity",opacity));
+    return p;
+  }
+  private renderV2Timeline(projection: V2TimelineProjection): HTMLElement {
+    const panel=el("div","cm-pixel-panel cm-v2-panel");
+    panel.append("V2 multitrack projection — background content is read-only");
+    const contentSpan=Math.max(720,projection.bounds.endX-projection.bounds.startX);
+    const widthPx=Math.max(1000,Math.ceil(contentSpan));
+    const scale=createTimelineScale([{startX:projection.bounds.startX,length:Math.max(1,contentSpan)}],projection.playerX,widthPx);
+    const scroll=el("div","cm-v2-timeline-scroll");
+    const timeline=el("div","cm-v2-timeline"); timeline.style.width=`${widthPx}px`;
+    const rowHeight=36;
+    const headerHeight=28;
+    const trackRows=projection.lanes.reduce((sum,lane)=>sum+Math.max(1,lane.tracks.length),0);
+    timeline.style.height=`${headerHeight+trackRows*rowHeight}px`;
+    timeline.onpointerdown=(e)=>{ const target=e.target; const seekTarget=target===timeline||(target instanceof HTMLElement&&(target.classList.contains("cm-ruler")||target.classList.contains("cm-v2-lane"))); if(this.cursorDrag||!seekTarget)return; isolateTimelinePointerEvent(e); const rect=timeline.getBoundingClientRect(); const x=Math.round(clickedTimelineCurrentX(e.clientX,rect.left,scale,projection.bounds.startX,projection.bounds.endX,rect.width)); this.setCurrentX(x,true); this.render(); };
+    const ruler=el("div","cm-v2-ruler cm-ruler");
+    const tickStep=Math.max(100,Math.round((scale.maxX-scale.minX)/8/50)*50);
+    for(let x=Math.ceil(scale.minX/tickStep)*tickStep;x<=scale.maxX;x+=tickStep){const tick=el("div","cm-ruler-tick");tick.style.left=`${worldToTimelinePx(x,scale)}px`;tick.textContent=String(x);ruler.appendChild(tick);} timeline.appendChild(ruler);
+    let top=headerHeight;
+    for(const lane of projection.lanes){
+      const rows=lane.tracks.length?lane.tracks:[null];
+      rows.forEach((track,index)=>{
+        const row=el("div",`cm-v2-lane cm-v2-${String(lane.role)}`); row.style.top=`${top}px`; row.style.height=`${rowHeight}px`;
+        const label=el("span","cm-v2-lane-label"); label.textContent=index===0?lane.label:""; row.appendChild(label);
+        if(track){
+          const identity=el("span","cm-v2-track-label"); identity.textContent=`${track.id} · ${track.mode}${track.enabled?"":" · disabled"}`; row.appendChild(identity);
+          for(const segment of track.segments){const block=el("span",`cm-v2-segment${segment.enabled&&track.enabled?"":" disabled"}`);block.style.left=`${worldToTimelinePx(segment.startX,scale)}px`;block.style.width=`${Math.max(2,worldToTimelinePx(segment.endX,scale)-worldToTimelinePx(segment.startX,scale))}px`;block.textContent=segment.id;block.title=`${track.id}/${segment.id} ${segment.startX}..${segment.endX} · z ${segment.effectiveZ}`;row.appendChild(block);}
+          for(const object of track.objects){const marker=el("span",`cm-v2-object${object.enabled&&track.enabled?"":" disabled"}`);marker.style.left=`${worldToTimelinePx(object.x,scale)}px`;marker.style.width=`${object.width===null?8:Math.max(2,worldToTimelinePx(object.x+object.width,scale)-worldToTimelinePx(object.x,scale))}px`;marker.textContent=object.id;marker.title=`${track.id}/${object.id} @ ${object.x}${object.width===null?" · point marker":` · width ${object.width}`} · z ${object.effectiveZ}`;row.appendChild(marker);}
+        } else if(lane.role==="environment") {
+          const info=el("span","cm-v2-info"); info.textContent=projection.environmentLabels.join(" · "); row.appendChild(info);
+        } else if(lane.role==="gameplay") {
+          const info=el("span","cm-v2-info"); info.textContent="Gameplay chunks/markers: unavailable in current gameplay model"; row.appendChild(info);
+        }
+        timeline.appendChild(row); top+=rowHeight;
+      });
+    }
+    const cursor=el("div","cm-cursor cm-v2-cursor"); cursor.style.left=`${worldToTimelinePx(projection.playerX,scale)}px`; cursor.title=`Drag Player X cursor ${Math.round(projection.playerX)}`; cursor.onpointerdown=e=>this.beginCursorDrag(e,timeline,scale,projection.bounds); this.cursorEl=cursor; timeline.appendChild(cursor);
+    scroll.appendChild(timeline); panel.append(scroll,this.renderPreview([],projection.bounds)); return panel;
   }
   private renderSceneToolbar(): HTMLElement {
     const p=el("div","cm-pixel-panel cm-scene-toolbar");
@@ -209,11 +265,11 @@ export class PixelBgrLabUI {
     window.removeEventListener("pointercancel", this.onTimelinePointerUp);
   }
 
-  private beginCursorDrag(e: PointerEvent, timeline: HTMLElement, scale: TimelineScale): void {
+  private beginCursorDrag(e: PointerEvent, timeline: HTMLElement, scale: TimelineScale, explicitBounds?: {startX:number;endX:number}): void {
     isolateTimelinePointerEvent(e);
     const captureTarget = e.currentTarget instanceof HTMLElement ? e.currentTarget : timeline;
     captureTarget.setPointerCapture?.(e.pointerId);
-    const bounds=sceneTimelineBounds(this.draft.chunks, 0);
+    const bounds=explicitBounds ?? sceneTimelineBounds(this.draft.chunks, 0);
     this.setTimelineInputGuard(true);
     this.cursorDrag={pointerId:e.pointerId,scale,timeline,minX:bounds.startX,maxX:bounds.endX,captureTarget,active:true};
     window.addEventListener("pointermove", this.onCursorPointerMove, {capture:true, passive:false});
@@ -319,11 +375,12 @@ export class PixelBgrLabUI {
   private gameplayPaused(): boolean { return Boolean((globalThis as any).__CM?.loop?.isPaused?.()); }
   private currentX(): number { return this.gameplayX(); }
   private setCurrentX(x: number, pauseAfterSeek = this.gameplayPaused()): void {
-    const bounds = sceneTimelineBounds(this.draft.chunks, 0);
+    const sceneV2=getBackgroundSceneV2(globalThis);
+    const bounds=sceneV2 ? projectBackgroundV2Timeline(sceneV2,{},this.currentX()).bounds : sceneTimelineBounds(this.draft.chunks,0);
     (globalThis as any).__CM?.game?.seekGameplayToPlayerX?.(x, { bounds, pauseAfterSeek });
     requestBackgroundMarkerRuntimeReset(globalThis);
   }
-  private renderPreview(): HTMLElement { const p=el("div","cm-pixel-toolbar cm-pixel-preview"); const currentX=this.currentX(); const jumps=chunkJumpState(this.draft.chunks,currentX); const paused=this.gameplayPaused(); const label=el("span","cm-current-x"); label.textContent=`Player X: ${Math.round(currentX)} px`; this.currentXLabel=label; const playPause=this.iconButton(paused?"Play":"Pause",paused?Play:Pause,paused?"Play":"Pause",()=>{ (globalThis as any).__CM?.loop?.setPaused?.(!paused); this.render(); }); p.append(label,this.iconButton("Previous chunk",SkipBack,"SkipBack",()=>{ if(jumps.previousX!==null){ this.setCurrentX(jumps.previousX, paused); this.render(); }},!jumps.canPrevious),playPause,this.iconButton("Stop and return to scene start",Square,"Square",()=>{ const start=sceneTimelineBounds(this.draft.chunks,0).startX; this.setCurrentX(start, true); this.render(); }),this.iconButton("Next chunk",SkipForward,"SkipForward",()=>{ if(jumps.nextX!==null){ this.setCurrentX(jumps.nextX, paused); this.render(); }},!jumps.canNext)); return p; }
+  private renderPreview(chunks=this.draft.chunks, explicitBounds?: {startX:number;endX:number}): HTMLElement { const p=el("div","cm-pixel-toolbar cm-pixel-preview"); const currentX=this.currentX(); const jumps=chunkJumpState(chunks,currentX); const paused=this.gameplayPaused(); const label=el("span","cm-current-x"); label.textContent=`Player X: ${Math.round(currentX)} px`; this.currentXLabel=label; const playPause=this.iconButton(paused?"Play":"Pause",paused?Play:Pause,paused?"Play":"Pause",()=>{ (globalThis as any).__CM?.loop?.setPaused?.(!paused); this.render(); }); p.append(label,this.iconButton("Previous chunk",SkipBack,"SkipBack",()=>{ if(jumps.previousX!==null){ this.setCurrentX(jumps.previousX, paused); this.render(); }},!jumps.canPrevious),playPause,this.iconButton("Stop and return to scene start",Square,"Square",()=>{ const start=explicitBounds?.startX??sceneTimelineBounds(chunks,0).startX; this.setCurrentX(start, true); this.render(); }),this.iconButton("Next chunk",SkipForward,"SkipForward",()=>{ if(jumps.nextX!==null){ this.setCurrentX(jumps.nextX, paused); this.render(); }},!jumps.canNext)); return p; }
 
   private selectedChunkStart(): number { if (this.owner.kind !== "chunk") return 0; const chunkId=(this.owner as {kind:"chunk";chunkId:string}).chunkId; return this.draft.chunks.find(c=>c.id===chunkId)?.startX ?? 0; }
   private selectedChunkEnd(): number { if (this.owner.kind !== "chunk") return this.logicW; const chunkId=(this.owner as {kind:"chunk";chunkId:string}).chunkId; const c = this.draft.chunks.find(x=>x.id===chunkId); return c ? c.startX + c.length : this.logicW; }

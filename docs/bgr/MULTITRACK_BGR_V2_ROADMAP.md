@@ -514,7 +514,15 @@ Completed by the M4 runtime verification checkpoint above.
 
 ## M5 — Read-only multitrack Pixel BGR Lab
 
-Status: UNBLOCKED — READY FOR IMPLEMENTATION
+Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
+
+### M5 static implementation checkpoint (2026-09-04)
+
+- Added typed `scene-v2` detection to Scene Lab and a deterministic, pure read-only projection for environment, role, custom, gameplay reference, and foreground lanes while preserving track/segment/object identity, geometry, enabled state, ordering metadata, and bounds.
+- Added a horizontally scrollable read-only multitrack UI with shared GameplaySeek-backed Player X cursor, finite segment blocks, point/width-aware object markers, environment information, and no V2 authoring controls.
+- Prevented Scene Lab construction from applying its persisted V1 draft over an active V2 source; the existing V1 draft and authoring path remains unchanged when V2 is not active.
+- Gameplay reference uses current gameplay-owned data only. Because no gameplay-owned chunk/marker source currently exists, those overlays are deferred and the lane states their unavailability; legacy V1 `BackgroundScene` chunks/markers are not reinterpreted as gameplay data.
+- Focused projection, source-preservation, V1 regression, GameplaySeek, and V2 checks pass, as do typecheck and production build. Browser/manual verification remains pending.
 
 ### Objective
 
@@ -537,7 +545,10 @@ Custom tracks may also be shown according to role/order.
 
 - read-only V2 track/segment visualization;
 - single shared Player X cursor using existing GameplaySeek authority;
-- gameplay chunk/marker references displayed from gameplay-owned data only;
+- gameplay reference lane uses current gameplay-owned data only;
+- shared Player X cursor uses existing GameplaySeek authority;
+- gameplay chunk/marker overlays are shown only when a real gameplay-owned source exists;
+- V1 `BackgroundScene` chunks/markers are not reclassified as gameplay data;
 - no second authoritative gameplay copy.
 
 ### STATIC VERIFY
