@@ -574,7 +574,7 @@ Completed by the M5 runtime verification checkpoint above.
 
 ## M6 — Segment authoring
 
-Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
+Status: COMPLETE — STATIC + RUNTIME VERIFIED
 
 ### M6 static implementation checkpoint (2026-09-04)
 
@@ -584,7 +584,16 @@ Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
 - Track parallax remains read-only, with the required future semantic choice surfaced: keep authored track-space positions or preserve visual alignment using an explicitly defined rebase.
 - Successful edits replace the active authoritative `BackgroundSceneV2` through the typed in-memory state write path for live renderer observation. M6 adds no file or local-storage persistence.
 - Focused editing/projection/timeline/Lab/gameplay-seek/V2 smokes, typecheck, and production build pass. The broad smoke runner reaches the documented unrelated `BombExplosionChain.smoke.ts` / `DamageSystem.rules.onExplosion` baseline failure after the M6 smokes pass.
-- Runtime browser verification remains pending; M6 is not complete until the manual authoring workflow is verified.
+- Runtime browser verification remained pending at static implementation closure and is completed by the runtime verification checkpoint below.
+
+### M6 runtime verification checkpoint (2026-09-04)
+
+- Local VS Code/browser verification passed for V2 source preservation, V2 segment authoring mode, selection and inspector behavior, create/duplicate/delete, move with Player X isolation, left/right resize, numeric editing and validation, presentation editing, independent track lengths, overlap visualization, repeat-track policy, parallax semantic policy surfacing, V1 regression, and cleanup.
+- Move isolation was confirmed by moving segment X from `360` to `400` while width remained `128`, Player X remained `511`, and world scroll X remained `508`.
+- A track visibly in `repeat` mode exposed no move controls, resize handles, or destructive/sequence authoring; it displayed the limited/read-only message and was not silently converted.
+- `BackgroundSceneV2` remains the sole authority, and V2 persistence remains in-memory only. Repeat mode remains intentionally limited/read-only, while changing parallax still requires an explicit future semantic choice.
+- No M7 object/canvas authoring and no M8 persistence/environment authoring were introduced.
+- No page errors or new M6-specific runtime errors were observed. The known WebGL uniform-location warning remains a separate baseline renderer defect, is not M6-specific, and is not fixed here.
 
 ### Objective
 
@@ -608,13 +617,15 @@ Make V2 sequence tracks editable.
 
 ### RUNTIME VERIFY
 
-Required: manual drag/resize/parallax/rebase workflow verification.
+Completed by the M6 runtime verification checkpoint above.
 
 ---
 
 ## M7 — Canvas placement + objects
 
-Status: PLANNED
+Status: UNBLOCKED — READY FOR IMPLEMENTATION
+
+M6 static and runtime completion removes the prerequisite blocker for M7.
 
 ### Objective
 
