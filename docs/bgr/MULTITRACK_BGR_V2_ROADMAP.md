@@ -472,6 +472,7 @@ Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
 
 ### M4 static implementation checkpoint (2026-09-03)
 
+- Added a reusable deterministic visual verification scene and `window.__CM.bgrVerify.visual()` / `.clear()` hooks for local opacity, blend, finite segment boundary, foreground ordering, X/Y parallax, and shared-resource acceptance. This improves observability only; runtime verification remains pending.
 - Added a pure evaluated-instance to sprite-command boundary with normalized URL resource identity, deterministic ordering preservation, explicit/native sizing, V1 compatibility activation/repeat materialization, and explicit segment/object clipping commands.
 - Added a dedicated V2 WebGL sprite renderer whose texture cache is keyed by resource rather than instance, retains native metadata/error state, uses nearest/clamped shared textures, and materializes per-instance repeat positions on the CPU.
 - Added the typed `scene-v2` runtime source, evaluator-backed behind-gameplay and foreground passes, resource metadata debug snapshot, and deterministic `window.__CM.bgrM4Demo.v2()` / `.compatibility()` verification hooks.
