@@ -623,7 +623,7 @@ Completed by the M6 runtime verification checkpoint above.
 
 ## M7 — Canvas placement + objects
 
-Status: UNBLOCKED — READY FOR IMPLEMENTATION
+Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
 
 M6 static and runtime completion removes the prerequisite blocker for M7.
 
@@ -649,6 +649,14 @@ Reuse the proven B4 placement workflow for V2 segments and independent track obj
 ### RUNTIME VERIFY
 
 Required: manual visual placement and camera X/Y verification.
+
+### M7 static implementation checkpoint (2026-09-04)
+
+- Scene Lab now reuses the B4 canvas overlay interaction for V2 segment `startTrackX`/`offsetY` placement and independent object `startTrackX`/`y` placement through the in-memory typed V2 state path.
+- Independent object create, duplicate, delete, geometry, local Z, opacity, blend, enabled, shared asset-catalog selection, and renderer texture-metadata inspection are available without embedding objects into segments.
+- Placement permits vertical overlap and supports foreground-track objects without changing evaluator role routing or effective-Z semantics.
+- Pure editing and coordinate round-trip smokes cover immutability, validation, foreground ownership, camera X/Y, and distinct parallax X/Y values; typecheck and build pass. The broad smoke runner reaches the documented unrelated `BombExplosionChain.smoke.ts` / `DamageSystem.rules.onExplosion` baseline failure.
+- Runtime canvas, camera-stability, foreground-ordering, input-isolation, and visual acceptance remain pending.
 
 ---
 
