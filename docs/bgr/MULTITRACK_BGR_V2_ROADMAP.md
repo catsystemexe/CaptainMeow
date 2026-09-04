@@ -468,16 +468,22 @@ Required before declaring compatibility complete: live BGR scenes compared again
 
 ## M4 — Renderer instance/resource model
 
-Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
+Status: COMPLETE — STATIC + RUNTIME VERIFIED
 
 ### M4 static implementation checkpoint (2026-09-03)
 
-- Added a reusable deterministic visual verification scene and `window.__CM.bgrVerify.visual()` / `.clear()` hooks for local opacity, blend, finite segment boundary, foreground ordering, X/Y parallax, and shared-resource acceptance. This improves observability only; runtime verification remains pending.
+- Added a reusable deterministic visual verification scene and `window.__CM.bgrVerify.visual()` / `.clear()` hooks for local opacity, blend, finite segment boundary, foreground ordering, X/Y parallax, and shared-resource acceptance.
 - Added a pure evaluated-instance to sprite-command boundary with normalized URL resource identity, deterministic ordering preservation, explicit/native sizing, V1 compatibility activation/repeat materialization, and explicit segment/object clipping commands.
 - Added a dedicated V2 WebGL sprite renderer whose texture cache is keyed by resource rather than instance, retains native metadata/error state, uses nearest/clamped shared textures, and materializes per-instance repeat positions on the CPU.
 - Added the typed `scene-v2` runtime source, evaluator-backed behind-gameplay and foreground passes, resource metadata debug snapshot, and deterministic `window.__CM.bgrM4Demo.v2()` / `.compatibility()` verification hooks.
 - Kept V1 scenes/layers, marker presentation, shader/flow passthrough, and the existing layer-keyed texture metadata API on their proven legacy rendering path during this controlled integration.
-- Static checks pass. Browser/Replit verification remains mandatory; M3 runtime compatibility also remains pending until representative V1 scenes are visually checked.
+- Static checks pass. M3 runtime compatibility remains pending until representative V1 scenes are visually checked.
+
+### M4 runtime verification checkpoint (2026-09-04)
+
+- Local VS Code browser/runtime verification passed for opacity, normal vs additive blending, finite segment boundary/no bleed, foreground ordering over gameplay, X parallax, Y parallax, shared texture/resource reuse, and cleanup.
+- No page errors or new M4-specific console/runtime errors were observed.
+- Known baseline renderer warning: `WebGL: INVALID_OPERATION: uniform4f: location is not from the associated program`. This is a pre-existing baseline defect, is not M4-specific, and does not block M4 completion; it remains tracked separately.
 
 ### Objective
 
@@ -502,13 +508,13 @@ Enable multisegment composition efficiently while preserving existing WebGL spri
 
 ### RUNTIME VERIFY
 
-Required: browser/manual visual verification of ordering, repeated assets, opacity/blend, foreground, clipping, and X/Y camera movement.
+Completed by the M4 runtime verification checkpoint above.
 
 ---
 
 ## M5 — Read-only multitrack Pixel BGR Lab
 
-Status: BLOCKED ON M4 RUNTIME VERIFY
+Status: UNBLOCKED — READY FOR IMPLEMENTATION
 
 ### Objective
 
