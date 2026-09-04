@@ -1,6 +1,7 @@
 import { createB1SpriteParallaxDemoState, createB2BackgroundSceneDemoState, type BackgroundState } from "./webgl/bg/layers/BackgroundLayerTypes";
 import type { BackgroundScene } from "./webgl/bg/layers/BackgroundSceneTypes";
 import type { BackgroundSceneV2 } from "./bg/v2/BackgroundV2Types";
+import { createBackgroundV2VisualVerificationScene } from "./bg/v2/BackgroundV2VisualVerificationScene";
 
 const STATE_KEY = "__CM_BACKGROUND_STATE__";
 const PREVIEW_KEY = "__CM_BACKGROUND_PREVIEW__";
@@ -174,6 +175,11 @@ export function enableM4BackgroundV2Demo(root: any = globalThis): BackgroundStat
       ] },
     ],
   }, root);
+}
+
+/** Enables the reusable visual acceptance scene without bypassing typed background state. */
+export function enableBackgroundV2VisualVerification(root: any = globalThis): BackgroundState {
+  return setBackgroundSceneV2(createBackgroundV2VisualVerificationScene(), root);
 }
 
 export function disableTypedBackground(root: any = globalThis): void {
