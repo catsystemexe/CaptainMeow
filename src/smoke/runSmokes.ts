@@ -49,6 +49,8 @@ const SMOKES = [
   "../ui/PixelBgrLabB5.smoke",
   "../ui/PixelBgrTimeline.smoke",
   "../ui/PixelBgrV2TimelineProjection.smoke",
+  "../ui/PixelBgrV2SegmentEditing.smoke",
+  "../ui/PixelBgrV2SegmentAuthoringUI.smoke",
   "../game/authoring/GameplaySeek.smoke",
   "../game/systems/BombExplosionChain.smoke",
   "../game/systems/WeaponVFXEmit.smoke",
