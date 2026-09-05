@@ -1,0 +1,54 @@
+{
+  "purpose": "Captain Meow Pixel BGR Lab practical V2 authoring/usability test pack",
+  "suggested_repo_target": "public/assets/bg/test/desert/",
+  "assets": [
+    {
+      "file": "desert_sky.png",
+      "role": "sky/background",
+      "recommended_parallax": 0.0,
+      "notes": "Full background, no alpha."
+    },
+    {
+      "file": "desert_clouds.png",
+      "role": "object/custom",
+      "recommended_parallax": 0.05,
+      "notes": "RGBA; useful for Y offset and vertical overlap."
+    },
+    {
+      "file": "desert_far_mesas.png",
+      "role": "far",
+      "recommended_parallax": 0.1,
+      "notes": "RGBA strip; far parallax."
+    },
+    {
+      "file": "desert_mid_mesas_a.png",
+      "role": "mid sequence A",
+      "recommended_parallax": 0.3,
+      "notes": "RGBA; sequence/overlap test."
+    },
+    {
+      "file": "desert_mid_mesas_b.png",
+      "role": "mid sequence B",
+      "recommended_parallax": 0.3,
+      "notes": "RGBA; second segment for seam/overlap."
+    },
+    {
+      "file": "desert_near_band.png",
+      "role": "near/foreground",
+      "recommended_parallax": 0.6,
+      "notes": "RGBA foreground strip."
+    },
+    {
+      "file": "desert_sun.png",
+      "role": "independent object",
+      "recommended_parallax": 0.02,
+      "notes": "RGBA object for Z/placement/blend test."
+    },
+    {
+      "file": "desert_full_reference.png",
+      "role": "visual reference only",
+      "recommended_parallax": null,
+      "notes": "Flattened reference composition."
+    }
+  ]
+}
