@@ -1,163 +1,132 @@
 # Captain Meow — Backlog
 
-Status: CANONICAL CONSOLIDATION / GOVERNANCE BACKLOG
-Last updated: 2026-08-26
+Status: CANONICAL GOVERNANCE / ENGINEERING BACKLOG
+Last updated: 2026-09-06
 
-This backlog records approved consolidation and workflow-hardening work. Product/gameplay feature backlog items may later be maintained separately if needed.
+This backlog records current workflow-hardening and engineering maintenance items. Active product work is tracked in narrower subsystem work plans where appropriate.
 
 ## Governance
 
 ### CM-GOV-001 — Align ChatGPT Project Instructions
-Status: COMPLETE / MINOR WORDING NORMALIZATION OPTIONAL
+Status: COMPLETE / ACTIVE POLICY
 
-The active ChatGPT Project Instructions substantively match the approved project-specific profile and shared cross-project framework:
+Current operating model:
 - Git-first source authority;
 - `[DESIGNER]`, `[INSTRUCTIONS]`, `[IMPLEMENTATION]` roles;
 - Code mode overlay;
-- GitHub/Codex/Replit capability ownership;
+- GitHub/Codex/VS Code capability ownership;
 - preservation rules;
 - static/runtime distinction;
 - cost/model policy.
 
-The versioned project profile is canonical in `docs/project/06-chatgpt-project-profile.md`. C7 found only minor non-material wording drift in how `AGENTS.md` appears in the top-level source-priority wording.
+Versioned project profile: `docs/project/06-chatgpt-project-profile.md`.
 
-### CM-GOV-002 — Restructure `AGENTS.md`
+### CM-GOV-002 — Repository-local engineering authority
 Status: COMPLETE
 
-Completed via PR #125.
+`AGENTS.md` contains repository-local engineering/executor invariants and dynamic X/Y branch safety.
 
-### CM-GOV-003 — Classify and reconcile stale/duplicate documentation
+### CM-GOV-003 — Historical/duplicate documentation classification
 Status: COMPLETE
 
-Completed via PR #126.
+Canonical classification index: `docs/HISTORICAL_DOCUMENTS.md`.
 
 ## Workflow hardening
 
-### CM-WF-001 — Normalize Replit remote
-Status: COMPLETE
+### CM-WF-001 — VS Code runtime operator workflow
+Status: COMPLETE / ACTIVE POLICY
 
-Verified live workspace before mutation, preserved existing backup branch, changed `origin` to `https://github.com/catsystemexe/CaptainMeow`, fetched/pruned, switched to `pixel_bgr` and fast-forwarded safely to `940358eb9f35c73d9172c6962e483f8f1f6d51bb`.
+Local VS Code is the primary runtime/environment surface. VS Code Agent is a deliberately low-cost runtime operator with default role `READ / EXECUTE / OBSERVE / REPORT`.
 
-`gitsafe-backup` was not modified.
+Runtime operators do not redesign/refactor source merely to make a runtime check pass. Source defects return to ChatGPT/Codex on focused branches.
 
 ### CM-WF-002 — Dirty-tree preservation gate
 Status: COMPLETE / ACTIVE POLICY
 
-The preservation gate is present in canonical workflow and `AGENTS.md`.
+Before repository-state changes, verify expected repo/branch/HEAD/worktree and preserve unknown/user-owned changes.
 
 ### CM-WF-003 — Minimal GitHub CI
 Status: COMPLETE
 
-`.github/workflows/static-verify.yml` is integrated and runtime-verified.
-
-Required CI baseline:
+`.github/workflows/static-verify.yml` provides the baseline:
 - Node 20;
 - `npm ci`;
 - `npm run typecheck`;
 - `npm run build`.
 
-The first live validation exposed a pre-existing malformed block in `src/game/boot/createGame.ts`. PR #129 repaired the root cause and passed the complete Static Verify sequence before merge.
-
-`npm run test` remains one targeted smoke and the broader `npm run smoke` is not a required CI gate until its baseline/suite semantics are reconciled.
+Task-specific smokes/tests and known unrelated baseline failures remain separately reported evidence.
 
 ### CM-WF-004 — PR/push authorization policy
 Status: COMPLETE / ACTIVE POLICY
 
-Focused task branches remain preferred. Push/hosted-PR creation follows the current implementation batch/task authorization. Merge, force-push, history rewrite, branch deletion and deployment require explicit authorization.
+Focused task branches remain preferred. Normal approved flow is Codex branch implementation/push followed by ChatGPT remote review and PR integration when authorized. Merge, force-push, history rewrite, branch deletion and deployment remain explicitly controlled actions.
 
 ## Documentation / synchronization
 
-### CM-DOC-001 — Establish `docs/project/*`
+### CM-DOC-001 — Canonical `docs/project/*`
 Status: COMPLETE
 
-Integrated via PR #124.
+The maintained project-level canonical set is established.
 
 ### CM-DOC-002 — GitHub → Drive mirror
+Status: COMPLETE / CONTINUOUS POLICY
+
+Dedicated one-way mirror exists at `___CaptainMeow/___CANONICAL_MIRROR`. Git remains canonical; Drive mirror updates follow changes to canonical docs.
+
+### CM-DOC-003 — Historical docs classification
 Status: COMPLETE
 
-Dedicated one-way mirror exists at `___CaptainMeow/___CANONICAL_MIRROR` with all seven canonical `docs/project/*` documents plus `README_MIRROR`.
+Historical evidence remains preserved but non-authoritative unless explicitly promoted.
 
-Final C7 closeout mirror synchronization is complete. `README_MIRROR` records the exact synchronized Git checkpoint; future canonical changes continue through one-way Git → Drive synchronization.
+## Active product implementation
 
-Drive `___docs` remains historical and separate.
+### CM-BGR-DEV-001 — Pixel BGR Dev Workspace v1
+Status: IN PROGRESS
 
-### CM-DOC-003 — Mark/classify historical docs
-Status: COMPLETE
+Active plan:
+- `docs/bgr/PIXEL_BGR_DEV_WORKSPACE_V1_WORK_PLAN.md`.
 
-Canonical classification index: `docs/HISTORICAL_DOCUMENTS.md`, integrated via PR #126.
+Approved implementation order:
+1. dual GAME/DEV shell foundation;
+2. DEV grid composition;
+3. full-width V2 timeline migration;
+4. selection-driven right inspector;
+5. basic left navigation/environment access;
+6. structural responsive/cursor-stability polish.
 
-### CM-DOC-004 — Update README
-Status: COMPLETE
-
-Integrated via PR #126.
-
-## Branch reconciliation
-
-### CM-GIT-001 — Analyze five `main`-unique commits
-Status: COMPLETE
-
-C6 finding: unique commit topology exists, but the final `main` tree is identical to the relevant merge-base tree. No content promotion is required. Retain/delete is now only a historical-retention choice.
-
-### CM-GIT-002 — Review preserved unfinished BGR follow-up
-Status: COMPLETE / PRESERVATION RETENTION OPTIONAL
-
-Branch: `backup/replit-bgr-lab-preaudit-20260825`
-Commit: `4b4fb32988ce92a2a16e8fcc309ac9584bedaca3`
-
-Its functional seek-wiring intent was promoted through PR #129 and CI verified. The branch remains preservation/history evidence only; no merge is required.
-
-### CM-GIT-003 — Branch retention policy
-Status: COMPLETE / PHYSICAL CLEANUP PARTIAL
-
-Policy:
-- keep the current approved integration branch;
-- preserve evidence until unique content is classified;
-- merged/reachable task branches are cleanup candidates after fresh verification;
-- superseded branches may be removed once their replacement is proven;
-- branch deletion remains explicitly authorized/destructive work.
-
-C6 classified historical exceptions and closed obsolete open PRs #1, #2, #4, #5, #11 and #22 without merge. Physical branch deletion remains optional hygiene because the current connected GitHub capability does not expose branch-ref deletion.
-
-## Final audit
-
-### CM-AUDIT-001 — Final consistency audit
-Status: COMPLETE
-
-C7 found no new architecture/runtime conflict. Canonical tracking and final Drive mirror/provenance synchronization are complete.
-
-Audit evidence: `___CaptainMeow/___AUDIT/07_FINAL_CONSISTENCY_AUDIT`.
+Do not redesign BGR data/runtime architecture or resume micro-polish of the obsolete floating-overlay model as part of Phase 1.
 
 ## Technical hygiene / maintenance
 
 ### CM-HYG-001 — Review `.bak`, dump and `_patch` artifacts
 Status: DEFERRED / NON-BLOCKING
 
-Treat existing artifacts as preservation/technical-debt evidence. Do not delete until their uniqueness/value is checked.
+Treat existing artifacts as preservation/technical-debt evidence. Do not delete until uniqueness/value is checked.
 
-### CM-HYG-002 — Historical branch physical cleanup
+### CM-HYG-002 — Historical branch cleanup
 Status: OPTIONAL / NON-BLOCKING
 
-Delete already-classified historical task branches only through an execution path that supports real branch-ref deletion and after the usual fresh safety check.
+Delete already-classified historical branches only after fresh safety verification and explicit authorization.
 
 ### CM-HYG-003 — Dependency/security triage
 Status: PENDING / NON-BLOCKING
 
-A CI `npm ci` run reported dependency audit findings. Triage deliberately; do not apply blind automated upgrade/fix changes as part of documentation consolidation.
+Triage dependency findings deliberately; do not apply blind automated upgrades as unrelated work.
 
 ### CM-HYG-004 — GitHub Actions runtime maintenance
 Status: PENDING / NON-BLOCKING
 
-Review the GitHub Actions warning observed during CI about older action runtime targeting and update action versions when justified.
+Review action-runtime warnings and update action versions when justified.
 
 ### CM-HYG-005 — Broader smoke-suite baseline
 Status: PENDING / NON-BLOCKING
 
-Reconcile current smoke-runner semantics and known baseline failures before promoting the broader suite to a required CI gate.
+Reconcile current smoke-runner semantics and known baseline failures before promoting the broader suite to a mandatory green gate.
 
 ## Backlog rules
 
 - `READY` means approved and sequenced, not yet implemented.
-- `IN PROGRESS` means a focused change set exists but is not yet integrated/completed.
+- `IN PROGRESS` means focused work has started but is not fully integrated/runtime-accepted.
 - `PENDING` means known work requiring a focused future batch or decision.
 - `PRESERVE` means no destructive action until evidence is reconciled.
 - `COMPLETE` means integrated/verified according to the applicable workflow.
