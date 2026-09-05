@@ -13,7 +13,7 @@ import { validateBackgroundScene } from "./PixelBgrLabValidation";
 import { BACKGROUND_ASSET_CATALOG } from "./PixelBgrLabAssets";
 import { clientPointToInternalPoint, layerRenderedOrigin, renderedOriginToAuthoredOffset, resolveCanvasViewportRect, type Point } from "./PixelBgrLabCoordinates";
 import { stepNumericValue, validationSummaryState, toggleValidationExpanded, type NumericStepOptions } from "./PixelBgrLabNumeric";
-import { applyChunkTimelineDrag, chunkEndX, chunkJumpState, chunkOverlapRanges, chunkTimelineBlocks, clickedTimelineCurrentX, createTimelineScale, cursorDragCurrentX, DEFAULT_CHUNK_TIMELINE_SNAP_PX, isolateTimelinePointerEvent, MIN_CHUNK_TIMELINE_LENGTH, overlapsForChunk, sceneTimelineBounds, shouldHandleTimelinePointerEvent, timelinePointerDeltaWorld, timelinePxToWorld, worldToTimelinePx, type ChunkTimelineDragMode, type TimelineScale } from "./PixelBgrTimeline";
+import { applyChunkTimelineDrag, chunkEndX, chunkJumpState, chunkOverlapRanges, chunkTimelineBlocks, clickedTimelineCurrentX, createExactTimelineScale, createTimelineScale, cursorDragCurrentX, DEFAULT_CHUNK_TIMELINE_SNAP_PX, isolateTimelinePointerEvent, MIN_CHUNK_TIMELINE_LENGTH, overlapsForChunk, sceneTimelineBounds, shouldHandleTimelinePointerEvent, timelinePointerDeltaWorld, timelinePxToWorld, worldToTimelinePx, type ChunkTimelineDragMode, type TimelineScale } from "./PixelBgrTimeline";
 import { projectBackgroundV2Timeline, type V2TimelineProjection } from "./PixelBgrV2TimelineProjection";
 import { applyV2SegmentDrag, calculateV2SegmentOverlaps, canAuthorV2Segments, createV2Segment, deleteV2Segment, duplicateV2Segment, findV2Segment, findV2Track, updateV2Segment, V2_PARALLAX_AUTHORING_POLICY, type V2SegmentDragMode, type V2SegmentEditResult, type V2SegmentPatch } from "./PixelBgrV2SegmentEditing";
 import { createV2Object, deleteV2Object, duplicateV2Object, findV2Object, moveV2Object, updateV2Object, type V2ObjectEditResult, type V2ObjectPatch } from "./PixelBgrV2ObjectEditing";
@@ -181,7 +181,7 @@ export class PixelBgrLabUI {
     panel.append("V2 segment timeline + independent object canvas authoring · environment configured above");
     const contentSpan=Math.max(720,projection.bounds.endX-projection.bounds.startX);
     const widthPx=Math.max(1000,Math.ceil(contentSpan));
-    const scale=createTimelineScale([{startX:projection.bounds.startX,length:Math.max(1,contentSpan)}],projection.playerX,widthPx);
+    const scale=createExactTimelineScale(projection.bounds.startX,projection.bounds.endX,widthPx);
     const scroll=el("div","cm-v2-timeline-scroll");
     const timeline=el("div","cm-v2-timeline"); timeline.style.width=`${widthPx}px`;
     const rowHeight=36;
