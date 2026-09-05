@@ -623,7 +623,7 @@ Completed by the M6 runtime verification checkpoint above.
 
 ## M7 — Canvas placement + objects
 
-Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
+Status: COMPLETE — STATIC + RUNTIME VERIFIED
 
 M6 static and runtime completion removes the prerequisite blocker for M7.
 
@@ -648,7 +648,7 @@ Reuse the proven B4 placement workflow for V2 segments and independent track obj
 
 ### RUNTIME VERIFY
 
-Required: manual visual placement and camera X/Y verification.
+Completed by the M7 runtime verification checkpoint below.
 
 ### M7 static implementation checkpoint (2026-09-04)
 
@@ -656,13 +656,26 @@ Required: manual visual placement and camera X/Y verification.
 - Independent object create, duplicate, delete, geometry, local Z, opacity, blend, enabled, shared asset-catalog selection, and renderer texture-metadata inspection are available without embedding objects into segments.
 - Placement permits vertical overlap and supports foreground-track objects without changing evaluator role routing or effective-Z semantics.
 - Pure editing and coordinate round-trip smokes cover immutability, validation, foreground ownership, camera X/Y, and distinct parallax X/Y values; typecheck and build pass. The broad smoke runner reaches the documented unrelated `BombExplosionChain.smoke.ts` / `DamageSystem.rules.onExplosion` baseline failure.
-- Runtime canvas, camera-stability, foreground-ordering, input-isolation, and visual acceptance remain pending.
+- Runtime canvas, camera-stability, foreground-ordering, input-isolation, and visual acceptance remained pending at static implementation closure and are completed by the runtime verification checkpoint below.
+
+### M7 runtime verification checkpoint (2026-09-04)
+
+- Local VS Code/browser runtime verification passed for V2 canvas and object authoring mode, segment canvas X/Y placement, object creation and canvas X/Y placement, object inspector and live property editing, render re-entry stability after repair, blend `normal -> additive`, width/height validation, vertical overlap, foreground object behavior, asset/texture metadata reuse, object duplicate/delete, timeline selection sync, M6 timeline regression, Player X isolation, V1 regression, and cleanup.
+- Vertical-overlap diagnostics confirmed that the segment and object screen rectangles intersected, with no collision rejection and no runtime error.
+- Camera/parallax X contract: Far used parallax `0.1` and camera delta X `+100`, with expected and observed CSS delta X both `-7.3125`; Near used parallax `0.5` and camera delta X `+100`, with expected and observed CSS delta X both `-36.5625`.
+- Camera/parallax Y contract: for camera delta Y `+100`, Far had expected and observed CSS delta Y `-7.3125`, while Near had expected and observed CSS delta Y `-36.5625`.
+- Diagnostic classification: **NO BUG**. Authored coordinates remained unchanged during camera motion, and Near moved 5x Far for the same camera delta, consistent with `screen = authored - camera * parallax`.
+- No page errors, console errors, `BOOT ERROR`, or new M7-specific errors were observed. The known WebGL uniform-location warning remains a separate baseline defect and is not fixed here.
+- `BackgroundSceneV2` remains the sole V2 authority; M7 persistence remains in-memory only; objects remain independent from segments; and `localZ` remains relative to track `zBase`.
+- Foreground objects remain foreground-role objects. No gameplay authority changed, and no M8 persistence or environment authoring was introduced.
 
 ---
 
 ## M8 — Environment / procedural stars + V2 authoring closure
 
-Status: PLANNED
+Status: UNBLOCKED — READY FOR IMPLEMENTATION
+
+M7 static and runtime completion removes the prerequisite blocker for M8.
 
 ### Objective
 
