@@ -33,7 +33,7 @@ function region<K extends keyof HTMLElementTagNameMap>(
 }
 
 /**
- * P1.1 structural shell only.
+ * Stable DEV workspace shell.
  *
  * This helper deliberately owns no BGR scene/runtime/editing state. Existing
  * PixelBgrLabUI contracts are migrated into these regions incrementally.
@@ -91,7 +91,13 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 }
 
 .cm-bgr-workspace-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
   border-bottom: 1px solid rgba(120, 220, 255, .16);
+  font: 12px/1.2 ui-monospace, Menlo, Consolas, monospace;
+  pointer-events: auto;
 }
 
 .cm-bgr-workspace-left {
@@ -104,7 +110,8 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: #000;
+  background: transparent;
+  pointer-events: none;
 }
 
 .cm-bgr-workspace-right {
@@ -114,7 +121,21 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 
 .cm-bgr-workspace-timeline {
   border-top: 1px solid rgba(120, 220, 255, .16);
-  overflow: hidden;
+  overflow: auto;
+  pointer-events: auto;
+}
+
+.cm-bgr-workspace-left,
+.cm-bgr-workspace-right {
+  pointer-events: auto;
+}
+
+.cm-bgr-workspace-region-heading {
+  margin: 0;
+  padding: 10px 12px;
+  color: #8ee8ff;
+  font: 600 12px/1.2 ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: .04em;
 }
 
 .cm-bgr-workspace-shell.is-game {
