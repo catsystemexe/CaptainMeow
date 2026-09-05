@@ -1,0 +1,29 @@
+{
+  "chat.useAgentsMdFile": true,
+  "workbench.browser.enableChatTools": true,
+  "chat.permissions.default": "default",
+  "chat.tools.global.autoApprove": false,
+  "chat.tools.terminal.enableAutoApprove": true,
+  "chat.tools.terminal.ignoreDefaultAutoApproveRules": true,
+  "chat.tools.terminal.autoApprove": {
+    "/^git\\s+status(?:\\s+--short)?\\s*$/i": true,
+    "/^git\\s+branch\\s+--show-current\\s*$/i": true,
+    "/^git\\s+rev-parse\\s+HEAD\\s*$/i": true,
+    "/^git\\s+remote\\s+-v\\s*$/i": true,
+    "/^git\\s+log\\s+-1\\s+--oneline\\s*$/i": true,
+    "/^git\\s+diff(?:\\s+--check|\\s+--stat)?\\s*$/i": true,
+    "/^npm\\s+run\\s+(dev|build|typecheck|test|smoke)\\s*$/i": true,
+    "/^Get-NetTCPConnection\\b/i": true,
+    "/^Get-Process\\b/i": true,
+    "/^Test-NetConnection\\b/i": true,
+
+    "/^git\\s+(add|commit|push|pull|fetch|checkout|switch|merge|rebase|reset|restore|clean|stash|tag|cherry-pick|revert)\\b/i": false,
+    "/^git\\s+branch\\s+(-d|-D|--delete|-m|-M|--move)\\b/i": false,
+    "/^(npm|pnpm|yarn)\\s+(install|update|uninstall|add|remove)\\b/i": false,
+    "/^(npm|pnpm|yarn)\\s+audit\\s+fix\\b/i": false,
+    "/^npx\\b/i": false,
+    "/^(Remove-Item|Set-Content|Add-Content|Out-File|New-Item|Move-Item|Copy-Item|Rename-Item)\\b/i": false,
+    "/^(del|erase|rd|rmdir|move|copy|ren|taskkill)\\b/i": false,
+    "/^Stop-Process\\b/i": false
+  }
+}
