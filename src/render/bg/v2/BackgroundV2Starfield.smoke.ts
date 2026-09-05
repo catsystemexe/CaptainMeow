@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import { generateBackgroundV2Stars, validateStarfieldConfig } from "./BackgroundV2Starfield";
+const config={seed:42,density:.4};const before={...config};
+const first=generateBackgroundV2Stars(config,896,504);const repeated=generateBackgroundV2Stars(config,896,504);
+assert.deepEqual(first,repeated);assert.deepEqual(config,before);assert.notDeepEqual(first,generateBackgroundV2Stars({seed:43,density:.4},896,504));
+assert.equal(generateBackgroundV2Stars({seed:42,density:0},896,504).length,0);
+assert(generateBackgroundV2Stars({seed:42,density:.8},896,504).length>=first.length);
+assert(first.every(star=>star.x>=0&&star.x<896&&star.y>=0&&star.y<504));
+for(const density of [-.1,1.1,Number.NaN,Number.POSITIVE_INFINITY])assert.equal(validateStarfieldConfig({seed:1,density}).ok,false);
+assert.equal(validateStarfieldConfig({seed:1.5,density:.5}).ok,false);
+console.log("BackgroundV2Starfield.smoke: PASS");

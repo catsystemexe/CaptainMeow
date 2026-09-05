@@ -19,6 +19,7 @@ import { SpriteBackgroundLayerRenderer, type SpriteTextureInfo } from "./bg/laye
 import { evaluateBackgroundScene } from "../bg/v2/BackgroundV2Evaluator";
 import { materializeBackgroundFrameCommands, type BackgroundSpriteDrawCommand } from "./bg/v2/BackgroundV2RenderCommands";
 import { BackgroundV2SpriteRenderer } from "./bg/v2/BackgroundV2SpriteRenderer";
+import { BackgroundV2StarfieldRenderer } from "./bg/v2/BackgroundV2StarfieldRenderer";
 import type { FlowDisturbance } from "./bg/flowStep";
 import { createAtmosphericFXPass, type AtmosphericFXPass } from "./AtmosphericFXPass";
 import { createSdfPass, type SdfPass } from "./SdfPass";
@@ -416,6 +417,7 @@ export class WebGLSceneRenderer {
   private bgFlowSegments: FlowSegmentsBg;
   private spriteBackground: SpriteBackgroundLayerRenderer;
   private spriteBackgroundV2: BackgroundV2SpriteRenderer;
+  private starfieldBackgroundV2: BackgroundV2StarfieldRenderer;
   private atmosphericFX: AtmosphericFXPass;
   private sdfPass: SdfPass | null;
   private meshPass: MeshPass | null = null;
@@ -518,6 +520,7 @@ export class WebGLSceneRenderer {
     this.bgFlowSegments = new FlowSegmentsBg(gl);
     this.spriteBackground = new SpriteBackgroundLayerRenderer(gl);
     this.spriteBackgroundV2 = new BackgroundV2SpriteRenderer(gl);
+    this.starfieldBackgroundV2 = new BackgroundV2StarfieldRenderer(gl);
     (globalThis as any).__CM_BGR_SPRITE_TEXTURES__ = () => this.spriteBackground.getTextureInfoSnapshot();
     (globalThis as any).__CM_BGR_V2_TEXTURES__ = () => this.spriteBackgroundV2.getTextureInfoSnapshot();
     this.atmosphericFX = createAtmosphericFXPass(gl);
@@ -1103,14 +1106,17 @@ export class WebGLSceneRenderer {
     const levelX = Number(player?.pos?.x ?? gameplaySx);
     const backgroundState = getBackgroundState(globalThis);
     const sceneV2 = backgroundState?.source?.kind === "scene-v2" ? backgroundState.source.scene : null;
-    const v2Commands = sceneV2 && backgroundState?.enabled
-      ? materializeBackgroundFrameCommands(evaluateBackgroundScene(sceneV2, {
+    const v2Frame = sceneV2 && backgroundState?.enabled
+      ? evaluateBackgroundScene(sceneV2, {
           playerWorldX: levelX,
           cameraScrollX: sx,
           cameraScrollY: sy,
           viewportWidth: this.logicW,
           viewportHeight: this.logicH,
-        }), { playerWorldX: levelX })
+        })
+      : null;
+    const v2Commands = v2Frame
+      ? materializeBackgroundFrameCommands(v2Frame, { playerWorldX: levelX })
       : { behindGameplay: [] as BackgroundSpriteDrawCommand[], foreground: [] as BackgroundSpriteDrawCommand[] };
     const resetSerial = consumeBackgroundMarkerRuntimeReset(globalThis);
     if (resetSerial !== this.seenMarkerResetSerial) {
@@ -1144,6 +1150,7 @@ export class WebGLSceneRenderer {
     }
     if (sceneV2 && backgroundState?.enabled) {
       this.spriteBackground.retainLayerIds(new Set());
+      this.starfieldBackgroundV2.draw(v2Frame?.environment.starfield, { logicW: this.logicW, logicH: this.logicH }, this.prog, this.vao, { logic: this.uLogic, pos: this.uPos, size: this.uSize, color: this.uColor });
       this.spriteBackgroundV2.draw(v2Commands.behindGameplay, { logicW: this.logicW, logicH: this.logicH });
     } else if (selectBackgroundFallback(backgroundState) === "layers") {
       this.drawBackgroundLayers(resolveBackgroundLayers({ enabled: true, source: { kind: "layers", layers } }), tSec, sx, sy);

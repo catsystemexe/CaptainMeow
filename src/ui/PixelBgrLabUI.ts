@@ -20,6 +20,8 @@ import { createV2Object, deleteV2Object, duplicateV2Object, findV2Object, moveV2
 import { screenPointToV2TrackPoint, v2TrackPointToScreen } from "./PixelBgrV2PlacementCoordinates";
 import type { BackgroundObject, BackgroundSceneV2, BackgroundSegment } from "../render/bg/v2/BackgroundV2Types";
 import { PixelBgrRenderCoordinator } from "./PixelBgrRenderCoordinator";
+import { disableV2Starfield, enableV2Starfield, randomizeV2StarfieldSeed, updateV2Starfield, type V2EnvironmentEditResult } from "./PixelBgrV2EnvironmentEditing";
+import { clearBackgroundSceneV2, loadBackgroundSceneV2, parseBackgroundSceneV2, saveBackgroundSceneV2, serializeBackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Serialization";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -113,7 +115,7 @@ export class PixelBgrLabUI {
     titlebar.append(h, summary);
     this.root.appendChild(titlebar);
     if (v2Scene) {
-      this.root.append(this.renderV2Toolbar(), this.renderV2Timeline(projectBackgroundV2Timeline(v2Scene, {}, this.currentX())));
+      this.root.append(this.renderV2Toolbar(), this.renderV2Environment(v2Scene), this.renderV2Timeline(projectBackgroundV2Timeline(v2Scene, {}, this.currentX())));
       this.syncOverlay();
       return;
     }
@@ -139,15 +141,42 @@ export class PixelBgrLabUI {
   }
   private renderV2Toolbar(): HTMLElement {
     const p=el("div","cm-pixel-panel cm-scene-toolbar");
-    const badge=el("span","cm-mode-pill"); badge.textContent="V2 · CANVAS + OBJECT AUTHORING";
-    p.append(badge, button("close",()=>this.close()));
+    const badge=el("span","cm-mode-pill"); badge.textContent="V2 · SCENE AUTHORING";
+    p.append(badge,
+      button("save V2",()=>this.saveV2()), button("load saved V2",()=>this.loadV2()),
+      button("clear saved V2",()=>this.clearSavedV2()), button("export V2",()=>this.exportV2File()),
+      button("import V2",()=>this.importV2File()), button("close",()=>this.close()));
     const opacity=el("input"); opacity.type="range"; opacity.min="0.35"; opacity.max="1"; opacity.step="0.01"; opacity.value=String(this.overlayOpacity); opacity.oninput=()=>{ this.overlayOpacity=Number(opacity.value); this.root.style.setProperty("--cm-scene-lab-opacity",String(this.overlayOpacity)); };
     p.append(this.row("UI opacity",opacity));
     return p;
   }
+  private applyV2EnvironmentEdit(result: V2EnvironmentEditResult): void {
+    if (!result.ok) { this.message=result.error; this.render(); return; }
+    this.message=""; setBackgroundSceneV2(result.scene,globalThis);
+  }
+  private renderV2Environment(scene: BackgroundSceneV2): HTMLElement {
+    const p=el("div","cm-pixel-panel"); p.append("V2 · ENVIRONMENT",document.createElement("br"));
+    const starfield=scene.environment.starfield;
+    p.append(this.row("starfield enabled",check(Boolean(starfield),enabled=>this.applyV2EnvironmentEdit(enabled?enableV2Starfield(scene):disableV2Starfield(scene)))));
+    if (!starfield) p.append("Starfield disabled / not configured.");
+    else {
+      p.append(this.row("seed",num(starfield.seed,1,value=>this.applyV2EnvironmentEdit(updateV2Starfield(scene,{seed:value})))),
+        this.row("density",num(starfield.density,.05,value=>this.applyV2EnvironmentEdit(updateV2Starfield(scene,{density:value})))),
+        button("randomize seed",()=>{const values=new Uint32Array(1);crypto.getRandomValues(values);this.applyV2EnvironmentEdit(randomizeV2StarfieldSeed(scene,values[0]));}),
+        button("remove starfield",()=>this.applyV2EnvironmentEdit(disableV2Starfield(scene))));
+    }
+    const note=el("div","cm-v2-info");note.textContent="Screen-space logical viewport; density is normalized 0..1; save/load is explicit.";p.append(note);
+    if(this.message){const message=el("div","cm-pixel-msg");message.textContent=this.message;p.append(message);}return p;
+  }
+  private saveV2():void {const scene=getBackgroundSceneV2(globalThis);if(!scene)return;const result=saveBackgroundSceneV2(localStorage,scene);this.message=result.ok?`saved V2 scene ${scene.id}`:`save failed: ${result.error}`;this.render();}
+  private loadV2():void {const result=loadBackgroundSceneV2(localStorage);if(result.ok){this.message=`loaded saved V2 scene ${result.scene.id}`;setBackgroundSceneV2(result.scene,globalThis);}else{this.message=`load failed: ${result.error}`;this.render();}}
+  private clearSavedV2():void {clearBackgroundSceneV2(localStorage);this.message="cleared saved V2 scene (active scene unchanged)";this.render();}
+  private exportV2File():void {const scene=getBackgroundSceneV2(globalThis);if(!scene)return;const blob=new Blob([serializeBackgroundSceneV2(scene)],{type:"application/json"});const a=el("a");a.href=URL.createObjectURL(blob);a.download=`${scene.id||"background-scene"}.background-v2.json`;a.click();URL.revokeObjectURL(a.href);this.message=`exported V2 scene ${scene.id}`;this.render();}
+  private importV2File():void {const input=el("input");input.type="file";input.accept="application/json";input.onchange=()=>{const file=input.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const result=parseBackgroundSceneV2(String(reader.result??""));if(result.ok){this.message=`imported V2 scene ${result.scene.id}`;setBackgroundSceneV2(result.scene,globalThis);}else{this.message=`V2 import failed: ${result.error}`;this.render();}};reader.readAsText(file);};input.click();}
+
   private renderV2Timeline(projection: V2TimelineProjection): HTMLElement {
     const panel=el("div","cm-pixel-panel cm-v2-panel");
-    panel.append("V2 segment timeline + independent object canvas authoring · environment and gameplay reference remain read-only");
+    panel.append("V2 segment timeline + independent object canvas authoring · environment configured above");
     const contentSpan=Math.max(720,projection.bounds.endX-projection.bounds.startX);
     const widthPx=Math.max(1000,Math.ceil(contentSpan));
     const scale=createTimelineScale([{startX:projection.bounds.startX,length:Math.max(1,contentSpan)}],projection.playerX,widthPx);
