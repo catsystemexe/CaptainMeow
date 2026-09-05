@@ -1,7 +1,7 @@
 # Captain Meow — Roadmap
 
 Status: CANONICAL DEVELOPMENT / CONSOLIDATION ROADMAP
-Last updated: 2026-09-03
+Last updated: 2026-09-05
 
 This roadmap tracks repository/workflow/documentation consolidation and near-term engineering governance. It is not a substitute for a product/gameplay feature roadmap.
 
@@ -12,100 +12,121 @@ Multitrack Pixel BGR Engine V2 is the current focused product-development workst
 Canonical workstream roadmap:
 - `docs/bgr/MULTITRACK_BGR_V2_ROADMAP.md`
 
-Detailed BGR architecture, milestone scope, acceptance criteria, and STATIC/RUNTIME verification gates are maintained there rather than duplicated in this project-level roadmap.
+Detailed BGR architecture, milestone scope, acceptance criteria, and STATIC/RUNTIME verification gates are maintained there rather than duplicated here.
 
 ## Completed audit sequence
+
+The original audit/consolidation program is complete. Historical phase names retain the environment that was actually audited at that time.
 
 - P0 Source/access/authority inventory — COMPLETE
 - P1 Audit workspace/bootstrap — COMPLETE
 - F0 Preservation baseline — COMPLETE
 - F1 Implementation × documentation audit — COMPLETE
-- F2 GPT/GitHub/Replit workflow audit — COMPLETE
+- F2 GPT/GitHub/Replit workflow audit — COMPLETE / HISTORICAL SCOPE
 - F3 Instruction authority audit — COMPLETE
 - F4 Consolidation proposal — COMPLETE / APPROVED
 
 ## Completed post-gate consolidation
 
 ### C1 Canonical docs bootstrap — COMPLETE
-
 Seven canonical `docs/project/*` documents established and integrated through PR #124.
 
 ### C2 Instruction consolidation — COMPLETE
-
 Project/repository instruction authority aligned. `AGENTS.md` reduced to repository-local engineering/executor rules and dynamic X/Y branch model. Integrated through PR #125.
 
 ### C3 Documentation migration — COMPLETE
-
 README/current entry point corrected, historical documentation centrally classified, obsolete global authority claims retired. Integrated through PR #126.
 
 ### C4 Workflow normalization / CI — COMPLETE
-
-Completed outcomes:
+Historical outcomes:
 - minimal GitHub `Static Verify` CI integrated through PR #127;
 - CI runtime verified through actual Actions execution;
 - pre-existing `createGame.ts` syntax failure detected and repaired through PR #129;
 - repair passed `npm ci` → `npm run typecheck` → `npm run build`;
-- Replit `origin` normalized from historical `catsystemexe/MGoD` to `catsystemexe/CaptainMeow`;
-- Replit workspace fast-forwarded safely to `pixel_bgr@940358eb9f35c73d9172c6962e483f8f1f6d51bb` with preservation branch intact.
+- Replit `origin` was normalized to `catsystemexe/CaptainMeow` and its workspace preserved/synchronized.
+
+These Replit steps describe completed historical migration work; they are not current workflow instructions.
 
 ### C5 Drive synchronization — COMPLETE
-
-Completed outcomes:
-- canonical status refreshed before mirroring through PRs #130 and #131;
 - dedicated Drive mirror folder `___CaptainMeow/___CANONICAL_MIRROR` created;
 - all seven canonical `docs/project/*` documents mirrored;
 - Drive `___docs` remains historical and separate.
 
 ### C6 Branch reconciliation — COMPLETE
-
-Completed outcomes:
-- `main` five-commit divergence classified as historical merge topology only; no net unique file-state content required promotion;
-- preservation branch functional seek-wiring intent confirmed as already promoted through PR #129;
-- 111 historical `codex/*` branches inventoried at audit time;
-- six historical open PRs (#1, #2, #4, #5, #11, #22) individually classified and closed without merge after explicit authorization;
-- merged/reachable and superseded task branches classified by unique-content evidence;
-- post-audit physical cleanup completed on 2026-09-03: historical/superseded remote branches and `main` were deleted after checkpointing and individual safety review;
-- retained remote branches are `pixel_bgr`, `backup/replit-bgr-lab-preaudit-20260825`, `bgr`, and `feature/gameplay-polish`.
+- `main` divergence classified as historical merge topology only;
+- Replit preservation branch functional intent confirmed as already promoted;
+- historical task branches/PRs classified and cleaned up according to explicit authorization;
+- retained preservation/reference branches remain evidence, not current workflow authority.
 
 ### C7 Final consistency audit — COMPLETE
-
-C7 verified:
-- code vs canonical docs;
-- Project Instructions vs versioned profile/workflow;
-- AGENTS vs current repository model;
-- GitHub vs Drive mirror;
-- Replit implementation checkpoint vs Git history;
-- CI semantics;
-- branch/preservation state.
-
-Result:
-- no new architecture or runtime conflict;
-- all commits after implementation checkpoint `940358eb...` through the C7 audit checkpoint were documentation-only;
-- operating model is internally consistent;
-- final canonical tracking closeout and Drive mirror provenance synchronization were completed.
+Verified code vs canonical docs, Project Instructions/profile/workflow, AGENTS scope, GitHub/Drive mirror, CI semantics and preserved runtime history.
 
 Audit evidence: `___CaptainMeow/___AUDIT/07_FINAL_CONSISTENCY_AUDIT`.
 
-## Consolidation program status — COMPLETE
+## 2026-09-05 workflow platform migration — ACTIVE DECISION / DOC ALIGNMENT
 
-- canonical implementation/documentation authority is established in Git;
-- canonical tracking reflects completed C1–C7 work;
-- affected Drive mirror documents were synchronized after the C7 closeout;
-- `README_MIRROR` records the exact synchronized Git checkpoint;
-- Replit is normalized to the canonical repository and retained as runtime/verification environment;
-- branch unique-content reconciliation and authorized branch cleanup are complete;
-- remaining work has moved to ordinary maintenance/hygiene or product development.
+New operating decision:
+- VS Code replaces Replit as the default local runtime/environment verification surface;
+- VS Code Agent is deliberately constrained to a low-cost runtime-operator role;
+- default VS Agent behavior is `READ / EXECUTE / OBSERVE / REPORT`;
+- ChatGPT retains architecture/design/audit/orchestration ownership;
+- Codex remains the primary implementation agent;
+- Git/GitHub remains canonical for implementation/history/versioned docs;
+- Replit is legacy/historical unless an explicit Replit-specific task requires it.
+
+Required documentation alignment:
+- `docs/project/00-project-state.md` — update runtime environment/current operating model;
+- `docs/project/03-backlog.md` — update capability ownership and workflow policy;
+- `docs/project/04-decisions.md` — supersede Replit runtime decision; add VS Code/VS Agent decisions;
+- `docs/project/05-development-workflow.md` — replace runtime routing and preservation gate;
+- `docs/project/06-chatgpt-project-profile.md` — align versioned Project Instructions profile;
+- Drive canonical mirror — resynchronize after Git integration;
+- Drive historical audit roadmap/audits — preserve historical findings, add supersession/current-workflow note where needed.
+
+## Current normative operating model
+
+GitHub:
+- canonical implementation/history/versioned documentation;
+- static CI.
+
+ChatGPT:
+- architecture, UX/product design, reasoning, audit, planning, evaluation and orchestration.
+
+Codex:
+- primary implementation agent;
+- focused source changes and execution-backed static verification.
+
+VS Code:
+- local runtime environment;
+- Shell/PowerShell;
+- app execution/logs/processes;
+- browser/UI/runtime and environment-specific verification.
+
+VS Code Agent:
+- low-cost runtime operator;
+- not primary designer/architect/implementer;
+- source changes only under explicit narrow authorization.
+
+Google Drive:
+- synchronized mirror/backup;
+- audit working material;
+- human-readable reference.
+
+Replit:
+- legacy/historical/migration evidence by default;
+- use only for explicit Replit-specific needs.
 
 ## Post-audit maintenance / hygiene
 
 Non-blocking items:
 - long-term retention decision for `backup/replit-bgr-lab-preaudit-20260825`;
-- explicit resolution/port-or-retire decisions for the retained reference branches `bgr` and `feature/gameplay-polish`;
+- classify `.replit` and Replit-specific Vite host allowances as KEEP LEGACY COMPATIBILITY vs REMOVE in a separate implementation-safe cleanup decision;
+- explicit resolution/port-or-retire decisions for retained reference branches;
 - review `.bak`, dump and `_patch` artifacts before deletion;
-- dependency/security triage from CI `npm audit` findings;
-- GitHub Actions action-runtime maintenance warning review;
+- dependency/security triage from CI findings;
+- GitHub Actions runtime maintenance warning review;
 - broader smoke-suite baseline and semantics reconciliation.
 
 ## Ordering rule
 
-Destructive cleanup remains evidence-driven and explicitly authorized. Historical material does not become current authority merely because it is retained.
+Destructive cleanup remains evidence-driven and explicitly authorized. Historical Replit material does not become current authority merely because it is retained. Runtime-platform migration does not justify deleting compatibility/configuration artifacts without separate technical classification.
