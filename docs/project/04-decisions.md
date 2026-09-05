@@ -1,9 +1,9 @@
 # Captain Meow — Decisions
 
 Status: CANONICAL ACTIVE DECISION REGISTER
-Last updated: 2026-08-26
+Last updated: 2026-09-06
 
-This document records current approved project/workflow decisions that should remain visible after the audit material becomes historical. It is not a substitute for detailed ADRs where a decision needs full technical rationale.
+This document records current approved project/workflow decisions that should remain visible after historical audit material becomes non-authoritative.
 
 ## D-001 — Git is canonical for implementation and versioned project documentation
 Status: ACTIVE
@@ -22,13 +22,15 @@ Decision:
 - canonical project docs synchronize one-way GitHub → Drive;
 - existing Drive `___docs` is historical/potentially stale unless verified against Git/current decisions.
 
-## D-003 — Replit is runtime/Shell/visual verification
+## D-003 — VS Code is the primary runtime/environment verification surface
 Status: ACTIVE
 
 Decision:
-- Replit is used for runtime behavior, environment-specific debugging, Shell when no connected execution path exists, and manual Preview/visual verification;
-- Replit is not preferred for repository history, branch authority or canonical documentation;
-- Replit Agent is not a required workflow dependency.
+- local VS Code is used for app execution, Shell/PowerShell, runtime logs, browser/UI/visual verification and environment-specific checks;
+- VS Code is evidence/runtime infrastructure, not repository authority;
+- VS Code Agent is a deliberately low-cost runtime operator with default role `READ / EXECUTE / OBSERVE / REPORT`;
+- VS Code Agent is not the default designer, architect, implementer or refactoring agent;
+- runtime findings requiring source changes return to ChatGPT/Codex for focused implementation.
 
 ## D-004 — Cross-project communication framework
 Status: ACTIVE
@@ -48,7 +50,7 @@ Decision:
 - X = currently approved active integration branch resolved from current repository state/decision;
 - Y = focused task branch created from verified X;
 - do not hard-code `main` or `work` as integration authority;
-- `pixel_bgr` is the current approved integration line at the consolidation checkpoint, but this is not a permanent naming rule.
+- `pixel_bgr` is the current approved integration line at this checkpoint, but this is not a permanent naming rule.
 
 ## D-006 — Canonical project document set
 Status: ACTIVE
@@ -69,32 +71,28 @@ Status: ACTIVE
 
 Decision:
 - keep current codebase engineering invariants and executor safety rules;
-- remove/supersede stale fixed branch governance and broad cross-project conversational behavior;
-- do not make `AGENTS.md` the project-wide workflow constitution.
+- do not make `AGENTS.md` the project-wide workflow constitution;
+- current code/runtime contracts and canonical project docs remain separate authority layers.
 
-## D-008 — Preserve before branch cleanup
+## D-008 — Preserve before destructive cleanup
 Status: ACTIVE
 
 Decision:
-- unique-content reconciliation must precede destructive branch cleanup;
-- once a branch has been proven to contain no unpromoted valuable content, retention becomes an explicit historical/hygiene choice rather than an unresolved authority requirement;
-- the current integration branch must be retained;
-- preservation/evidence branches may remain after functional intent is promoted when their audit value is still useful;
-- branch deletion remains explicitly authorized destructive work and is never performed merely to make the repository look tidy.
+- unique-content reconciliation precedes destructive cleanup;
+- retention of already-classified historical evidence is a hygiene choice, not current workflow authority;
+- branch deletion, history rewrite, force-push and destructive cleanup remain explicitly authorized actions.
 
-C6 completed the required reconciliation for `main`, the Replit preservation branch, and the inspected historical task-branch exceptions. Their remaining retention/deletion decisions therefore follow this post-reconciliation rule.
-
-## D-009 — Manual Replit changes must be preserved promptly in Git
+## D-009 — Unknown/local work must be preserved before repository-state changes
 Status: ACTIVE
 
 Decision:
-Before branch switching/synchronization/reset-like operations in Replit:
+Before branch switching/synchronization/reset-like operations in any local runtime environment:
 1. inspect working-tree state;
 2. preserve valuable local changes on a branch/commit;
 3. push when appropriate/authorized;
 4. verify remote preservation.
 
-Ad hoc `.bak` files are not the preferred normal preservation mechanism.
+Ad hoc backup files are not the preferred normal preservation mechanism.
 
 ## D-010 — Static and runtime verification are distinct
 Status: ACTIVE
@@ -104,27 +102,39 @@ Decision:
 - implementation reports name the exact verification performed;
 - user visual feedback is authoritative for UX acceptance where automated checks cannot establish visual correctness.
 
-## D-011 — Minimal CI replaces repeated manual baseline verification
+## D-011 — Minimal CI provides baseline static verification
 Status: ACTIVE / IMPLEMENTED
 
 Decision:
 - GitHub Actions workflow `.github/workflows/static-verify.yml` provides the minimal repository CI baseline;
-- required sequence is Node 20 → `npm ci` → `npm run typecheck` → `npm run build`;
-- the workflow is runtime-verified and successfully passed after the baseline repair in PR #129;
-- `npm run test` remains a targeted smoke rather than a complete test suite;
-- the broader smoke suite is not a mandatory green gate until its baseline/suite semantics are reconciled.
+- baseline sequence is Node 20 → `npm ci` → `npm run typecheck` → `npm run build`;
+- task-specific smokes/tests remain separate explicit evidence;
+- known unrelated failures must be distinguished from regressions introduced by a focused patch.
 
 ## D-012 — Cross-project role framework is shared, project instructions extend it
 Status: ACTIVE
 
 Decision:
-- universal role files contain no Captain Meow/APU branch names, secret names, deployment policy or local-machine assumptions;
+- universal role files contain no Captain Meow-specific branch names, deployment policy or local-machine assumptions;
 - Captain Meow-specific source authority, executors and workflow boundaries live in project-specific instructions/profile;
 - executor prompts receive the relevant operational rules without requiring a duplicate universal framework in every repository.
+
+## D-013 — Pixel BGR Dev Workspace v1 replaces floating-overlay optimization as the active UX direction
+Status: ACTIVE
+
+Decision:
+- do not continue micro-polishing the old floating Pixel BGR Lab by default;
+- implement a dual GAME/DEV display model;
+- in DEV mode treat the page as a workspace containing game viewport, contextual side regions and a full-width bottom multitrack timeline;
+- Phase 1 is shell recomposition, not an editor/runtime rewrite;
+- preserve verified BGR V2 editing, serialization, renderer and exact timeline-coordinate contracts.
+
+Active plan:
+- `docs/bgr/PIXEL_BGR_DEV_WORKSPACE_V1_WORK_PLAN.md`.
 
 ## Decision hygiene
 
 When a decision is superseded:
-- mark it SUPERSEDED rather than silently deleting its history;
-- identify the replacing decision/document;
+- mark it SUPERSEDED rather than silently presenting obsolete behavior as current;
+- identify the replacing decision/document where useful;
 - update canonical project state/workflow if operational truth changes.
