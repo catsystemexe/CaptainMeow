@@ -183,9 +183,21 @@ export function enableBackgroundV2VisualVerification(root: any = globalThis): Ba
   return setBackgroundSceneV2(createBackgroundV2VisualVerificationScene(), root);
 }
 
-/** Enables the practical Desert V2 authoring fixture through the normal typed scene path. */
+export const BACKGROUND_V2_DESERT_VERIFICATION_START_X = 0;
+
+type GameplaySeek = (targetX: number, options?: { bounds?: { startX?: number; endX?: number }; pauseAfterSeek?: boolean }) => unknown;
+
+/** Enables the practical Desert V2 authoring fixture and seeks gameplay to its deterministic scene start. */
 export function enableBackgroundV2DesertTest(root: any = globalThis): BackgroundState {
-  return setBackgroundSceneV2(createBackgroundV2DesertTestScene(), root);
+  const state = setBackgroundSceneV2(createBackgroundV2DesertTestScene(), root);
+  const seek = root?.__CM?.game?.seekGameplayToPlayerX as GameplaySeek | undefined;
+  seek?.(BACKGROUND_V2_DESERT_VERIFICATION_START_X, {
+    bounds: {
+      startX: BACKGROUND_V2_DESERT_VERIFICATION_START_X,
+      endX: BACKGROUND_V2_DESERT_VERIFICATION_START_X,
+    },
+  });
+  return state;
 }
 
 export function disableTypedBackground(root: any = globalThis): void {

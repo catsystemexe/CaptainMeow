@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { clearBackgroundState, enableB2BackgroundSceneDemo, getBackgroundScene, getBackgroundState, setBackgroundScene, subscribeBackgroundState, clearBackgroundPreviewState, setBackgroundPreviewState, stepBackgroundPreviewState } from "../render/BackgroundState";
 import { addChunk, addLayer, cloneScene, createDemoScene, deleteChunk, deleteLayer, duplicateChunk, duplicateLayer, moveChunk, moveLayer } from "./PixelBgrLabState";
 import { exportBackgroundScene, importBackgroundSceneJson, parseDraftPayload, serializeDraft } from "./PixelBgrLabSerialization";
@@ -79,5 +80,10 @@ assert.equal(open, true);
 togglePixelBgrLab(controller);
 assert.equal(open, false);
 assert.equal(toggles, 2);
+
+const mainSource = readFileSync(new URL("../main.ts", import.meta.url), "utf8");
+for (const hook of ["visual:", "desert:", "clear:"]) {
+  assert(mainSource.includes(hook), `BGR verification hook remains available: ${hook}`);
+}
 
 console.log("[SMOKE] PixelBgrLab OK ✅");
