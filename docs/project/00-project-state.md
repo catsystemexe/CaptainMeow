@@ -1,7 +1,7 @@
 # Captain Meow — Project State
 
 Status: CANONICAL CURRENT-STATE SUMMARY
-Last audited: 2026-08-26
+Last updated: 2026-09-06
 
 This document summarizes the currently verified project state. It does not override actual code for implemented behavior or explicit active decisions for intended future behavior.
 
@@ -10,27 +10,17 @@ This document summarizes the currently verified project state. It does not overr
 Canonical repository: `catsystemexe/CaptainMeow`.
 
 Current active integration line:
-- branch: `pixel_bgr`
-- GitHub default branch: `pixel_bgr`
+- branch: `pixel_bgr`.
 
-Last implementation-bearing checkpoint independently verified by CI and Replit synchronization:
-- commit: `940358eb9f35c73d9172c6962e483f8f1f6d51bb`
+Current HEAD must be resolved from GitHub before implementation. Do not rely on a historical pinned SHA as a self-updating source of truth.
 
-Documentation-only commits may advance `pixel_bgr` beyond that checkpoint. Therefore this document does not treat a pinned documentation HEAD SHA as a self-updating source of truth; current HEAD must be resolved from GitHub when needed.
+The active integration branch is a resolved project-state fact, not a permanent hard-coded branch name. Historical lines such as `work` or `main` must not be assumed current.
 
-`work` is an older ancestor of the active integration line and must not be assumed to be current.
+## Preserved legacy evidence
 
-`main` was reconciled during C6. Its five commits not present on `pixel_bgr` are historical merge-topology only; the final `main` tree contributes no net unique file-state content requiring promotion. Retaining or deleting the branch is therefore a historical-retention choice rather than a data-preservation requirement.
+Historical preservation branches/configuration may remain after their functional intent has been promoted. They are evidence only and must not be treated as current workflow authority or merged automatically.
 
-The active integration branch is a resolved project-state fact, not a permanent hard-coded branch name. Current work must verify the approved integration branch before implementation.
-
-## Preserved Replit evidence
-
-A Replit-only BGR Lab state was preserved before consolidation:
-- branch: `backup/replit-bgr-lab-preaudit-20260825`
-- commit: `4b4fb32988ce92a2a16e8fcc309ac9584bedaca3`
-
-Its functional `createGame.ts` seek-wiring intent was subsequently promoted to canonical integration through PR #129 and passed Static Verify. The branch now remains preservation/history evidence only; it must not be merged automatically.
+Do not delete legacy configuration solely because it is inactive; classify it first.
 
 ## Current implementation shape
 
@@ -47,101 +37,71 @@ Verified implementation families include:
 - Pixel/Scene BGR authoring tools, timeline and gameplay seek support;
 - developer UI/labs and smoke checks.
 
-The BGR B1–B6 line is represented in `pixel_bgr`.
+Multitrack Pixel BGR Engine V2 is the current focused product-development workstream.
+
+Current active BGR work plan:
+- `docs/bgr/PIXEL_BGR_DEV_WORKSPACE_V1_WORK_PLAN.md`.
 
 ## Runtime environment
 
-Replit app `C_M` / project URL name `CM` is the runtime/Preview environment identified during audit.
+Local VS Code is the primary runtime/environment verification surface.
 
-Replit is not a source of repository authority. Its intended role is:
-- runtime;
-- manual Shell when no connected execution path exists;
-- browser/Preview/visual verification;
-- environment-specific debugging.
+VS Code is used for:
+- running the app/dev server;
+- Shell/PowerShell execution;
+- browser/UI and visual verification;
+- runtime logs/errors;
+- process/port inspection;
+- environment-specific dependency/configuration checks.
 
-Replit Agent is not a required workflow dependency.
+VS Code Agent is the default low-cost runtime operator with role:
+`READ / EXECUTE / OBSERVE / REPORT`.
 
-Last verified live Replit checkpoint:
-- active branch: `pixel_bgr`;
-- HEAD: `940358eb9f35c73d9172c6962e483f8f1f6d51bb`;
-- working tree: clean;
-- `origin`: `https://github.com/catsystemexe/CaptainMeow`;
-- preservation branch remains intact;
-- `gitsafe-backup` remains untouched.
+It is not the default designer, architect, implementer or refactoring agent. If runtime investigation indicates a source change, preserve evidence and return implementation to ChatGPT/Codex on a focused branch.
 
-All Git commits between that checkpoint and the C7 audit checkpoint were documentation-only, so this is not an implementation/runtime divergence.
+Runtime environments provide evidence, not repository authority.
 
 ## Static verification / CI
 
 Minimal GitHub CI is active at `.github/workflows/static-verify.yml`.
 
-Validated baseline:
+Baseline:
 - Node 20;
 - `npm ci`;
 - `npm run typecheck`;
 - `npm run build`.
 
-A pre-existing malformed authoring-seek wiring block in `src/game/boot/createGame.ts` was detected by CI and repaired through PR #129. The repair passed the full Static Verify sequence before merge.
-
-This CI does not imply full test coverage. `npm run test` remains a targeted smoke and the broader smoke suite is not a required green gate until its semantics/baseline are reconciled.
+This CI does not imply full test coverage. Task-specific smokes/tests remain explicit evidence and known unrelated baseline failures must be reported separately.
 
 ## Documentation state
 
 Canonical maintained project documentation is established under `docs/project/`.
 
-Repository-local executor/engineering authority is the consolidated `AGENTS.md`.
+Repository-local executor/engineering authority is `AGENTS.md`.
 
-Historical/stale material is preserved and classified through `docs/HISTORICAL_DOCUMENTS.md`.
-
-Key classifications include:
-- root FSM audit/proposal/final/session documents as historical lineage rather than current global authority;
-- June repository audit documents as historical snapshots;
-- `docs/architecture/CM_Architecture_v3.1.md` as superseded global authority;
-- `docs/decisions/ADR_0001_ModeLockedInit.md` as historical/not currently implemented;
-- BGR handoffs as implementation/session evidence;
-- historical Drive `___docs` material.
+Historical/stale material is preserved and classified through `docs/HISTORICAL_DOCUMENTS.md`; historical documents and handoffs are evidence, not active authority.
 
 ## Drive canonical mirror
 
 Dedicated mirror location:
-- `___CaptainMeow/___CANONICAL_MIRROR`
-- contents: all seven canonical `docs/project/*` documents plus `README_MIRROR` manifest.
+- `___CaptainMeow/___CANONICAL_MIRROR`.
 
 Git remains canonical. Drive copies are one-way mirror/backup only and must not become an independent edit authority.
 
-Final C7 closeout synchronization is complete. `README_MIRROR` records the exact synchronized Git checkpoint. Future canonical documentation changes continue to synchronize one-way Git → Drive.
+## Current approved operating model
 
-## Audit and consolidation status
-
-Pre-consolidation audit phases P0, P1, F0, F1, F2, F3 and F4 are complete.
-
-Integrated post-gate work:
-1. C1 canonical `docs/project/*` bootstrap — PR #124.
-2. C2 instruction-authority consolidation — PR #125.
-3. C3 documentation migration/historical classification — PR #126.
-4. C4 workflow normalization/minimal CI — PR #127 plus baseline repair PR #129.
-5. Replit remote/branch normalization — complete and independently reconciled to GitHub `pixel_bgr`.
-6. C5 GitHub → Drive canonical mirror — complete.
-7. C6 branch unique-content reconciliation — complete; six obsolete historical PRs closed without merge; physical branch deletion remains optional hygiene.
-8. C7 final consistency audit — complete; no new architecture/runtime conflict found.
-
-The audit and consolidation program is COMPLETE.
-
-Approved operating model:
 1. Git repository = canonical implementation and versioned project documentation.
-2. Drive = synchronized mirror/backup plus audit workspace.
-3. Replit = runtime/Shell/visual verification.
-4. ChatGPT = design, audit, authority resolution and orchestration.
-5. Codex = preferred execution-backed environment for non-trivial code changes.
-6. Cross-project roles = `[DESIGNER]`, `[INSTRUCTIONS]`, `[IMPLEMENTATION]`; Code mode is a process/safety overlay.
-7. Active integration branch is dynamically resolved; fixed `work/main` authority is retired.
-8. Branch cleanup follows unique-content reconciliation and explicit authorization.
+2. GitHub = branches, PR integration, history and static CI.
+3. ChatGPT = design, audit, authority resolution, GitHub inspection and implementation orchestration.
+4. Codex = primary implementation agent for non-trivial source changes and execution-backed static verification.
+5. VS Code = primary local runtime environment.
+6. VS Code Agent = deliberately low-cost runtime operator, not primary designer/implementer.
+7. Drive = synchronized mirror/backup plus audit workspace.
+8. Static and runtime verification remain distinct.
+9. Active integration branch is dynamically resolved; do not assume historical branch names.
 
 ## Current next work
 
-The audit/consolidation program is COMPLETE. Remaining items are non-blocking maintenance/hygiene unless explicitly promoted:
-- optionally delete already-classified historical task branches;
-- decide long-term retention of `main` and the Replit preservation branch;
-- triage dependency/security findings and GitHub Actions runtime-maintenance warnings;
-- reconcile broader smoke-suite baseline/semantics;
-- review `.bak`, dump and `_patch` preservation artifacts before any deletion.
+Current product priority is the structural Pixel BGR DEV Workspace v1 migration described in `docs/bgr/PIXEL_BGR_DEV_WORKSPACE_V1_WORK_PLAN.md`.
+
+Implementation proceeds incrementally from a verified `pixel_bgr` baseline, beginning with the dual GAME/DEV shell foundation and preserving verified BGR V2 runtime/editing contracts.
