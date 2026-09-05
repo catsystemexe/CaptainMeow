@@ -1,9 +1,9 @@
 # Captain Meow — Multitrack BGR V2 Roadmap
 
-Status: ACTIVE WORKSTREAM / IMPLEMENTATION CONTROL DOCUMENT
+Status: BGR V2 AUTHORING BASELINE CLOSED
 Baseline branch: `pixel_bgr`
 Baseline checkpoint at roadmap creation: `b1d0443bfe927eee4f00af5479dece0b8442d797`
-Last updated: 2026-09-04
+Last updated: 2026-09-05
 
 ## Purpose
 
@@ -673,7 +673,7 @@ Completed by the M7 runtime verification checkpoint below.
 
 ## M8 — Environment / procedural stars + V2 authoring closure
 
-Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
+Status: COMPLETE — STATIC + RUNTIME VERIFIED
 
 M7 static and runtime completion removes the prerequisite blocker for M8.
 
@@ -686,7 +686,30 @@ M7 static and runtime completion removes the prerequisite blocker for M8.
 - Preserved V1 authoring, import/export, draft storage, runtime activation, and `shouldApplyPixelBgrV1Draft(...)` protections without adding automatic V1-to-V2 migration.
 - Focused starfield, environment-editing, validation/serialization, persistence, Scene Lab UI, M6/M7, renderer/coordinator, GameplaySeek, V2, visual-fixture, and V1 regression smokes pass. `npm run typecheck` and `npm run build` pass.
 - The broad smoke runner passes all M8/BGR-focused entries and then reaches the documented unrelated `BombExplosionChain.smoke.ts` / `DamageSystem.rules.onExplosion` baseline failure.
-- Browser/runtime and visual verification remain pending; M8 and the V2 authoring baseline are not yet marked complete.
+- Browser/runtime and visual verification remained pending at static implementation closure and was completed by the runtime verification checkpoint below.
+
+### M8 runtime verification checkpoint (2026-09-05)
+
+- The environment authoring UI was present and usable, and the starfield rendered as the scene environment behind authored track content.
+- The initial verification fixture used seed `8675309` and density `0.45`, producing 55 stars. The same seed/config produced an identical deterministic distribution; a different seed produced a different stable distribution; restoring the original seed restored the original distribution.
+- Density produced 0 stars at `0`, 55 at `0.45`, and 111 at `0.9`; invalid values below `0` and above `1` were rejected.
+- Enable/disable worked without affecting tracks, segments, or objects. Explicit randomize changed the seed once and remained stable afterward.
+- Explicit save persisted V2 without automatically reloading active state. Active V2 edits remained authoritative until explicit load.
+- Loading saved V2 restored the starfield, tracks, segment, and objects. Clearing saved V2 removed only V2 persistence, while V1 storage remained intact.
+- Export produced a complete version 2 payload named `bgr-v2-visual-verification.background-v2.json`, and its import round-trip succeeded.
+- Malformed JSON and version 1/V1 input were rejected without active-scene mutation or automatic conversion.
+- Environment edits did not alter authored coordinates, parallax, or Z order. M7 segment, object, and Player X authoring remained functional; foreground objects remained foreground while the environment remained behind authored content.
+- Clearing V2 verification restored the normal V1 Scene Lab. V1 import/export and draft behavior remained functional.
+- No page errors, console errors, `BOOT ERROR`, or new M8-specific errors were observed. The known WebGL uniform-location warning remains a separate baseline defect and is not fixed here.
+- Cleanup passed, and source files remained unchanged during runtime verification.
+
+### BGR V2 authoring baseline closure
+
+M8 completion closes the planned BGR V2 authoring baseline covering multitrack composition, finite/repeat tracks, segment authoring, independent object authoring, canvas X/Y placement, foreground composition, deterministic environment/starfield authoring, V2 validation, V2 serialization/import/export, explicit V2 persistence, and V1 coexistence.
+
+`BackgroundSceneV2` remains the sole V2 authority, with `localStorage` as persistence backing only and no automatic V1-to-V2 migration. V1 authoring/runtime remains supported. The environment remains scene-wide rather than track-owned; the starfield remains deterministic and in screen/environment space; objects remain independent from segments; and gameplay authority remains unchanged.
+
+The V2 authoring baseline is **CLOSED**. Future work must be classified as follow-up enhancements, defects, migration/consolidation work, or separately approved new milestones. This closure does not imply that V1 can be deleted, that all BGR bugs are resolved, that the known WebGL baseline warning is fixed, or that unrelated gameplay/smoke baseline failures are fixed.
 
 ### Objective
 
