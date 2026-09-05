@@ -34,7 +34,7 @@ assert.deepEqual(scene, before);
 assert.ok(scene.globalLayers.some(layer => layer.kind === "sprite"));
 
 const labUiSource = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
-assert(labUiSource.includes("width:min(400px,calc(100vw - 16px));height:min(620px,calc(100vh - 16px))"), "Lab control surface is constrained so the canvas remains visible");
+assert(labUiSource.includes("width:min(400px,calc(100vw - 16px));height:min(620px,calc(100vh - 164px))"), "Lab reserves a 156px bottom authoring region and remains compact in a short viewport");
 assert(labUiSource.includes("min-height:0;pointer-events:none}.cm-pixel-bgr-lab>:not(style){pointer-events:auto}"), "only visible Lab control surfaces receive pointer events");
 for (const selector of [".cm-pixel-bgr-lab button", ".cm-pixel-bgr-lab input", ".cm-timeline", ".cm-v2-timeline"]) {
   assert(labUiSource.includes(selector), `Lab control remains addressable: ${selector}`);

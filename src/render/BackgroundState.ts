@@ -196,6 +196,7 @@ export function enableBackgroundV2DesertTest(root: any = globalThis): Background
       startX: BACKGROUND_V2_DESERT_VERIFICATION_START_X,
       endX: BACKGROUND_V2_DESERT_VERIFICATION_START_X,
     },
+    pauseAfterSeek: true,
   });
   return state;
 }

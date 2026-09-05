@@ -72,7 +72,7 @@ const authoredBeforeActivation = createBackgroundV2DesertTestScene();
 enableBackgroundV2DesertTest(verificationRoot);
 assert.deepEqual(seekCalls, [{
   targetX: BACKGROUND_V2_DESERT_VERIFICATION_START_X,
-  options: { bounds: { startX: 0, endX: 0 } },
+  options: { bounds: { startX: 0, endX: 0 }, pauseAfterSeek: true },
 }], "Desert verification activates through the gameplay seek path at scene start");
 assert.deepEqual(getBackgroundSceneV2(verificationRoot), authoredBeforeActivation, "verification seeking does not mutate authored V2 coordinates");
 
