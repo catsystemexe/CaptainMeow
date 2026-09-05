@@ -1,20 +1,24 @@
 # Captain Meow — Development Workflow
 
 Status: CANONICAL TARGET WORKFLOW
-Last updated: 2026-08-26
+Last updated: 2026-09-05
 
 ## Operating model
 
 ChatGPT Project
 → inspect / reason / design / orchestrate
 → resolve active integration branch X
-→ focused task branch Y / Codex implementation when code execution is needed
-→ static verification
-→ integration according to explicit authorization
-→ Replit runtime/visual verification when required
-→ preserve all valuable changes in Git
+→ Codex implements on focused task branch Y
+→ Codex performs static verification
+→ Codex commits and pushes Y to origin
+→ ChatGPT reviews the remote branch/diff and verification evidence
+→ ChatGPT creates PR Y → X and merges when integration is authorized
+→ VS Code / VS Code Agent performs runtime/environment verification when required
+→ if runtime fails, preserve evidence and return source repair to ChatGPT/Codex on a new focused branch
 → update canonical docs when project truth changes
 → synchronize canonical docs GitHub → Drive.
+
+Git is canonical. Runtime environments provide evidence, not source authority.
 
 ## Role framework
 
@@ -29,54 +33,63 @@ Code mode is a process/safety overlay for implementation-oriented work.
 
 - X = currently approved active integration branch.
 - Y = focused task branch created from verified X.
-- Do not assume `main`, `work` or even the GitHub default branch is X without verification.
-- At the 2026-08-26 consolidation checkpoint, `pixel_bgr` is the saved current integration baseline.
+- Do not assume `main`, `work` or the GitHub default branch is X without verification.
+- At the current checkpoint, `pixel_bgr` is the active Captain Meow integration branch; re-verify before each new implementation batch.
+- Ordinary non-trivial implementation should use a focused Y branch.
 
-Ordinary non-trivial implementation should use a focused task branch where practical.
+Before substantial work verify repository identity, branch, HEAD and working tree; inspect `AGENTS.md`, relevant canonical docs and affected source/contracts.
 
-Do not merge, reset, rewrite history, force-push, delete branches or deploy without explicit authorization.
+Do not reset, rewrite history, force-push, delete branches or deploy without explicit authorization.
 
-Push/hosted-PR creation follows the current implementation batch/task authorization.
+## Default implementation handoff
 
-## Pre-change safety
+### Codex
+Codex is the primary implementation agent.
 
-Before substantial repository work:
-- verify repository identity and target baseline;
-- inspect `AGENTS.md` and relevant canonical docs;
-- inspect relevant source/contracts;
-- inspect working-tree state when the execution environment exposes it;
-- preserve unknown/user-owned work before operations that could overwrite/hide it.
+Expected end state for an approved implementation task:
+1. implement only the approved scope on Y;
+2. run task-appropriate static verification;
+3. commit the focused change;
+4. push Y to `origin`;
+5. confirm the remote branch exists;
+6. stop without creating or merging a PR unless explicitly instructed otherwise.
 
-If the required baseline cannot be established safely, stop repository modification and report the ambiguity.
+A normal Codex completion report should include:
+- branch;
+- commit SHA;
+- pushed: YES/NO;
+- remote branch confirmed: YES/NO;
+- exact static checks run and their results;
+- known unrelated failures kept separate;
+- runtime verification performed/not performed.
 
-## Replit synchronization / preservation gate
+Captain Meow Codex Cloud is configured for authenticated GitHub push. If push fails, report `PUSH BLOCKED`; do not invent remote state.
 
-Before branch switching, pulls, reset-like operations or major runtime migration in Replit:
-1. run/inspect Git status;
-2. if valuable local work exists, move it to a preservation/task branch;
-3. commit it;
-4. push when appropriate/authorized;
-5. verify remote preservation;
-6. only then synchronize/switch to the intended integration branch.
+### ChatGPT integration gate
 
-Replit should not contain long-lived valuable uncommitted source changes.
+After a good Codex result, ChatGPT should inspect the remote branch/commit/diff and static evidence directly through GitHub where available.
+
+When the batch or user authorization permits integration, ChatGPT may:
+1. create a PR from Y to verified X;
+2. verify base/head and expected head SHA;
+3. merge the PR;
+4. report the merge commit.
+
+This is the preferred path because it minimizes manual user transport between Codex and GitHub.
+
+Do not merge when scope, baseline, diff or verification evidence is materially uncertain. Return the issue to Codex or stop for a user decision.
 
 ## Static verification
 
-Static verification may include:
-- source/diff review;
+STATIC VERIFY covers repository/source evidence and environment-independent executable checks, including as appropriate:
+- source/diff/history review;
 - `npm run typecheck`;
 - targeted tests/smokes;
 - `npm run build`;
-- schema/contracts checks.
+- schema/contracts checks;
+- GitHub CI status.
 
-Current command semantics:
-- `npm run typecheck` = `tsc --noEmit`; do not overstate repository coverage;
-- `npm run test` = one targeted EnemySpriteSelection smoke, not a complete test suite;
-- `npm run smoke` = broader smoke runner and may include known baseline failures;
-- `npm run build` = Vite build.
-
-Reports must name exactly which checks ran and distinguish pre-existing failures.
+Current command semantics must not be overstated. Reports must name exactly which checks ran and distinguish pre-existing failures from task regressions.
 
 ### GitHub CI baseline
 
@@ -84,66 +97,92 @@ Repository CI is intentionally minimal and conservative:
 - workflow: `.github/workflows/static-verify.yml`;
 - trigger: pull requests and manual `workflow_dispatch`;
 - runtime: Node 20;
-- install: `npm ci` using the committed lockfile;
+- install: `npm ci`;
 - gates: `npm run typecheck` and `npm run build`.
 
-The CI job is named `Typecheck + build` under workflow `Static Verify`.
-
-This workflow does **not** imply full test coverage. `npm run test` is currently a single targeted smoke, while the broader `npm run smoke` is not promoted to a CI gate until its known baseline failures and suite semantics are reconciled.
-
-Do not hard-code a permanent integration branch into the CI trigger merely to mirror today's branch name. The pull-request trigger validates proposed changes independently of which approved branch currently acts as X.
+This does not imply full test coverage. Broader or task-specific smokes remain explicit evidence outside the minimal CI gate unless later promoted.
 
 ## Runtime verification
 
-Use Replit only when runtime evidence adds value:
-- live game behavior;
-- browser/runtime errors;
-- environment-specific behavior;
-- authoring UI interaction;
-- visual/UX verification.
+RUNTIME VERIFY is performed in the local VS Code environment when runtime evidence adds value:
+- live game/application behavior;
+- browser/UI interaction;
+- visual/UX verification;
+- runtime logs/errors;
+- process/port behavior;
+- environment variables and environment-specific dependencies;
+- runtime DB behavior where applicable.
 
-Never claim runtime/visual verification from static checks alone.
+Never claim runtime or visual verification from static checks alone.
+
+### VS Code Agent — runtime operator
+
+Default role:
+`READ / EXECUTE / OBSERVE / REPORT`
+
+Use primarily to:
+- verify repo, branch, HEAD and clean/expected working tree;
+- start/stop/restart app and dev server;
+- run explicit Shell/PowerShell commands;
+- inspect ports, processes and logs;
+- reproduce runtime errors;
+- perform browser/UI verification where supported;
+- report exact behavior, errors and reproduction steps.
+
+Do not use by default for design, architecture, broad repository analysis, autonomous implementation, refactoring or documentation design.
+
+If runtime evidence indicates a source change:
+1. preserve evidence;
+2. identify the probable root cause/file/location where possible;
+3. stop source modification;
+4. return implementation to ChatGPT/Codex.
+
+VS Code Agent may modify source only when explicitly authorized with narrow scope.
+
+If the expected branch/HEAD/worktree differs, stop and report instead of improvising repository changes.
 
 ## Capability ownership
 
 ### ChatGPT
-Use directly for:
-- GitHub inspection/history/diff;
-- architecture/design/audit;
-- implementation planning;
-- reviewing Codex results;
-- documentation orchestration;
-- Drive audit/mirror operations.
-
-Do not ask the user to copy/paste information that connected tools can inspect directly.
+Architecture, UX/product design, authority resolution, audits, implementation planning, GitHub inspection, Codex review, PR creation/merge when authorized, documentation orchestration and Drive mirror/audit operations.
 
 ### Codex
-Prefer for non-trivial code changes requiring execution-backed static verification and focused implementation commits.
+Primary source-code implementation, focused refactors, repository investigation, execution-backed static verification, commit and push of focused task branches.
 
 ### GitHub
-Canonical source for implementation history, branches, diffs/PRs and versioned docs. Static CI belongs here.
+Canonical implementation/history/docs surface, branches, PRs, merge history and static CI.
 
-### Replit
-Runtime/Shell/Preview/environment-specific verification. Replit Agent is not required.
+### VS Code
+Primary local runtime environment for app execution, Shell/PowerShell, logs, browser/UI and environment-specific checks.
+
+### VS Code Agent
+Low-cost runtime operator, not primary designer or implementer.
 
 ### Google Drive
-Audit working space and one-way mirror/backup of canonical docs. Drive copies do not become canonical edit authority.
+Audit working space and synchronized mirror/backup of canonical docs. Drive copies do not become independent edit authority.
+
+### Replit
+Not part of the default workflow. Treat Replit configs/docs as potentially historical/stale/migration evidence unless a Replit-specific task explicitly requires them. Do not delete legacy Replit configuration solely because it is inactive; classify it first.
 
 ## Documentation in implementation work
 
-If an implementation changes project truth, update the affected canonical documentation in the same workstream unless explicitly deferred.
+If implementation changes documented truth, update affected canonical Git documentation in the same workstream unless explicitly deferred.
 
-Implementation handoffs remain evidence/session records. They do not become permanent canonical authority merely because they are newer.
+Git documentation is canonical; Drive is synchronized afterward as mirror/backup/audit material.
+
+Implementation handoffs are evidence/session records and do not become canonical authority merely because they are newer.
 
 ## Validation and completion reporting
 
 Every implementation completion report should separate:
-- Completed changes;
-- Static verification;
-- Runtime/visual verification, if performed;
-- Deviations;
-- Documentation/tracking changes;
-- Remote actions actually performed;
+- completed changes;
+- static verification;
+- runtime/visual verification, if performed;
+- deviations and known unrelated failures;
+- documentation/tracking changes;
+- remote actions actually performed;
 - unresolved issues.
+
+A source change that requires runtime evidence is not fully runtime-verified merely because it was merged.
 
 Do not report planned but unperformed actions as completed.
