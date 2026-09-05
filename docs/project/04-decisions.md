@@ -1,9 +1,9 @@
 # Captain Meow — Decisions
 
 Status: CANONICAL ACTIVE DECISION REGISTER
-Last updated: 2026-08-26
+Last updated: 2026-09-05
 
-This document records current approved project/workflow decisions that should remain visible after the audit material becomes historical. It is not a substitute for detailed ADRs where a decision needs full technical rationale.
+This document records current approved project/workflow decisions that should remain visible after audit material becomes historical. It is not a substitute for detailed ADRs where a decision needs full technical rationale.
 
 ## D-001 — Git is canonical for implementation and versioned project documentation
 Status: ACTIVE
@@ -23,12 +23,14 @@ Decision:
 - existing Drive `___docs` is historical/potentially stale unless verified against Git/current decisions.
 
 ## D-003 — Replit is runtime/Shell/visual verification
-Status: ACTIVE
+Status: SUPERSEDED by D-013 and D-015 on 2026-09-05
 
-Decision:
-- Replit is used for runtime behavior, environment-specific debugging, Shell when no connected execution path exists, and manual Preview/visual verification;
-- Replit is not preferred for repository history, branch authority or canonical documentation;
-- Replit Agent is not a required workflow dependency.
+Historical decision:
+- Replit was used for runtime behavior, environment-specific debugging, Shell and manual Preview/visual verification;
+- Replit was not repository authority;
+- Replit Agent was not a required workflow dependency.
+
+This remains historical workflow evidence only.
 
 ## D-004 — Cross-project communication framework
 Status: ACTIVE
@@ -48,7 +50,7 @@ Decision:
 - X = currently approved active integration branch resolved from current repository state/decision;
 - Y = focused task branch created from verified X;
 - do not hard-code `main` or `work` as integration authority;
-- `pixel_bgr` is the current approved integration line at the consolidation checkpoint, but this is not a permanent naming rule.
+- `pixel_bgr` is the current approved integration line at this checkpoint, but this is not a permanent naming rule.
 
 ## D-006 — Canonical project document set
 Status: ACTIVE
@@ -62,7 +64,7 @@ Canonical core under `docs/project/`:
 - `05-development-workflow.md`
 - `06-chatgpt-project-profile.md`
 
-Prefer this small set over multiple competing specifications. Detailed ADRs or subsystem documents may coexist when they have a clear narrower authority.
+Prefer this small set over multiple competing specifications. Detailed ADRs or subsystem documents may coexist when they have clear narrower authority.
 
 ## D-007 — `AGENTS.md` is repository-local engineering guidance
 Status: ACTIVE
@@ -82,19 +84,12 @@ Decision:
 - preservation/evidence branches may remain after functional intent is promoted when their audit value is still useful;
 - branch deletion remains explicitly authorized destructive work and is never performed merely to make the repository look tidy.
 
-C6 completed the required reconciliation for `main`, the Replit preservation branch, and the inspected historical task-branch exceptions. Their remaining retention/deletion decisions therefore follow this post-reconciliation rule.
+C6 completed the required reconciliation for `main`, the Replit preservation branch, and inspected historical task-branch exceptions.
 
 ## D-009 — Manual Replit changes must be preserved promptly in Git
-Status: ACTIVE
+Status: SUPERSEDED by D-014 on 2026-09-05
 
-Decision:
-Before branch switching/synchronization/reset-like operations in Replit:
-1. inspect working-tree state;
-2. preserve valuable local changes on a branch/commit;
-3. push when appropriate/authorized;
-4. verify remote preservation.
-
-Ad hoc `.bak` files are not the preferred normal preservation mechanism.
+Historical decision retained as evidence of the former Replit workflow. Current VS Code runtime work follows D-014 and the canonical development workflow.
 
 ## D-010 — Static and runtime verification are distinct
 Status: ACTIVE
@@ -120,7 +115,39 @@ Status: ACTIVE
 Decision:
 - universal role files contain no Captain Meow/APU branch names, secret names, deployment policy or local-machine assumptions;
 - Captain Meow-specific source authority, executors and workflow boundaries live in project-specific instructions/profile;
-- executor prompts receive the relevant operational rules without requiring a duplicate universal framework in every repository.
+- executor prompts receive relevant operational rules without requiring a duplicate universal framework in every repository.
+
+## D-013 — VS Code is the default runtime/environment verification surface
+Status: ACTIVE
+
+Decision:
+- VS Code replaces Replit in the default Captain Meow development workflow;
+- VS Code is the local runtime environment for Shell/PowerShell, app execution, logs, browser/UI/runtime verification and environment-specific checks;
+- Git/GitHub remains canonical for repository authority and history;
+- static verification remains primarily owned by GitHub/Codex/ChatGPT as appropriate;
+- runtime claims require actual runtime evidence from VS Code or another explicitly approved environment.
+
+## D-014 — VS Code Agent is a low-cost runtime operator
+Status: ACTIVE
+
+Decision:
+- default role is `READ / EXECUTE / OBSERVE / REPORT`;
+- it is not the primary designer, architect, implementer or refactoring agent;
+- use it for baseline checks, commands, dev-server control, ports/processes/logs, runtime reproduction, environment-specific checks and targeted browser/UI verification;
+- prefer the lowest-cost adequate model, low reasoning effort, short context, bounded targets and explicit stop conditions;
+- if runtime investigation indicates a source change, preserve evidence and return implementation to ChatGPT/Codex;
+- source changes by VS Agent require explicit narrow authorization;
+- if the required branch/HEAD/working-tree baseline differs, stop and report rather than modifying repository state to make the runtime test pass.
+
+## D-015 — Replit is legacy/historical by default
+Status: ACTIVE
+
+Decision:
+- Replit is no longer part of the default development workflow;
+- Replit-specific docs/configuration may remain as historical, migration or compatibility evidence;
+- do not infer current workflow authority from legacy Replit material;
+- do not delete `.replit`, Replit host allowances, preservation branches or related artifacts solely because Replit is inactive; classify their current technical value before removal;
+- use Replit only when an explicit task requires Replit-specific or historical behavior.
 
 ## Decision hygiene
 
