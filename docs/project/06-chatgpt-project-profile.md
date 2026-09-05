@@ -1,7 +1,7 @@
 # Captain Meow — ChatGPT Project Profile
 
 Status: CANONICAL PROJECT-SPECIFIC PROFILE
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 
 This document is the versioned Captain Meow-specific source for ChatGPT Project Instructions. The actual ChatGPT Project configuration should remain aligned with this profile plus the shared cross-project role framework.
 
@@ -88,9 +88,6 @@ Low-cost runtime operator. Default role is `READ / EXECUTE / OBSERVE / REPORT`, 
 
 ### Drive
 Audit workspace and synchronized mirror/backup. `___docs` is historical/potentially stale unless verified.
-
-### Replit
-No longer part of the default workflow. Treat Replit material as potentially HISTORICAL/STALE/migration evidence unless explicitly required for Replit-specific behavior.
 
 ## Default development flow
 
