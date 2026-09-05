@@ -70,7 +70,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   grid-template-rows: 40px minmax(0, 1fr) minmax(220px, 30vh);
   min-width: 0;
   min-height: 0;
-  background: #040810;
+  background: transparent;
   color: #eaf6ff;
 }
 
@@ -87,6 +87,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 .cm-bgr-workspace-timeline {
   min-width: 0;
   min-height: 0;
+  background: #040810;
 }
 
 .cm-bgr-workspace-topbar {
@@ -120,6 +121,26 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   grid-template-rows: 1fr;
   background: transparent;
   pointer-events: none;
+}
+
+.cm-bgr-workspace-dev-launcher {
+  display: none;
+}
+
+.cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-dev-launcher {
+  position: fixed;
+  left: 12px;
+  top: 50%;
+  display: block;
+  min-width: 48px;
+  min-height: 36px;
+  transform: translateY(-50%);
+  pointer-events: auto;
+  color: #eaf6ff;
+  border: 1px solid rgba(120, 220, 255, .45);
+  border-radius: 6px;
+  background: rgba(6, 26, 42, .92);
+  font: 12px/1.2 ui-monospace, Menlo, Consolas, monospace;
 }
 
 .cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-topbar,
