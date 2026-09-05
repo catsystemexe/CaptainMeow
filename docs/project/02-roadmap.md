@@ -1,111 +1,61 @@
 # Captain Meow — Roadmap
 
 Status: CANONICAL DEVELOPMENT / CONSOLIDATION ROADMAP
-Last updated: 2026-09-03
+Last updated: 2026-09-06
 
-This roadmap tracks repository/workflow/documentation consolidation and near-term engineering governance. It is not a substitute for a product/gameplay feature roadmap.
+This roadmap tracks repository/workflow/documentation consolidation and near-term engineering governance. Detailed product workstream plans may live in narrower subsystem documents.
 
 ## Active product workstream
 
 Multitrack Pixel BGR Engine V2 is the current focused product-development workstream.
 
-Canonical workstream roadmap:
-- `docs/bgr/MULTITRACK_BGR_V2_ROADMAP.md`
+Current active structural UX work plan:
+- `docs/bgr/PIXEL_BGR_DEV_WORKSPACE_V1_WORK_PLAN.md`.
 
-Detailed BGR architecture, milestone scope, acceptance criteria, and STATIC/RUNTIME verification gates are maintained there rather than duplicated in this project-level roadmap.
+The approved next implementation sequence is:
+1. dual GAME/DEV shell foundation;
+2. DEV grid composition;
+3. full-width V2 timeline migration;
+4. selection-driven right inspector;
+5. basic left navigation/environment access;
+6. structural responsive/cursor-stability polish.
 
-## Completed audit sequence
+Preserve verified BGR V2 editing/runtime contracts while migrating the shell. Do not resume button-by-button polishing of the old floating overlay by default.
 
-- P0 Source/access/authority inventory — COMPLETE
-- P1 Audit workspace/bootstrap — COMPLETE
-- F0 Preservation baseline — COMPLETE
-- F1 Implementation × documentation audit — COMPLETE
-- F2 GPT/GitHub/Replit workflow audit — COMPLETE
-- F3 Instruction authority audit — COMPLETE
-- F4 Consolidation proposal — COMPLETE / APPROVED
+## Completed audit / consolidation sequence
 
-## Completed post-gate consolidation
+The source/access, preservation, implementation/documentation, workflow, instruction-authority and consolidation audits are complete.
 
-### C1 Canonical docs bootstrap — COMPLETE
+Completed consolidation outcomes include:
+- canonical `docs/project/*` set;
+- repository-local `AGENTS.md` authority cleanup;
+- historical documentation classification;
+- GitHub static-verification CI;
+- GitHub → Drive canonical mirror;
+- branch unique-content reconciliation and authorized historical cleanup;
+- final consistency audit.
 
-Seven canonical `docs/project/*` documents established and integrated through PR #124.
+Historical audit records remain evidence only and do not define the current runtime workflow.
 
-### C2 Instruction consolidation — COMPLETE
+## Current operating model
 
-Project/repository instruction authority aligned. `AGENTS.md` reduced to repository-local engineering/executor rules and dynamic X/Y branch model. Integrated through PR #125.
-
-### C3 Documentation migration — COMPLETE
-
-README/current entry point corrected, historical documentation centrally classified, obsolete global authority claims retired. Integrated through PR #126.
-
-### C4 Workflow normalization / CI — COMPLETE
-
-Completed outcomes:
-- minimal GitHub `Static Verify` CI integrated through PR #127;
-- CI runtime verified through actual Actions execution;
-- pre-existing `createGame.ts` syntax failure detected and repaired through PR #129;
-- repair passed `npm ci` → `npm run typecheck` → `npm run build`;
-- Replit `origin` normalized from historical `catsystemexe/MGoD` to `catsystemexe/CaptainMeow`;
-- Replit workspace fast-forwarded safely to `pixel_bgr@940358eb9f35c73d9172c6962e483f8f1f6d51bb` with preservation branch intact.
-
-### C5 Drive synchronization — COMPLETE
-
-Completed outcomes:
-- canonical status refreshed before mirroring through PRs #130 and #131;
-- dedicated Drive mirror folder `___CaptainMeow/___CANONICAL_MIRROR` created;
-- all seven canonical `docs/project/*` documents mirrored;
-- Drive `___docs` remains historical and separate.
-
-### C6 Branch reconciliation — COMPLETE
-
-Completed outcomes:
-- `main` five-commit divergence classified as historical merge topology only; no net unique file-state content required promotion;
-- preservation branch functional seek-wiring intent confirmed as already promoted through PR #129;
-- 111 historical `codex/*` branches inventoried at audit time;
-- six historical open PRs (#1, #2, #4, #5, #11, #22) individually classified and closed without merge after explicit authorization;
-- merged/reachable and superseded task branches classified by unique-content evidence;
-- post-audit physical cleanup completed on 2026-09-03: historical/superseded remote branches and `main` were deleted after checkpointing and individual safety review;
-- retained remote branches are `pixel_bgr`, `backup/replit-bgr-lab-preaudit-20260825`, `bgr`, and `feature/gameplay-polish`.
-
-### C7 Final consistency audit — COMPLETE
-
-C7 verified:
-- code vs canonical docs;
-- Project Instructions vs versioned profile/workflow;
-- AGENTS vs current repository model;
-- GitHub vs Drive mirror;
-- Replit implementation checkpoint vs Git history;
-- CI semantics;
-- branch/preservation state.
-
-Result:
-- no new architecture or runtime conflict;
-- all commits after implementation checkpoint `940358eb...` through the C7 audit checkpoint were documentation-only;
-- operating model is internally consistent;
-- final canonical tracking closeout and Drive mirror provenance synchronization were completed.
-
-Audit evidence: `___CaptainMeow/___AUDIT/07_FINAL_CONSISTENCY_AUDIT`.
-
-## Consolidation program status — COMPLETE
-
-- canonical implementation/documentation authority is established in Git;
-- canonical tracking reflects completed C1–C7 work;
-- affected Drive mirror documents were synchronized after the C7 closeout;
-- `README_MIRROR` records the exact synchronized Git checkpoint;
-- Replit is normalized to the canonical repository and retained as runtime/verification environment;
-- branch unique-content reconciliation and authorized branch cleanup are complete;
-- remaining work has moved to ordinary maintenance/hygiene or product development.
+- Git repository: canonical implementation and versioned documentation.
+- GitHub: branches, PRs, history and static CI.
+- ChatGPT: design, analysis, authority resolution, implementation orchestration and integration review.
+- Codex: primary focused implementation and execution-backed static verification.
+- VS Code: primary local runtime/environment/browser verification surface.
+- VS Code Agent: low-cost `READ / EXECUTE / OBSERVE / REPORT` runtime operator.
+- Google Drive: synchronized mirror/backup plus audit workspace.
 
 ## Post-audit maintenance / hygiene
 
 Non-blocking items:
-- long-term retention decision for `backup/replit-bgr-lab-preaudit-20260825`;
-- explicit resolution/port-or-retire decisions for the retained reference branches `bgr` and `feature/gameplay-polish`;
+- explicit resolution/port-or-retire decisions for retained reference branches where still relevant;
 - review `.bak`, dump and `_patch` artifacts before deletion;
-- dependency/security triage from CI `npm audit` findings;
-- GitHub Actions action-runtime maintenance warning review;
+- dependency/security triage from CI findings;
+- GitHub Actions runtime-maintenance warning review;
 - broader smoke-suite baseline and semantics reconciliation.
 
 ## Ordering rule
 
-Destructive cleanup remains evidence-driven and explicitly authorized. Historical material does not become current authority merely because it is retained.
+Product implementation must follow the currently approved focused work plan and verified integration baseline. Destructive cleanup remains evidence-driven and explicitly authorized. Historical material does not become current authority merely because it is retained.
