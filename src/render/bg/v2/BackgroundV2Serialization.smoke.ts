@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import { createBackgroundV2VisualVerificationScene } from "./BackgroundV2VisualVerificationScene";
+import { parseBackgroundSceneV2, serializeBackgroundSceneV2 } from "./BackgroundV2Serialization";
+import { validateBackgroundSceneV2 } from "./BackgroundV2Validation";
+const scene=createBackgroundV2VisualVerificationScene();const json=serializeBackgroundSceneV2(scene);const parsed=parseBackgroundSceneV2(json);assert(parsed.ok);if(parsed.ok)assert.deepEqual(parsed.scene,scene);assert(json.includes('"starfield"'));assert(!json.includes("selection"));
+assert.equal(parseBackgroundSceneV2("{").ok,false);assert.equal(parseBackgroundSceneV2(JSON.stringify({...scene,version:1})).ok,false);assert.equal(parseBackgroundSceneV2(JSON.stringify({...scene,environment:{starfield:{seed:1,density:2}}})).ok,false);
+const duplicate=structuredClone(scene);duplicate.tracks[1].id=duplicate.tracks[0].id;assert.equal(validateBackgroundSceneV2(duplicate).valid,false);
+const badGeometry=structuredClone(scene);badGeometry.tracks[1].segments[0].widthPx=0;assert.equal(validateBackgroundSceneV2(badGeometry).valid,false);
+const missing=structuredClone(scene) as any;delete missing.tracks[0].objects[0].asset.url;assert.equal(parseBackgroundSceneV2(JSON.stringify(missing)).ok,false);
+console.log("BackgroundV2Serialization.smoke: PASS");

@@ -673,9 +673,20 @@ Completed by the M7 runtime verification checkpoint below.
 
 ## M8 — Environment / procedural stars + V2 authoring closure
 
-Status: UNBLOCKED — READY FOR IMPLEMENTATION
+Status: STATIC COMPLETE / RUNTIME VERIFY PENDING
 
 M7 static and runtime completion removes the prerequisite blocker for M8.
+
+### M8 static implementation checkpoint (2026-09-05)
+
+- Added a deterministic, screen-space logical-viewport starfield generated from the authoritative `scene.environment.starfield` integer seed and normalized `[0, 1]` density configuration, with no render-time `Math.random()` dependency.
+- Added immutable environment editing and explicit Scene Lab controls for starfield enable/disable, seed, density, seed randomization, and removal through the existing typed V2 state write path.
+- Added strict full-scene V2 validation plus canonical `BackgroundSceneV2` JSON serialization, V2-only import/export, and actionable rejection of malformed or wrong-version input.
+- Added explicit save/load/clear persistence under a dedicated V2 local-storage key. Saved data is validation-backed persistence only; it never automatically overrides the active runtime scene or touches V1 draft storage.
+- Preserved V1 authoring, import/export, draft storage, runtime activation, and `shouldApplyPixelBgrV1Draft(...)` protections without adding automatic V1-to-V2 migration.
+- Focused starfield, environment-editing, validation/serialization, persistence, Scene Lab UI, M6/M7, renderer/coordinator, GameplaySeek, V2, visual-fixture, and V1 regression smokes pass. `npm run typecheck` and `npm run build` pass.
+- The broad smoke runner passes all M8/BGR-focused entries and then reaches the documented unrelated `BombExplosionChain.smoke.ts` / `DamageSystem.rules.onExplosion` baseline failure.
+- Browser/runtime and visual verification remain pending; M8 and the V2 authoring baseline are not yet marked complete.
 
 ### Objective
 

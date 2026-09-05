@@ -14,7 +14,7 @@ export function createBackgroundV2VisualVerificationScene(): BackgroundSceneV2 {
   return {
     version: 2,
     id: "bgr-v2-visual-verification",
-    environment: {},
+    environment: { starfield: { seed: 8675309, density: 0.45 } },
     tracks: [
       {
         id: "verify-far",

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
-assert.match(source,/V2 · CANVAS \+ OBJECT AUTHORING/);
+assert.match(source,/V2 · SCENE AUTHORING/);
 assert.match(source,/track\.mode==="sequence"/);
 assert.match(source,/Repeat segment authoring is limited\/read-only/);
 assert.match(source,/Gameplay chunks\/markers: unavailable in current gameplay model/);
-assert.match(source,/environment and gameplay reference remain read-only/);
+assert.match(source,/environment configured above/);
 assert.match(source,/setBackgroundSceneV2\(result\.scene,globalThis\)/);
 assert.match(source,/Object inspector/);
 assert.match(source,/place segment on canvas/);
@@ -16,5 +16,7 @@ assert.match(source,/moveV2Object\(scene,track\.id,this\.v2SelectedObjectId,auth
 assert.match(source,/duplicateV2Object/);
 assert.match(source,/deleteV2Object/);
 assert.match(source,/private renderSceneToolbar\(\)/,"V1 authoring path remains present");
-assert.doesNotMatch(source,/updateV2Environment|saveV2|exportV2/);
+assert.match(source,/updateV2Starfield/);
+assert.match(source,/saveV2/);
+assert.match(source,/exportV2/);
 console.log("[SMOKE] PixelBgrV2SegmentAuthoringUI OK ✅");
