@@ -34,9 +34,23 @@ assert.deepEqual(scene, before);
 assert.ok(scene.globalLayers.some(layer => layer.kind === "sprite"));
 
 const labUiSource = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
-assert(labUiSource.includes("width:min(400px,calc(100vw - 16px));height:min(620px,calc(100vh - 164px))"), "Lab reserves a 156px bottom authoring region and remains compact in a short viewport");
-assert(labUiSource.includes("min-height:0;pointer-events:none}.cm-pixel-bgr-lab>:not(style){pointer-events:auto}"), "only visible Lab control surfaces receive pointer events");
-for (const selector of [".cm-pixel-bgr-lab button", ".cm-pixel-bgr-lab input", ".cm-timeline", ".cm-v2-timeline"]) {
+const labRule = labUiSource.match(/\.cm-pixel-bgr-lab\{([^}]*)\}/)?.[1] ?? "";
+assert.match(labRule, /top:min\(156px,max\(8px,calc\(100vh - 120px\)\)\)/, "Lab docks below the 156px timeline interaction band when viewport height permits");
+assert.match(labRule, /right:8px;bottom:8px/, "Lab is bounded by viewport gutters");
+assert.match(labRule, /width:min\(400px,calc\(100vw - 16px\)\)/, "Lab width remains responsive and bounded");
+assert.match(labRule, /height:auto;max-height:620px/, "Lab height fills only the docked region and remains capped on tall viewports");
+assert.match(labRule, /overflow:hidden;display:flex;flex-direction:column;min-height:0/, "short-height Lab content remains internally bounded");
+assert.match(labRule, /pointer-events:none/, "the fixed Lab root does not create a larger hit region than its controls");
+assert.match(labUiSource, /\.cm-pixel-bgr-lab>:not\(style\)\{pointer-events:auto\}/, "visible Lab control surfaces remain pointer-interactive");
+
+const shortViewportHeight = 351;
+const timelineBandBottom = 156;
+const labTop = Math.min(timelineBandBottom, Math.max(8, shortViewportHeight - 120));
+const labBottom = shortViewportHeight - 8;
+assert.equal(labTop, timelineBandBottom, "1070x351 Lab starts exactly after the reserved timeline band");
+assert.equal(labBottom - labTop, 187, "1070x351 Lab retains the verified usable height");
+assert.ok(timelineBandBottom <= labTop, "timeline interaction region and visible Lab rectangle do not overlap");
+for (const selector of [".cm-pixel-bgr-lab button", ".cm-pixel-bgr-lab input", ".cm-pixel-tab-body", ".cm-timeline", ".cm-v2-timeline"]) {
   assert(labUiSource.includes(selector), `Lab control remains addressable: ${selector}`);
 }
 
