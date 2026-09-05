@@ -2,6 +2,7 @@ import { createB1SpriteParallaxDemoState, createB2BackgroundSceneDemoState, type
 import type { BackgroundScene } from "./webgl/bg/layers/BackgroundSceneTypes";
 import type { BackgroundSceneV2 } from "./bg/v2/BackgroundV2Types";
 import { createBackgroundV2VisualVerificationScene } from "./bg/v2/BackgroundV2VisualVerificationScene";
+import { createBackgroundV2DesertTestScene } from "./bg/v2/BackgroundV2DesertTestScene";
 
 const STATE_KEY = "__CM_BACKGROUND_STATE__";
 const PREVIEW_KEY = "__CM_BACKGROUND_PREVIEW__";
@@ -180,6 +181,11 @@ export function enableM4BackgroundV2Demo(root: any = globalThis): BackgroundStat
 /** Enables the reusable visual acceptance scene without bypassing typed background state. */
 export function enableBackgroundV2VisualVerification(root: any = globalThis): BackgroundState {
   return setBackgroundSceneV2(createBackgroundV2VisualVerificationScene(), root);
+}
+
+/** Enables the practical Desert V2 authoring fixture through the normal typed scene path. */
+export function enableBackgroundV2DesertTest(root: any = globalThis): BackgroundState {
+  return setBackgroundSceneV2(createBackgroundV2DesertTestScene(), root);
 }
 
 export function disableTypedBackground(root: any = globalThis): void {

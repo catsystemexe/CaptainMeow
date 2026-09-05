@@ -49,6 +49,7 @@ const SMOKES = [
   "../ui/PixelBgrLabB5.smoke",
   "../ui/PixelBgrTimeline.smoke",
   "../render/bg/v2/BackgroundV2Starfield.smoke",
+  "../render/bg/v2/BackgroundV2DesertTestScene.smoke",
   "../render/bg/v2/BackgroundV2Serialization.smoke",
   "../render/bg/v2/BackgroundV2Persistence.smoke",
   "../ui/PixelBgrV2EnvironmentEditing.smoke",
