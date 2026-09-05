@@ -11,7 +11,7 @@ if ((window as any).__CM.__rafId) {
 (document.title = `CM boot#${bootN}`);
 
 
-import { clearBackgroundPreviewState, disableTypedBackground, enableB2BackgroundSceneDemo, enableBackgroundV2VisualVerification, enableM4BackgroundV2Demo, getBackgroundState } from "./render/BackgroundState";
+import { clearBackgroundPreviewState, disableTypedBackground, enableB2BackgroundSceneDemo, enableBackgroundV2DesertTest, enableBackgroundV2VisualVerification, enableM4BackgroundV2Demo, getBackgroundState } from "./render/BackgroundState";
 import { createPixelBgrLabToggleButton, togglePixelBgrLab } from "./ui/PixelBgrLabAccess";
 import { VFXSystem } from "./game/vfx/VFXSystem";
 
@@ -29,6 +29,7 @@ console.log("[BOOT] main.ts running");
 };
 (window as any).__CM.bgrVerify = {
   visual: () => enableBackgroundV2VisualVerification(globalThis),
+  desert: () => enableBackgroundV2DesertTest(globalThis),
   clear: () => disableTypedBackground(globalThis),
 };
 
