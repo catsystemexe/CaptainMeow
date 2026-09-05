@@ -1,7 +1,7 @@
 # Captain Meow — Development Workflow
 
 Status: CANONICAL TARGET WORKFLOW
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 
 ## Operating model
 
@@ -74,8 +74,6 @@ When the batch or user authorization permits integration, ChatGPT may:
 2. verify base/head and expected head SHA;
 3. merge the PR;
 4. report the merge commit.
-
-This is the preferred path because it minimizes manual user transport between Codex and GitHub.
 
 Do not merge when scope, baseline, diff or verification evidence is materially uncertain. Return the issue to Codex or stop for a user decision.
 
@@ -160,9 +158,6 @@ Low-cost runtime operator, not primary designer or implementer.
 
 ### Google Drive
 Audit working space and synchronized mirror/backup of canonical docs. Drive copies do not become independent edit authority.
-
-### Replit
-Not part of the default workflow. Treat Replit configs/docs as potentially historical/stale/migration evidence unless a Replit-specific task explicitly requires them. Do not delete legacy Replit configuration solely because it is inactive; classify it first.
 
 ## Documentation in implementation work
 
