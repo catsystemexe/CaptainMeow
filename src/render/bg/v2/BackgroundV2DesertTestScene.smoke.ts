@@ -4,6 +4,7 @@ import { calculateSegmentOverlap } from "./BackgroundV2Math";
 import { createBackgroundV2DesertTestScene } from "./BackgroundV2DesertTestScene";
 import { validateBackgroundSceneV2 } from "./BackgroundV2Validation";
 import { BACKGROUND_ASSET_CATALOG } from "../../../ui/PixelBgrLabAssets";
+import { BACKGROUND_V2_DESERT_VERIFICATION_START_X, enableBackgroundV2DesertTest, getBackgroundSceneV2 } from "../../BackgroundState";
 
 const scene = createBackgroundV2DesertTestScene();
 const sourceBeforeEvaluation = structuredClone(scene);
@@ -58,5 +59,21 @@ assert.deepEqual(scene, sourceBeforeEvaluation, "evaluation leaves the source sc
 const second = createBackgroundV2DesertTestScene();
 scene.tracks[0].segments[0].asset.url = "/mutated.png";
 assert.notEqual(second.tracks[0].segments[0].asset.url, scene.tracks[0].segments[0].asset.url, "fixture instances do not share mutable asset refs");
+
+const seekCalls: Array<{ targetX: number; options: unknown }> = [];
+const verificationRoot = {
+  __CM: {
+    game: {
+      seekGameplayToPlayerX: (targetX: number, options: unknown) => seekCalls.push({ targetX, options }),
+    },
+  },
+};
+const authoredBeforeActivation = createBackgroundV2DesertTestScene();
+enableBackgroundV2DesertTest(verificationRoot);
+assert.deepEqual(seekCalls, [{
+  targetX: BACKGROUND_V2_DESERT_VERIFICATION_START_X,
+  options: { bounds: { startX: 0, endX: 0 } },
+}], "Desert verification activates through the gameplay seek path at scene start");
+assert.deepEqual(getBackgroundSceneV2(verificationRoot), authoredBeforeActivation, "verification seeking does not mutate authored V2 coordinates");
 
 console.log("BackgroundV2DesertTestScene.smoke: PASS");

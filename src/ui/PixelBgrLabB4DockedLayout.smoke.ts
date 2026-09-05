@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import type { BackgroundScene } from "../render/webgl/bg/layers/BackgroundSceneTypes";
 import { createDemoScene } from "./PixelBgrLabState";
 import { PIXEL_BGR_LAB_TAB_LABELS, PIXEL_BGR_LAB_TABS, normalizePixelBgrLabTab, pixelBgrLabTabAfterLayerDelete, pixelBgrLabTabForSelection } from "./PixelBgrLabUI";
@@ -31,5 +32,12 @@ pixelBgrLabTabForSelection(true, "sprite", true);
 pixelBgrLabTabAfterLayerDelete("properties", false);
 assert.deepEqual(scene, before);
 assert.ok(scene.globalLayers.some(layer => layer.kind === "sprite"));
+
+const labUiSource = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
+assert(labUiSource.includes("width:min(400px,calc(100vw - 16px));height:min(620px,calc(100vh - 16px))"), "Lab control surface is constrained so the canvas remains visible");
+assert(labUiSource.includes("min-height:0;pointer-events:none}.cm-pixel-bgr-lab>:not(style){pointer-events:auto}"), "only visible Lab control surfaces receive pointer events");
+for (const selector of [".cm-pixel-bgr-lab button", ".cm-pixel-bgr-lab input", ".cm-timeline", ".cm-v2-timeline"]) {
+  assert(labUiSource.includes(selector), `Lab control remains addressable: ${selector}`);
+}
 
 console.log("[SMOKE] PixelBgrLabB4DockedLayout OK ✅");
