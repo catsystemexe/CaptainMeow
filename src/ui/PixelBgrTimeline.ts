@@ -37,6 +37,16 @@ export function createTimelineScale(chunks: readonly Pick<BackgroundChunk, "star
   return { minX: minX - pad, maxX: maxX + pad, widthPx: Math.max(1, widthPx) };
 }
 
+export function createExactTimelineScale(startX: number, endX: number, widthPx: number): TimelineScale {
+  const minX = Number.isFinite(startX) ? startX : 0;
+  const authoredEndX = Number.isFinite(endX) ? endX : minX + MIN_SPAN;
+  return {
+    minX,
+    maxX: Math.max(minX + MIN_SPAN, authoredEndX),
+    widthPx: Math.max(1, Number.isFinite(widthPx) ? widthPx : 1),
+  };
+}
+
 export function worldToTimelinePx(x: number, scale: TimelineScale): number {
   const span = Math.max(MIN_SPAN, scale.maxX - scale.minX);
   return ((x - scale.minX) / span) * scale.widthPx;
