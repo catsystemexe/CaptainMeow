@@ -38,7 +38,11 @@ assert.match(rightRule, /min-height:\s*0/);
 assert.match(rightRule, /overflow:\s*auto/, "the right inspector owns its overflow");
 const timelineRule = cssRule(".cm-bgr-workspace-timeline");
 assert.match(timelineRule, /min-height:\s*0/);
-assert.match(timelineRule, /overflow:\s*auto/, "the timeline owns overflow within its assigned row");
+assert.match(timelineRule, /display:\s*flex/);
+assert.match(timelineRule, /flex-direction:\s*column/, "the timeline region gives its panel a persistent assigned surface");
+assert.match(timelineRule, /overflow-x:\s*hidden/);
+assert.match(timelineRule, /overflow-y:\s*auto/, "the full-width timeline region is the sole vertical overflow owner");
+assert.match(timelineRule, /scrollbar-gutter:\s*stable/, "vertical overflow does not unexpectedly reduce the timeline surface");
 
 assert(layoutSource.includes('viewport: "cm-bgr-workspace-viewport"'), "the transparent center keeps its stable viewport class");
 assert(layoutSource.includes('timeline: "cm-bgr-workspace-timeline"'), "the bottom region keeps its stable timeline class");

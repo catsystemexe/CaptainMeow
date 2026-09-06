@@ -122,9 +122,13 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 }
 
 .cm-bgr-workspace-timeline {
+  display: flex;
+  flex-direction: column;
   border-top: 1px solid rgba(120, 220, 255, .16);
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
   pointer-events: auto;
 }
 
