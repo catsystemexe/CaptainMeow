@@ -67,9 +67,10 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   inset: 0;
   z-index: 100001;
   display: grid;
-  grid-template-rows: 40px minmax(0, 1fr) minmax(220px, 30vh);
+  grid-template-rows: 40px minmax(0, 1fr) minmax(0, min(34vh, 340px));
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   background: transparent;
   color: #eaf6ff;
 }
@@ -79,6 +80,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(260px, 320px);
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 .cm-bgr-workspace-topbar,
@@ -122,6 +124,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 .cm-bgr-workspace-timeline {
   border-top: 1px solid rgba(120, 220, 255, .16);
   overflow: auto;
+  overscroll-behavior: contain;
   pointer-events: auto;
 }
 

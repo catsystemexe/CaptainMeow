@@ -9,11 +9,14 @@ assert.match(workspaceRule, /flex:1 1 auto;min-height:0/, "the V2 inspector work
 assert.match(workspaceRule, /overflow-x:hidden;overflow-y:auto/, "one workspace owns vertical scrolling without adding horizontal overflow");
 
 const panelRule = cssRule(".cm-v2-panel");
-assert.match(panelRule, /height:100%;overflow:hidden;display:flex;flex-direction:column/, "the timeline panel fills its persistent bottom region");
+assert.match(panelRule, /min-height:100%;height:max-content;overflow:visible;display:flex;flex-direction:column/, "the timeline panel fills the bottom region but exposes excess height to the region scroll owner");
 
 const scrollRule = cssRule(".cm-v2-timeline-scroll");
 assert.match(scrollRule, /width:100%;max-width:100%;height:auto/, "the timeline viewport stays bounded to the available Lab width and its full interaction height");
 assert.match(scrollRule, /overflow-x:auto;overflow-y:hidden/, "the dedicated timeline viewport scrolls only in authored world X");
+
+const mountedScrollRule = cssRule(".cm-bgr-workspace-timeline .cm-v2-timeline-scroll");
+assert.match(mountedScrollRule, /flex:0 0 auto;min-height:0/, "timeline lane content keeps its height so the containing bottom region can scroll vertically when needed");
 
 const timelineRule = cssRule(".cm-v2-timeline");
 assert.match(timelineRule, /min-height:136px/, "the visible timeline interaction band has a usable minimum height");
