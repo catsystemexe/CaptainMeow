@@ -12,7 +12,7 @@ if ((window as any).__CM.__rafId) {
 
 
 import { clearBackgroundPreviewState, disableTypedBackground, enableB2BackgroundSceneDemo, enableBackgroundV2DesertTest, enableBackgroundV2VisualVerification, enableM4BackgroundV2Demo, getBackgroundState } from "./render/BackgroundState";
-import { createPixelBgrLabToggleButton, togglePixelBgrLab } from "./ui/PixelBgrLabAccess";
+import { togglePixelBgrLab } from "./ui/PixelBgrLabAccess";
 import { VFXSystem } from "./game/vfx/VFXSystem";
 
 import { WebGLSceneRenderer } from "./render/webgl/WebGLSceneRenderer";
@@ -179,10 +179,12 @@ async function main() {
 
 
   // Dev Summoner / Enemy Lab
+  let enemyLabPanel: HTMLElement | null = null;
   try {
     const { mountEnemyLabRuntime } = await import("./dev/EnemyLabBootstrap");
     const enemyLab = mountEnemyLabRuntime(game, LOGIC_W, LOGIC_H);
     window.__CM.enemyLab = enemyLab;
+    enemyLabPanel = enemyLab.panel;
     if (!enemyLab.mounted) console.warn("[EnemyLab] mount failed", enemyLab.error);
   } catch (e) {
     console.warn("[EnemyLab] bootstrap failed", e);
@@ -263,7 +265,9 @@ async function main() {
     const oldUi = (globalThis as any).__CM_PIXEL_BGR_LAB_UI__;
     if (oldUi && typeof oldUi.dispose === "function") oldUi.dispose();
     const mod = await import("./ui/PixelBgrLabUI");
-    (globalThis as any).__CM_PIXEL_BGR_LAB_UI__ = new mod.PixelBgrLabUI();
+    const pixelBgrLabUi = new mod.PixelBgrLabUI();
+    pixelBgrLabUi.mountEnemyLab(enemyLabPanel);
+    (globalThis as any).__CM_PIXEL_BGR_LAB_UI__ = pixelBgrLabUi;
   } catch (e) {
     console.warn("[PIXEL_BGR_LAB] init failed", e);
   }
@@ -274,9 +278,7 @@ async function main() {
       const oldButton = (globalThis as any).__CM_PIXEL_BGR_LAB_BUTTON__;
       if (oldButton && typeof oldButton.dispatchEvent === "function") oldButton.dispatchEvent(new Event("cm-pixel-bgr-destroy"));
       if (oldButton && typeof oldButton.remove === "function") oldButton.remove();
-      const launchButton = createPixelBgrLabToggleButton(pixelBgrLabUi);
-      (globalThis as any).__CM_PIXEL_BGR_LAB_BUTTON__ = launchButton;
-      document.body.appendChild(launchButton);
+      (globalThis as any).__CM_PIXEL_BGR_LAB_BUTTON__ = null;
     }
   } catch (e) {
     console.warn("[PIXEL_BGR_LAB] launch button init failed", e);

@@ -2,7 +2,7 @@ export type PixelBgrDisplayMode = "game" | "dev";
 
 export interface PixelBgrDevWorkspaceRegions {
   root: HTMLDivElement;
-  topBar: HTMLElement;
+  modeToggle: HTMLElement;
   main: HTMLElement;
   left: HTMLElement;
   viewport: HTMLElement;
@@ -12,7 +12,7 @@ export interface PixelBgrDevWorkspaceRegions {
 
 export const PIXEL_BGR_WORKSPACE_REGION_CLASSES = {
   root: "cm-bgr-workspace-shell",
-  topBar: "cm-bgr-workspace-topbar",
+  modeToggle: "cm-bgr-workspace-mode-toggle",
   main: "cm-bgr-workspace-main",
   left: "cm-bgr-workspace-left",
   viewport: "cm-bgr-workspace-viewport",
@@ -42,7 +42,7 @@ export function createPixelBgrDevWorkspaceShell(documentRef: Document = document
   const root = region(documentRef, "div", PIXEL_BGR_WORKSPACE_REGION_CLASSES.root, "root");
   root.dataset.displayMode = "dev";
 
-  const topBar = region(documentRef, "header", PIXEL_BGR_WORKSPACE_REGION_CLASSES.topBar, "topbar");
+  const modeToggle = region(documentRef, "nav", PIXEL_BGR_WORKSPACE_REGION_CLASSES.modeToggle, "mode-toggle");
   const main = region(documentRef, "main", PIXEL_BGR_WORKSPACE_REGION_CLASSES.main, "main");
   const left = region(documentRef, "aside", PIXEL_BGR_WORKSPACE_REGION_CLASSES.left, "left");
   const viewport = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.viewport, "viewport");
@@ -50,9 +50,9 @@ export function createPixelBgrDevWorkspaceShell(documentRef: Document = document
   const timeline = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.timeline, "timeline");
 
   main.append(left, viewport, right);
-  root.append(topBar, main, timeline);
+  root.append(modeToggle, main, timeline);
 
-  return { root, topBar, main, left, viewport, right, timeline };
+  return { root, modeToggle, main, left, viewport, right, timeline };
 }
 
 export function setPixelBgrWorkspaceDisplayMode(root: HTMLElement, mode: PixelBgrDisplayMode): void {
@@ -67,7 +67,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   inset: 0;
   z-index: 100001;
   display: grid;
-  grid-template-rows: 40px minmax(0, 1fr) minmax(0, min(34vh, 340px));
+  grid-template-rows: minmax(0, 1fr) minmax(0, min(34vh, 340px));
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -83,7 +83,6 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   overflow: hidden;
 }
 
-.cm-bgr-workspace-topbar,
 .cm-bgr-workspace-left,
 .cm-bgr-workspace-right,
 .cm-bgr-workspace-timeline {
@@ -92,14 +91,34 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   background: #040810;
 }
 
-.cm-bgr-workspace-topbar {
+.cm-bgr-workspace-mode-toggle {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
-  border-bottom: 1px solid rgba(120, 220, 255, .16);
+  padding: 2px;
+  border: 1px solid rgba(120, 220, 255, .38);
+  border-radius: 5px;
+  background: rgba(4, 8, 16, .88);
   font: 12px/1.2 ui-monospace, Menlo, Consolas, monospace;
   pointer-events: auto;
+}
+
+.cm-bgr-workspace-mode-toggle button {
+  min-height: 24px;
+  padding: 2px 7px;
+  color: #9ab4c0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  font: inherit;
+}
+
+.cm-bgr-workspace-mode-toggle button[aria-pressed="true"] {
+  color: #fff;
+  background: #235b80;
 }
 
 .cm-bgr-workspace-left {
@@ -151,27 +170,6 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   pointer-events: none;
 }
 
-.cm-bgr-workspace-dev-launcher {
-  display: none;
-}
-
-.cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-dev-launcher {
-  position: fixed;
-  left: 12px;
-  top: 50%;
-  display: block;
-  min-width: 48px;
-  min-height: 36px;
-  transform: translateY(-50%);
-  pointer-events: auto;
-  color: #eaf6ff;
-  border: 1px solid rgba(120, 220, 255, .45);
-  border-radius: 6px;
-  background: rgba(6, 26, 42, .92);
-  font: 12px/1.2 ui-monospace, Menlo, Consolas, monospace;
-}
-
-.cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-topbar,
 .cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-main > .cm-bgr-workspace-left,
 .cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-main > .cm-bgr-workspace-right,
 .cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-timeline {
@@ -190,12 +188,8 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 
 @media (max-width: 1099px) {
   .cm-bgr-workspace-main {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .cm-bgr-workspace-left,
-  .cm-bgr-workspace-right {
-    display: none;
+    grid-template-columns: minmax(180px, 22vw) minmax(360px, 1fr) minmax(220px, 26vw);
+    overflow-x: auto;
   }
 }
 `;
