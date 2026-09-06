@@ -107,34 +107,51 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   z-index: 2;
   display: flex;
   align-items: center;
-  padding: 2px;
-  border: 1px solid rgba(120, 220, 255, .38);
-  border-radius: 5px;
-  background: rgba(4, 8, 16, .88);
+  gap: 5px;
+  padding: 2px 3px;
+  border: 0;
+  background: transparent;
   font: 12px/1.2 ui-monospace, Menlo, Consolas, monospace;
   pointer-events: auto;
 }
 
 .cm-bgr-workspace-mode-toggle button {
-  min-height: 24px;
-  padding: 2px 7px;
-  color: #9ab4c0;
-  border: 0;
-  border-radius: 3px;
-  background: transparent;
-  font: inherit;
+  position: relative;
+  width: 26px;
+  min-height: 14px;
+  padding: 0;
+  border: 1px solid #527080;
+  border-radius: 8px;
+  background: #071521;
 }
 
-.cm-bgr-workspace-mode-toggle button[aria-pressed="true"] {
-  color: #fff;
-  background: #235b80;
+.cm-bgr-workspace-mode-toggle button::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8ee8ff;
+  transition: transform 80ms linear;
+}
+
+.cm-bgr-workspace-mode-toggle button[aria-checked="true"]::after {
+  transform: translateX(12px);
+}
+
+.cm-bgr-workspace-mode-toggle button:focus-visible {
+  outline: 1px solid #ffe66d;
+  outline-offset: 2px;
 }
 
 .cm-bgr-workspace-left {
   border-right: 1px solid rgba(120, 220, 255, .14);
   box-sizing: border-box;
   padding-top: 36px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .cm-bgr-workspace-viewport {
