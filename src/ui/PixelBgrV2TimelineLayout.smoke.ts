@@ -33,7 +33,7 @@ assert.match(source, /cm-v2-segment-handle right[\s\S]*?beginV2SegmentDrag\(e,tr
 
 const timelineMount = source.indexOf("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))");
 const inspectorCreation = source.indexOf('const inspector=el("div","cm-v2-workspace")', timelineMount);
-const inspectorAppend = source.indexOf("inspector.append(this.renderV2SegmentInspector()", inspectorCreation);
+const inspectorAppend = source.indexOf("inspector.appendChild(this.renderV2Inspector(v2Scene,projection.bounds))", inspectorCreation);
 assert.ok(timelineMount >= 0 && inspectorCreation > timelineMount && inspectorAppend > inspectorCreation, "timeline and inspector render from one Lab owner into their dedicated regions");
 
 const timelineWidth = source.indexOf("timeline.style.width=`${widthPx}px`");
