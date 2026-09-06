@@ -78,7 +78,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 
 .cm-bgr-workspace-main {
   display: grid;
-  grid-template-columns: clamp(150px, 15vw, 170px) minmax(0, 1fr) clamp(200px, 20vw, 240px);
+  grid-template-columns: clamp(150px, 15vw, 170px) minmax(0, 1fr) clamp(170px, 18vw, 190px);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
