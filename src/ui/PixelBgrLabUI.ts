@@ -23,6 +23,7 @@ import { PixelBgrRenderCoordinator } from "./PixelBgrRenderCoordinator";
 import { disableV2Starfield, enableV2Starfield, randomizeV2StarfieldSeed, updateV2Starfield, type V2EnvironmentEditResult } from "./PixelBgrV2EnvironmentEditing";
 import { clearBackgroundSceneV2, loadBackgroundSceneV2, parseBackgroundSceneV2, saveBackgroundSceneV2, serializeBackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Serialization";
 import { createPixelBgrDevWorkspaceShell, PIXEL_BGR_DEV_WORKSPACE_CSS, setPixelBgrWorkspaceDisplayMode, type PixelBgrDevWorkspaceRegions, type PixelBgrDisplayMode } from "./PixelBgrDevWorkspaceLayout";
+import { gamePresentationRect, type GamePresentationRect } from "./GamePresentationGeometry";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -52,6 +53,8 @@ export class PixelBgrLabUI {
   private message = "";
   private unsub: () => void;
   private openListeners = new Set<(open: boolean) => void>();
+  private presentationListeners = new Set<() => void>();
+  private viewportResizeObserver: ResizeObserver | null = null;
   private visualPlacement = false;
   private pixelSafe = true;
   private nudgeStep = 1;
@@ -99,6 +102,8 @@ export class PixelBgrLabUI {
     // surfaces are mounted into the stable P1.2 workspace regions.
     this.workspace.left.appendChild(this.root);
     document.body.appendChild(this.workspace.root);
+    this.viewportResizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => this.notifyPresentationChange());
+    this.viewportResizeObserver?.observe(this.workspace.viewport);
     this.unsub = subscribeBackgroundState(() => { if (this.visible) this.render(); });
     this.setDisplayMode("game");
     this.render();
@@ -123,6 +128,7 @@ export class PixelBgrLabUI {
       clearBackgroundPreviewState(globalThis);
     } else { this.render(); this.syncOverlay(); }
     if (changed) this.notifyOpenChange();
+    if (changed) this.notifyPresentationChange();
   }
   mountEnemyLab(panel: HTMLElement | null): void {
     if (!panel || this.enemyLabPanel === panel) return;
@@ -139,10 +145,24 @@ export class PixelBgrLabUI {
     this.workspace.right.appendChild(panel);
   }
   getDisplayMode(): PixelBgrDisplayMode { return this.displayMode; }
+  getGamePresentationRect(): GamePresentationRect {
+    const visualViewport = window.visualViewport;
+    return gamePresentationRect(
+      this.displayMode,
+      { width: visualViewport?.width ?? window.innerWidth, height: visualViewport?.height ?? window.innerHeight },
+      this.displayMode === "dev" ? this.workspace.viewport.getBoundingClientRect() : null,
+    );
+  }
+  onPresentationGeometryChange(listener: () => void): () => void {
+    this.presentationListeners.add(listener);
+    listener();
+    return () => this.presentationListeners.delete(listener);
+  }
   updateRuntimeOverlay(): void { if (this.visible && this.overlay) this.syncOverlay(); }
   onOpenChange(listener: (open: boolean) => void): () => void { this.openListeners.add(listener); listener(this.visible); return () => this.openListeners.delete(listener); }
-  dispose(): void { this.endTimelineDrag(); this.endV2SegmentDrag(); this.endCursorDrag(); this.endDrag(); this.removeOverlay(); this.unsub(); this.openListeners.clear(); if (this.enemyLabPanel) { this.enemyLabPanel.style.cssText = this.enemyLabOriginalStyle; document.body.appendChild(this.enemyLabPanel); this.enemyLabPanel = null; } this.workspace.root.remove(); }
+  dispose(): void { this.endTimelineDrag(); this.endV2SegmentDrag(); this.endCursorDrag(); this.endDrag(); this.removeOverlay(); this.unsub(); this.viewportResizeObserver?.disconnect(); this.openListeners.clear(); this.presentationListeners.clear(); if (this.enemyLabPanel) { this.enemyLabPanel.style.cssText = this.enemyLabOriginalStyle; document.body.appendChild(this.enemyLabPanel); this.enemyLabPanel = null; } this.workspace.root.remove(); }
   private notifyOpenChange(): void { for (const listener of [...this.openListeners]) listener(this.visible); }
+  private notifyPresentationChange(): void { for (const listener of [...this.presentationListeners]) listener(); }
   private setTimelineInputGuard(active: boolean): void { (globalThis as any).__CM_SCENE_TIMELINE_DRAG_ACTIVE__ = active; }
   private setDraft(scene: BackgroundScene, persist = true): void { this.draft = cloneScene(scene); if (persist) saveDraft(localStorage, this.draft); this.applyIfValid(); this.render(); this.syncOverlay(); }
   private applyIfValid(): void { if (validateBackgroundScene(this.draft).valid) setBackgroundScene(cloneScene(this.draft), globalThis); }
@@ -177,7 +197,9 @@ export class PixelBgrLabUI {
       return;
     }
     this.root.appendChild(this.renderSceneToolbar());
-    this.root.appendChild(this.renderTimelineSection());
+    const disabledTimeline=el("div","cm-v2-timeline-disabled");
+    disabledTimeline.textContent="Timeline unavailable for this scene format";
+    this.workspace.timeline.appendChild(disabledTimeline);
     const tabs = el("div", "cm-pixel-tabs"); tabs.setAttribute("role", "tablist");
     for (const tab of PIXEL_BGR_LAB_TABS) {
       const b = button(PIXEL_BGR_LAB_TAB_LABELS[tab], () => this.setActiveTab(tab));

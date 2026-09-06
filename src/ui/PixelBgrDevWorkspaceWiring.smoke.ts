@@ -27,7 +27,7 @@ const cssRule = (selector: string): string => {
 
 const shellRule = cssRule(".cm-bgr-workspace-shell");
 assert.doesNotMatch(shellRule, /minmax\(220px,\s*30vh\)/, "the shell does not reserve the rigid timeline minimum");
-assert.match(shellRule, /grid-template-rows:[^;]*minmax\(0,\s*min\([^;]*vh[^;]*px\)\)/, "the timeline row is viewport-responsive, capped, and allowed to shrink");
+assert.match(shellRule, /grid-template-rows:\s*minmax\(0,\s*1fr\)\s*149px/, "DEV permanently reserves the compact timeline band");
 assert.match(shellRule, /min-height:\s*0/);
 assert.match(shellRule, /overflow:\s*hidden/, "the fixed shell contains its grid tracks within the viewport");
 
@@ -43,11 +43,11 @@ assert.match(timelineRule, /min-height:\s*0/);
 assert.match(timelineRule, /display:\s*flex/);
 assert.match(timelineRule, /flex-direction:\s*column/, "the timeline region gives its panel a persistent assigned surface");
 assert.match(timelineRule, /overflow-x:\s*hidden/);
-assert.match(timelineRule, /overflow-y:\s*auto/, "the full-width timeline region is the sole vertical overflow owner");
-assert.match(timelineRule, /scrollbar-gutter:\s*stable/, "vertical overflow does not unexpectedly reduce the timeline surface");
+assert.match(timelineRule, /overflow-y:\s*hidden/, "the compact timeline region never introduces vertical scrolling");
 
 assert(layoutSource.includes('viewport: "cm-bgr-workspace-viewport"'), "the transparent center keeps its stable viewport class");
 assert(layoutSource.includes('timeline: "cm-bgr-workspace-timeline"'), "the bottom region keeps its stable timeline class");
+assert(source.includes('disabledTimeline.textContent="Timeline unavailable for this scene format"'), "non-V2 scenes retain a minimal disabled timeline state");
 assert(layoutSource.includes("main.append(left, viewport, right)"), "center viewport remains a distinct region between the sidebars");
 assert(layoutSource.includes("pointer-events: none"), "transparent authoring viewport preserves interaction with the existing game canvas");
 assert(layoutSource.includes('.cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-timeline'), "GAME mode hides the authoring timeline with the side regions");

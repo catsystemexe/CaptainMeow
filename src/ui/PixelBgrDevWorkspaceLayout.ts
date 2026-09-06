@@ -91,6 +91,14 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   background: #040810;
 }
 
+.cm-v2-timeline-disabled {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  color: #6f8792;
+  font: 12px/1.2 ui-monospace, Menlo, Consolas, monospace;
+}
+
 .cm-bgr-workspace-mode-toggle {
   position: fixed;
   top: 8px;

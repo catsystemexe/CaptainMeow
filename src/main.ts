@@ -406,18 +406,30 @@ async function main() {
   }
   (window as any).__CM.renderer = renderer;
   (globalThis as any).__CM_BG_PRESET__ ??= 0;
+  type PresentationGeometrySource = { getGamePresentationRect(): { x: number; y: number; width: number; height: number } };
+  let presentationGeometrySource: PresentationGeometrySource | null = null;
   function resize() {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
-    const cssW = vv?.width ?? window.innerWidth;
-    const cssH = vv?.height ?? window.innerHeight;
+    const presentation = presentationGeometrySource?.getGamePresentationRect() ?? {
+      x: 0,
+      y: 0,
+      width: vv?.width ?? window.innerWidth,
+      height: vv?.height ?? window.innerHeight,
+    };
+    const cssW = Math.max(1, presentation.width);
+    const cssH = Math.max(1, presentation.height);
     const dpr = Math.max(1, window.devicePixelRatio || 1);
 
+    canvas.style.position = "fixed";
+    canvas.style.left = `${presentation.x}px`;
+    canvas.style.top = `${presentation.y}px`;
     gfx.resize(cssW, cssH, dpr);
 
     const pr = (gfx as any).getPresentRect?.();
     if (pr) {
-      const x = pr.x / dpr,
-        y = pr.y / dpr,
+      const canvasRect = canvas.getBoundingClientRect();
+      const x = canvasRect.left + pr.x / dpr,
+        y = canvasRect.top + pr.y / dpr,
         w = pr.w / dpr,
         h = pr.h / dpr;
 
@@ -472,6 +484,8 @@ async function main() {
       const mod = await import("./ui/PixelBgrLabUI");
       const pixelBgrLabUi = new mod.PixelBgrLabUI();
       pixelBgrLabUi.mountEnemyLab(enemyLabPanel);
+      presentationGeometrySource = pixelBgrLabUi;
+      pixelBgrLabUi.onPresentationGeometryChange(requestResize);
       (globalThis as any).__CM_PIXEL_BGR_LAB_UI__ = pixelBgrLabUi;
     } catch (e) {
       console.warn("[PIXEL_BGR_LAB] init failed", e);
