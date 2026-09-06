@@ -67,7 +67,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   inset: 0;
   z-index: 100001;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, min(34vh, 340px));
+  grid-template-rows: minmax(0, 1fr) 149px;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -145,9 +145,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   flex-direction: column;
   border-top: 1px solid rgba(120, 220, 255, .16);
   overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  scrollbar-gutter: stable;
+  overflow-y: hidden;
   pointer-events: auto;
 }
 
