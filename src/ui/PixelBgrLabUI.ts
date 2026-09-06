@@ -72,19 +72,23 @@ export class PixelBgrLabUI {
   private readonly logicW = 896;
   private readonly logicH = 504;
   private readonly renderCoordinator = new PixelBgrRenderCoordinator();
+  private enemyLabPanel: HTMLElement | null = null;
+  private enemyLabOriginalStyle = "";
 
   constructor() {
     const activeState = getBackgroundState(globalThis);
     this.draft = loadDraft(localStorage) ?? getBackgroundScene(globalThis) ?? createDemoScene();
     if (shouldApplyPixelBgrV1Draft(activeState)) this.applyIfValid();
     this.workspace = createPixelBgrDevWorkspaceShell();
-    this.workspace.root.style.display = "none";
     const workspaceStyle = el("style");
     workspaceStyle.textContent = PIXEL_BGR_DEV_WORKSPACE_CSS;
-    this.workspace.topBar.append("Pixel BGR Dev Workspace", button("GAME", () => this.setDisplayMode("game")), button("close", () => this.close()));
-    const devLauncher = button("DEV", () => this.setDisplayMode("dev"));
-    devLauncher.className = "cm-bgr-workspace-dev-launcher";
-    this.workspace.root.append(workspaceStyle, devLauncher);
+    const gameButton = button("GAME", () => this.setDisplayMode("game"));
+    const devButton = button("DEV", () => this.setDisplayMode("dev"));
+    gameButton.dataset.mode = "game";
+    devButton.dataset.mode = "dev";
+    this.workspace.modeToggle.setAttribute("aria-label", "Presentation mode");
+    this.workspace.modeToggle.append(gameButton, devButton);
+    this.workspace.root.append(workspaceStyle);
     this.root = el("div", "cm-pixel-bgr-lab");
     this.root.style.display = "none";
     const style = el("style");
@@ -93,29 +97,51 @@ export class PixelBgrLabUI {
     this.root.appendChild(style);
     // The Lab remains the transitional state/handler owner while its rendered
     // surfaces are mounted into the stable P1.2 workspace regions.
-    this.workspace.right.appendChild(this.root);
+    this.workspace.left.appendChild(this.root);
     document.body.appendChild(this.workspace.root);
     this.unsub = subscribeBackgroundState(() => { if (this.visible) this.render(); });
+    this.setDisplayMode("game");
     this.render();
   }
-  open(): void { if (this.visible) return; this.visible = true; this.workspace.root.style.display = ""; this.setDisplayMode("dev"); this.render(); this.syncOverlay(); this.notifyOpenChange(); }
-  close(): void { this.visualPlacement = false; this.v2PlacementTarget=null; this.endTimelineDrag(); this.endV2SegmentDrag(); this.endCursorDrag(); this.endDrag(); this.removeOverlay(); if (!this.visible) { clearBackgroundPreviewState(globalThis); return; } this.visible = false; clearBackgroundPreviewState(globalThis); this.root.style.display = "none"; this.workspace.root.style.display = "none"; this.notifyOpenChange(); }
+  open(): void { this.setDisplayMode("dev"); }
+  close(): void { this.setDisplayMode("game"); }
   show(): void { this.open(); }
   hide(): void { this.close(); }
   toggle(): void { this.visible ? this.close() : this.open(); }
   isOpen(): boolean { return this.visible; }
   setDisplayMode(mode: PixelBgrDisplayMode): void {
+    const changed = this.displayMode !== mode || this.visible !== (mode === "dev");
     this.displayMode = mode;
+    this.visible = mode === "dev";
     setPixelBgrWorkspaceDisplayMode(this.workspace.root, mode);
-    this.root.style.display = this.visible && mode === "dev" ? "" : "none";
+    for (const control of this.workspace.modeToggle.querySelectorAll<HTMLButtonElement>("button[data-mode]")) {
+      control.setAttribute("aria-pressed", String(control.dataset.mode === mode));
+    }
+    this.root.style.display = mode === "dev" ? "" : "none";
     if (mode === "game") {
       this.endTimelineDrag(); this.endV2SegmentDrag(); this.endCursorDrag(); this.endDrag(); this.removeOverlay();
-    } else if (this.visible) this.syncOverlay();
+      clearBackgroundPreviewState(globalThis);
+    } else { this.render(); this.syncOverlay(); }
+    if (changed) this.notifyOpenChange();
+  }
+  mountEnemyLab(panel: HTMLElement | null): void {
+    if (!panel || this.enemyLabPanel === panel) return;
+    this.enemyLabPanel = panel;
+    this.enemyLabOriginalStyle = panel.style.cssText;
+    panel.style.position = "relative";
+    panel.style.inset = "auto";
+    panel.style.width = "100%";
+    panel.style.minWidth = "0";
+    panel.style.maxWidth = "none";
+    panel.style.maxHeight = "none";
+    panel.style.height = "100%";
+    panel.style.borderRadius = "0";
+    this.workspace.right.appendChild(panel);
   }
   getDisplayMode(): PixelBgrDisplayMode { return this.displayMode; }
   updateRuntimeOverlay(): void { if (this.visible && this.overlay) this.syncOverlay(); }
   onOpenChange(listener: (open: boolean) => void): () => void { this.openListeners.add(listener); listener(this.visible); return () => this.openListeners.delete(listener); }
-  dispose(): void { this.endTimelineDrag(); this.endV2SegmentDrag(); this.endCursorDrag(); this.endDrag(); this.removeOverlay(); this.unsub(); this.openListeners.clear(); this.workspace.root.remove(); }
+  dispose(): void { this.endTimelineDrag(); this.endV2SegmentDrag(); this.endCursorDrag(); this.endDrag(); this.removeOverlay(); this.unsub(); this.openListeners.clear(); if (this.enemyLabPanel) { this.enemyLabPanel.style.cssText = this.enemyLabOriginalStyle; document.body.appendChild(this.enemyLabPanel); this.enemyLabPanel = null; } this.workspace.root.remove(); }
   private notifyOpenChange(): void { for (const listener of [...this.openListeners]) listener(this.visible); }
   private setTimelineInputGuard(active: boolean): void { (globalThis as any).__CM_SCENE_TIMELINE_DRAG_ACTIVE__ = active; }
   private setDraft(scene: BackgroundScene, persist = true): void { this.draft = cloneScene(scene); if (persist) saveDraft(localStorage, this.draft); this.applyIfValid(); this.render(); this.syncOverlay(); }
@@ -129,7 +155,6 @@ export class PixelBgrLabUI {
   }
   private renderOwned(): void {
     while (this.root.childNodes.length > 1) this.root.removeChild(this.root.lastChild!);
-    this.workspace.left.replaceChildren();
     this.workspace.timeline.replaceChildren();
     this.root.style.setProperty("--cm-scene-lab-opacity", String(this.overlayOpacity));
     this.activeTab = normalizePixelBgrLabTab(this.activeTab, pixelBgrLabTabForSelection(Boolean(this.selectedLayer()), this.selectedLayer()?.kind));
@@ -142,7 +167,7 @@ export class PixelBgrLabUI {
     if (v2Scene) {
       const leftHeading=el("h2","cm-bgr-workspace-region-heading");
       leftHeading.textContent="SCENE / ASSETS / ENVIRONMENT";
-      this.workspace.left.append(leftHeading,this.renderV2Environment(v2Scene));
+      this.root.append(leftHeading,this.renderV2Environment(v2Scene));
       const projection=projectBackgroundV2Timeline(v2Scene,{},this.currentX());
       this.workspace.timeline.appendChild(this.renderV2Timeline(projection));
       const inspector=el("div","cm-v2-workspace");

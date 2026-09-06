@@ -8,6 +8,10 @@ Integration baseline at plan creation: `pixel_bgr@0d52e6ad098938f95ab568925ebdd3
 
 Replace the cramped floating Pixel BGR Lab layout with a dual-mode display model while preserving the already verified BGR V2 authoring/runtime contracts.
 
+> **Approved P1.X.1 pivot:** The full-workspace, three-region editor direction described below is superseded for current implementation. The approved direction is a **game-first perimeter labs shell**: one compact upper-left GAME/DEV toggle, BGR Lab docked left, the existing game view retained in the center, the existing Enemy Lab docked right, and the existing BGR timeline docked full-width at the bottom. GAME mode hides all three developer surfaces without resetting gameplay state. The permanent compact timeline/lane redesign is explicitly deferred to the next step; P1.X.1 preserves the P1.3 timeline behavior and the P1.4 selection/inspector state.
+
+The older workspace sections remain below as historical planning context. Where they prescribe a large top bar, scene navigator plus center canvas plus right BGR inspector, or editor-style workspace framing, those placement assumptions are superseded by this pivot.
+
 This plan is the active work plan for the current Pixel BGR dev-workspace implementation sequence. It defines target UX structure and scope; current code remains authoritative for implemented behavior.
 
 ## Verified baseline
