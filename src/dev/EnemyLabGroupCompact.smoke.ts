@@ -25,6 +25,6 @@ for (const block of [countBlock, paramBlock]) {
 }
 
 assert.match(layout, /clamp\(170px, 18vw, 190px\)/, "right dock remains 170–190px");
-assert(!source.includes("overflow-x:auto") && !source.includes("overflow-x:scroll"), "group compaction introduces no horizontal scrolling rule");
+assert.equal(source.match(/overflow-x:auto/g)?.length, 1, "horizontal scrolling is confined to the FSM state strip");
 
 console.log("EnemyLabGroupCompact smoke passed");

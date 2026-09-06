@@ -7,10 +7,10 @@ const fsm = source.slice(source.indexOf('const fsmLabSection'), source.indexOf('
 
 assert(source.includes('const fsmModeButton = document.createElement("button")') && source.includes('fsmModeButton.addEventListener("click"'), "FSM mode remains wired");
 assert(!fsm.includes('textContent = "PRESETS"') && !fsm.includes('textContent = "BASIC SETUP"'), "redundant boxed headings are absent");
-assert(fsm.includes('fsmPresetLabel.textContent = "Preset:"') && fsm.includes('fsmPresetSection.appendChild(fsmPresetToolbar)'), "compact preset row and toolbar exist");
+assert(fsm.includes('fsmPresetLabel.textContent = "preset:"') && fsm.includes('fsmPresetSection.appendChild(fsmPresetToolbar)'), "compact preset row and toolbar exist");
 for (const action of ["topNewBtn", "topRenameBtn", "topDuplicateBtn", "topResetBtn", "topDeleteBtn", "topSaveBtn"]) assert(source.includes(`${action}.addEventListener("click"`), `${action} remains wired`);
-assert(fsm.includes('fsmTypeRow.id = "ds-fsm-type-count-row"') && fsm.includes('fsmTypeLabel.textContent = "Type:"'), "Type and Count row remains present");
-assert(fsm.includes('fsmFormationLabel.textContent = "Form:"') && fsm.includes('fsmCoherenceLabel.textContent = "Coh:"') && fsm.includes('"Rigid"') && fsm.includes('"Elastic"'), "Form and coherence choices share a compact row");
+assert(fsm.includes('fsmTypeRow.id = "ds-fsm-type-count-row"') && fsm.includes('fsmTypeLabel.textContent = "type:"'), "Type and Count row remains present");
+assert(fsm.includes('fsmFormationLabel.textContent = "form:"') && fsm.includes('fsmCoherenceLabel.textContent = "coh:"') && fsm.includes('"Rigid"') && fsm.includes('"Elastic"'), "Form and coherence choices share a compact row");
 assert(fsm.includes('fsmSpaceElasticRow.id = "ds-fsm-space-elast-row"') && fsm.includes('fsmFollowSpeedRow.id = "ds-fsm-follow-speed-row"'), "paired FSM parameter rows exist");
 assert(source.includes('createSpawnYControl("ds")') && source.includes('btn.textContent = "SPAWN"'), "Y and spawn controls remain present");
 for (const action of ["addStateBtn", "dupStateBtn", "delStateBtn", "upStateBtn", "downStateBtn"]) assert(source.includes(`${action}.addEventListener("click"`), `${action} remains wired`);

@@ -11,7 +11,7 @@ const at = (needle: string) => {
 };
 
 const setupStart = at('fsmGroupSetup.id = "ds-fsm-group-setup"');
-const stateStart = at('statesHeading.appendChild(Object.assign(document.createElement("span"), { textContent: "States" }))');
+const stateStart = at('textContent: "states:"');
 const selectedEditorStart = at('editorSection.id = "ds-fsm-selected-state-editor"');
 
 assert(setupStart < stateStart && stateStart < selectedEditorStart, "group setup precedes States and the selected-state editor");
@@ -36,7 +36,7 @@ for (const id of ["ds-fsm-state-spacing", "ds-fsm-state-elasticity", "ds-fsm-sta
 }
 assert(at('statesSection.appendChild(stateList)') < at('statesSection.appendChild(editorSection)'), "state toolbar/strip precedes selected-state controls");
 for (const action of ["addStateBtn", "dupStateBtn", "delStateBtn", "upStateBtn", "downStateBtn"]) assert(source.includes(`${action}.addEventListener("click"`), `${action} remains wired`);
-assert(at('textContent: "Behavior:"') > selectedEditorStart && at('textContent: "Trigger:"') > selectedEditorStart, "Behavior and Trigger remain state-level");
+assert(at('textContent: "behav:"') > selectedEditorStart && at('textContent: "trigger:"') > selectedEditorStart, "Behavior and Trigger remain state-level");
 
 assert.match(layout, /clamp\(170px,\s*18vw,\s*190px\)/, "right dock remains 170–190px");
 assert(source.includes('stateList.style.cssText = "display:flex;gap:2px;max-width:100%;overflow-x:auto;overflow-y:hidden'), "horizontal scrolling remains confined to the state strip");
