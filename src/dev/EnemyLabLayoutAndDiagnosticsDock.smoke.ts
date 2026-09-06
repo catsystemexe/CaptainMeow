@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 
 const source = readFileSync(new URL("./DevSummoner.ts", import.meta.url), "utf8");
 
-assert(source.includes('"width:clamp(220px, 32vw, 264px)"'), "Enemy Lab panel uses wider responsive clamp width");
+assert(source.includes('"width:clamp(170px, 18vw, 190px)"'), "Enemy Lab panel uses the compact right-dock target width");
 assert(source.includes('fsmLabSection.style.cssText = "display:none;flex-direction:column;gap:6px;width:100%;max-width:100%;"'), "FSM inner panel no longer independently caps width");
-assert(source.includes('"max-width:min(264px, calc(100vw - 16px))"'), "narrow viewport fallback caps panel to viewport");
+assert(source.includes('"max-width:min(190px, calc(100vw - 16px))"'), "narrow viewport fallback caps panel to viewport");
 assert(source.indexOf('fsmPresetHeading.textContent = "PRESETS"') < source.indexOf('fsmPresetSection.appendChild(fsmPresetToolbar)'), "PRESETS heading appears first");
 assert(source.indexOf('fsmPresetSection.appendChild(fsmPresetToolbar)') < source.indexOf('fsmPresetSection.appendChild(fsmSpawnSelect.root)'), "preset toolbar is above current preset control");
 assert(!source.includes('textContent = "Preset"'), "redundant Preset label is absent");
