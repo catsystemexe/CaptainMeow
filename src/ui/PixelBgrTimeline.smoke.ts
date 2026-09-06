@@ -58,7 +58,7 @@ assert.deepEqual(chunkOverlapRanges(moved), [{ startX: 96, endX: 130 }, { startX
 
 const sceneLabSource = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 const enemyLabSource = readFileSync(new URL("../dev/DevSummoner.ts", import.meta.url), "utf8");
-assert(sceneLabSource.includes("--cm-scene-lab-opacity"), "Scene Lab opacity uses a namespaced CSS variable");
+assert(!sceneLabSource.includes("--cm-scene-lab-opacity"), "Scene Lab omits the permanent opacity control");
 assert(!sceneLabSource.includes("--cm-bgr-lab-opacity"), "Scene Lab no longer uses the previous shared opacity variable");
 assert(!enemyLabSource.includes("--cm-scene-lab-opacity"), "Enemy Lab does not consume Scene Lab opacity state");
 assert(sceneLabSource.includes("setPointerCapture") && sceneLabSource.includes("window.addEventListener(\"pointermove\", this.onTimelinePointerMove)"), "timeline drag uses pointer capture plus window-level move handling");

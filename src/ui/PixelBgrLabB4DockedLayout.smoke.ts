@@ -37,7 +37,7 @@ const labUiSource = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url),
 const labRule = labUiSource.match(/\.cm-pixel-bgr-lab\{([^}]*)\}/)?.[1] ?? "";
 assert.match(labRule, /position:relative/, "Lab geometry is owned by its perimeter dock rather than a fixed overlay");
 assert.match(labRule, /width:100%;height:100%/, "Lab fills its bounded left dock");
-assert.match(labRule, /overflow:hidden;display:flex;flex-direction:column;min-height:0/, "short-height Lab content remains internally bounded");
+assert.match(labRule, /overflow:visible;display:flex;flex-direction:column;min-height:0/, "the Lab delegates scrolling to its outer dock");
 assert.match(labRule, /pointer-events:none/, "the fixed Lab root does not create a larger hit region than its controls");
 assert.match(labUiSource, /\.cm-pixel-bgr-lab>:not\(style\)\{pointer-events:auto\}/, "visible Lab control surfaces remain pointer-interactive");
 for (const selector of [".cm-pixel-bgr-lab button", ".cm-pixel-bgr-lab input", ".cm-pixel-tab-body", ".cm-timeline", ".cm-v2-timeline"]) {
