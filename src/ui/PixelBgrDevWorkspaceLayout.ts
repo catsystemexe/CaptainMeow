@@ -78,7 +78,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 
 .cm-bgr-workspace-main {
   display: grid;
-  grid-template-columns: clamp(175px, 17vw, 205px) minmax(0, 1fr) clamp(200px, 20vw, 240px);
+  grid-template-columns: clamp(150px, 15vw, 170px) minmax(0, 1fr) clamp(200px, 20vw, 240px);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -147,7 +147,6 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 }
 
 .cm-bgr-workspace-left {
-  border-right: 1px solid rgba(120, 220, 255, .14);
   box-sizing: border-box;
   padding-top: 36px;
   overflow-x: hidden;

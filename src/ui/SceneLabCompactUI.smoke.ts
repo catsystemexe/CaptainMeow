@@ -7,7 +7,7 @@ const layout = readFileSync(new URL("./PixelBgrDevWorkspaceLayout.ts", import.me
 assert(!lab.includes("V2 · SCENE AUTHORING") && !lab.includes("V2 · ENVIRONMENT"), "operator labels omit V2 jargon");
 assert(!lab.includes("SCENE / ASSETS / ENVIRONMENT"), "redundant navigation description is absent");
 assert(!lab.includes("const segmentCount=") && lab.includes('inspector.append(this.inspectorHeading("SCENE",""),this.renderPreview([],bounds))'), "permanent scene statistics are absent");
-for (const action of ["Save scene", "Load saved scene", "Clear saved scene", "Export scene", "Import scene", "Close Scene Lab"]) assert(lab.includes(`this.iconButton("${action}"`), `${action} remains wired`);
+for (const action of ["Load current scene", "Export scene", "Import scene", "Duplicate scene", "Reset or delete scene", "Close Scene Lab"]) assert(lab.includes(`this.iconButton("${action}"`), `${action} remains wired`);
 assert(lab.includes('actions=el("div","cm-scene-action-row")') && lab.includes("flex-wrap:nowrap"), "six actions share one non-wrapping compact row");
 assert(lab.includes("this.setDisplayMode(this.displayMode === \"dev\" ? \"game\" : \"dev\")") && lab.includes("setPixelBgrWorkspaceDisplayMode(this.workspace.root, mode)"), "compact switch retains the existing display-mode owner");
 assert.match(layout, /\.cm-bgr-workspace-mode-toggle \{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;/, "mode toggle has no card wrapper");
