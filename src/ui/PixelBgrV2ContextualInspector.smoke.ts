@@ -11,6 +11,8 @@ assert.match(source,/if\(track\)\{inspector\.append\(this\.inspectorHeading\("TR
 assert.match(source,/inspector\.append\(this\.inspectorHeading\("SCENE"[\s\S]*?scene\.tracks\.length/,"no item selection renders useful scene status");
 
 assert.match(source,/selectV2Track\(trackId:string,render=true\):void \{this\.v2SelectedTrackId=trackId;this\.v2SelectedSegmentId="";this\.v2SelectedObjectId=""/,"track selection clears item selection");
+assert.match(source,/button\(lane\.label,\(\)=>this\.selectV2Track\(track\.id\)\)/,"single-track timeline lane reaches contextual track-only selection");
+assert.match(source,/trackSelect\.onchange=\(\)=>this\.selectV2Track\(trackSelect\.value\)/,"multi-track timeline selector reaches contextual track-only selection");
 assert.match(source,/selectV2Segment\(trackId:string,segmentId:string,render=true\):void \{this\.v2SelectedTrackId=trackId;this\.v2SelectedSegmentId=segmentId;this\.v2SelectedObjectId=""/,"segment selection clears object selection");
 assert.match(source,/selectV2Object\(trackId:string,objectId:string,render=true\):void \{this\.v2SelectedTrackId=trackId;this\.v2SelectedSegmentId="";this\.v2SelectedObjectId=objectId/,"object selection clears segment selection");
 assert.equal(source.match(/private v2SelectedSegmentId/g)?.length,1,"selection remains owned by the existing Lab state");

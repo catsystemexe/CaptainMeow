@@ -29,6 +29,9 @@ assert.match(timelineRule, /pointer-events:auto/, "the timeline remains directly
 const laneLabelRule = cssRule(".cm-v2-lane-label");
 assert.match(laneLabelRule, /position:sticky;left:4px/, "lane labels remain visible during horizontal scrolling");
 assert.doesNotMatch(source, /cm-v2-track-label/, "same-role tracks do not create nested or additional visual rows");
+assert.match(source, /lane\.tracks\.length===1[\s\S]*?button\(lane\.label,\(\)=>this\.selectV2Track\(track\.id\)\)/, "a single-track role lane exposes direct track-only selection on its label");
+assert.match(source, /lane\.tracks\.length>1[\s\S]*?for\(const track of lane\.tracks\)[\s\S]*?option\.value=track\.id[\s\S]*?trackSelect\.onchange=\(\)=>this\.selectV2Track\(trackSelect\.value\)/, "a multi-track role lane exposes every underlying track through a deterministic same-row selector");
+assert.match(cssRule(".cm-v2-lane-label"), /height:23px/, "track selection controls remain inside the existing compact lane row");
 
 assert.match(source, /const rowHeight=27;[\s\S]*?const headerHeight=20;[\s\S]*?projection\.lanes\.length\*rowHeight/, "timeline height is one ruler plus exactly the projected role lanes");
 assert.equal(source.match(/el\("div","cm-cursor cm-v2-cursor"\)/g)?.length, 1, "one Player X cursor is rendered");
