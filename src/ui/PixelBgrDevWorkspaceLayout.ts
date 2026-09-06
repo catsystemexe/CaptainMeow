@@ -41,6 +41,7 @@ function region<K extends keyof HTMLElementTagNameMap>(
 export function createPixelBgrDevWorkspaceShell(documentRef: Document = document): PixelBgrDevWorkspaceRegions {
   const root = region(documentRef, "div", PIXEL_BGR_WORKSPACE_REGION_CLASSES.root, "root");
   root.dataset.displayMode = "dev";
+  root.dataset.timelineMode = "disabled";
 
   const modeToggle = region(documentRef, "nav", PIXEL_BGR_WORKSPACE_REGION_CLASSES.modeToggle, "mode-toggle");
   const main = region(documentRef, "main", PIXEL_BGR_WORKSPACE_REGION_CLASSES.main, "main");
@@ -67,7 +68,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   inset: 0;
   z-index: 100001;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 149px;
+  grid-template-rows: minmax(0, 1fr) 30px;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -77,10 +78,14 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 
 .cm-bgr-workspace-main {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(260px, 320px);
+  grid-template-columns: 240px minmax(0, 1fr) 280px;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.cm-bgr-workspace-shell[data-timeline-mode="v2"] {
+  grid-template-rows: minmax(0, 1fr) 149px;
 }
 
 .cm-bgr-workspace-left,
@@ -92,7 +97,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 }
 
 .cm-v2-timeline-disabled {
-  flex: 1 1 auto;
+  flex: 1 1 30px;
   display: grid;
   place-items: center;
   color: #6f8792;
@@ -112,6 +117,10 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   background: rgba(4, 8, 16, .88);
   font: 12px/1.2 ui-monospace, Menlo, Consolas, monospace;
   pointer-events: auto;
+}
+
+.cm-bgr-workspace-shell.is-dev .cm-bgr-workspace-left > .cm-pixel-bgr-lab {
+  padding-top: 40px;
 }
 
 .cm-bgr-workspace-mode-toggle button {
@@ -188,14 +197,13 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 
 @media (max-width: 1499px) {
   .cm-bgr-workspace-main {
-    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) minmax(220px, 280px);
+    grid-template-columns: 200px minmax(0, 1fr) 240px;
   }
 }
 
 @media (max-width: 1099px) {
   .cm-bgr-workspace-main {
-    grid-template-columns: minmax(180px, 22vw) minmax(360px, 1fr) minmax(220px, 26vw);
-    overflow-x: auto;
+    grid-template-columns: 190px minmax(0, 1fr) 220px;
   }
 }
 `;

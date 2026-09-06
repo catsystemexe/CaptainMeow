@@ -19,7 +19,7 @@ assert.match(scrollRule, /overflow-x:auto;overflow-y:hidden/, "the dedicated tim
 
 const mountedScrollRule = cssRule(".cm-bgr-workspace-timeline .cm-v2-timeline-scroll");
 assert.match(mountedScrollRule, /flex:0 0 auto;min-height:0/, "timeline lane content keeps its compact authored height");
-assert.match(layoutSource, /grid-template-rows: minmax\(0, 1fr\) 149px;/, "the compact timeline returns vertical space to the game viewport");
+assert.match(layoutSource, /\.cm-bgr-workspace-shell\[data-timeline-mode="v2"\] \{[\s\S]*?grid-template-rows: minmax\(0, 1fr\) 149px;/, "V2 capability reserves the complete compact timeline band");
 assert.match(layoutSource, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-y: hidden;/, "the standard four-role timeline has no vertical scroll dependency");
 
 const timelineRule = cssRule(".cm-v2-timeline");
