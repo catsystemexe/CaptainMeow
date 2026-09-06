@@ -41,6 +41,7 @@ function region<K extends keyof HTMLElementTagNameMap>(
 export function createPixelBgrDevWorkspaceShell(documentRef: Document = document): PixelBgrDevWorkspaceRegions {
   const root = region(documentRef, "div", PIXEL_BGR_WORKSPACE_REGION_CLASSES.root, "root");
   root.dataset.displayMode = "dev";
+  root.dataset.timelineMode = "disabled";
 
   const modeToggle = region(documentRef, "nav", PIXEL_BGR_WORKSPACE_REGION_CLASSES.modeToggle, "mode-toggle");
   const main = region(documentRef, "main", PIXEL_BGR_WORKSPACE_REGION_CLASSES.main, "main");
@@ -67,7 +68,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   inset: 0;
   z-index: 100001;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 149px;
+  grid-template-rows: minmax(0, 1fr) 30px;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -77,7 +78,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 
 .cm-bgr-workspace-main {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(260px, 320px);
+  grid-template-columns: clamp(175px, 17vw, 205px) minmax(0, 1fr) clamp(200px, 20vw, 240px);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -131,6 +132,8 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 
 .cm-bgr-workspace-left {
   border-right: 1px solid rgba(120, 220, 255, .14);
+  box-sizing: border-box;
+  padding-top: 36px;
   overflow: auto;
 }
 
@@ -155,6 +158,14 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   overflow-x: hidden;
   overflow-y: hidden;
   pointer-events: auto;
+}
+
+.cm-bgr-workspace-shell[data-timeline-mode="v2"] {
+  grid-template-rows: minmax(0, 1fr) 149px;
+}
+
+.cm-bgr-workspace-shell[data-timeline-mode="disabled"] {
+  grid-template-rows: minmax(0, 1fr) 30px;
 }
 
 .cm-bgr-workspace-left,
@@ -186,16 +197,4 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   display: block;
 }
 
-@media (max-width: 1499px) {
-  .cm-bgr-workspace-main {
-    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) minmax(220px, 280px);
-  }
-}
-
-@media (max-width: 1099px) {
-  .cm-bgr-workspace-main {
-    grid-template-columns: minmax(180px, 22vw) minmax(360px, 1fr) minmax(220px, 26vw);
-    overflow-x: auto;
-  }
-}
 `;
