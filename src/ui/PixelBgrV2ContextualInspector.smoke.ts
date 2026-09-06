@@ -19,7 +19,7 @@ assert.equal(source.match(/private v2SelectedObjectId/g)?.length,1,"no duplicate
 assert(source.includes("this.workspace.left.appendChild(this.root)"),"the Lab-owned inspector state remains mounted transitionally within the left BGR Lab");
 assert(source.includes("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))"),"the timeline remains mounted in workspace.timeline");
 assert.match(layoutSource,/\.cm-bgr-workspace-right \{[\s\S]*?overflow: auto;/,"the right region retains internal overflow ownership");
-assert.match(layoutSource,/\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-x: hidden;[\s\S]*?overflow-y: auto;/,"P1.3 timeline overflow containment remains intact");
+assert.match(layoutSource,/\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-x: hidden;[\s\S]*?overflow-y: hidden;/,"compact timeline has no vertical-scroll dependency");
 assert.match(source,/\.cm-v2-timeline-scroll\{[^}]*overflow-x:auto;overflow-y:hidden/,"P1.3 inner horizontal timeline scrolling remains intact");
 
 console.log("[SMOKE] PixelBgrV2ContextualInspector OK ✅");

@@ -18,7 +18,7 @@ export interface V2ProjectedTrack {
   segments: V2ProjectedSegment[]; objects: V2ProjectedObject[];
 }
 export interface V2ProjectedLane {
-  id: string; label: string; role: BackgroundTrackRole | "environment" | "gameplay";
+  id: string; label: string; role: Exclude<BackgroundTrackRole, "custom">;
   tracks: V2ProjectedTrack[];
 }
 export interface V2TimelineProjection {
@@ -30,7 +30,7 @@ export interface V2TimelineProjection {
   playerX: number;
 }
 
-const STANDARD_ROLES: readonly BackgroundTrackRole[] = ["far", "mid", "near"];
+const STANDARD_ROLES = ["foreground", "near", "mid", "far"] as const;
 const roleLabel = (role: BackgroundTrackRole): string => role[0].toUpperCase() + role.slice(1);
 const finite = (value: number): boolean => Number.isFinite(value);
 
@@ -65,13 +65,10 @@ export function projectBackgroundV2Timeline(
     })),
   }));
 
-  const lanes: V2ProjectedLane[] = [{ id: "environment", label: "Environment", role: "environment", tracks: [] }];
+  // The canonical timeline is a projection by depth role, not by track. Custom
+  // tracks remain in the scene model but have no evidence-backed depth mapping.
+  const lanes: V2ProjectedLane[] = [];
   for (const role of STANDARD_ROLES) lanes.push({ id: role, label: roleLabel(role), role, tracks: tracks.filter(track => track.role === role) });
-  for (const track of tracks.filter(item => item.role === "custom")) {
-    lanes.push({ id: `custom:${track.id}`, label: `Custom — ${track.label}`, role: "custom", tracks: [track] });
-  }
-  lanes.push({ id: "gameplay", label: "Gameplay reference", role: "gameplay", tracks: [] });
-  lanes.push({ id: "foreground", label: "Foreground", role: "foreground", tracks: tracks.filter(track => track.role === "foreground") });
 
   const ranges = (gameplay.ranges ?? []).map(range => ({ ...range }));
   const markers = (gameplay.markers ?? []).map(marker => ({ ...marker }));

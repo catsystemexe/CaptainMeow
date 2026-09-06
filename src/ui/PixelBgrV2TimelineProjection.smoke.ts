@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import type { BackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Types";
+import { createBackgroundV2DesertTestScene } from "../render/bg/v2/BackgroundV2DesertTestScene";
 import { shouldApplyPixelBgrV1Draft } from "./PixelBgrLabUI";
 import { projectBackgroundV2Timeline } from "./PixelBgrV2TimelineProjection";
 
@@ -24,9 +25,11 @@ const gameplay = { ranges: [{ id: "future-range", label: "Range", startX: 600, e
 const beforeScene = structuredClone(scene), beforeGameplay = structuredClone(gameplay);
 const projection = projectBackgroundV2Timeline(scene, gameplay, 1100);
 
-assert.deepEqual(projection.lanes.map(lane => lane.label), ["Environment", "Far", "Mid", "Near", "Custom — Mist", "Gameplay reference", "Foreground"]);
+assert.deepEqual(projection.lanes.map(lane => lane.label), ["Foreground", "Near", "Mid", "Far"]);
+assert.equal(projection.lanes.length, 4, "the compact projection has exactly four content lanes");
+assert.equal(projection.lanes.some(lane => lane.id === "environment" || lane.id === "gameplay"), false);
 assert.deepEqual(projection.lanes.find(lane => lane.id === "far")?.tracks.map(track => track.id), ["far-a", "far-b"]);
-assert.equal(projection.lanes.find(lane => lane.id === "custom:custom")?.tracks[0].id, "custom");
+assert.equal(projection.lanes.flatMap(lane => lane.tracks).some(track => track.role === "custom"), false, "custom data receives no invented depth mapping");
 const segments = projection.lanes.find(lane => lane.id === "far")!.tracks.flatMap(track => track.segments);
 assert.deepEqual(segments.map(segment => [segment.id, segment.trackId, segment.startX, segment.endX, segment.enabled]), [["wide", "far-a", 100, 300, true], ["overlap", "far-b", 250, 290, false]]);
 const objects = projection.lanes.find(lane => lane.id === "near")!.tracks[0].objects;
@@ -35,6 +38,10 @@ assert.deepEqual(projection.bounds, { startX: 0, endX: 1100 });
 assert.equal(projection.environmentLabels[0], "Starfield · seed 7 · density 0.4");
 assert.deepEqual(scene, beforeScene); assert.deepEqual(gameplay, beforeGameplay);
 assert.deepEqual(projectBackgroundV2Timeline(scene, gameplay, 1100), projection);
+const desert = projectBackgroundV2Timeline(createBackgroundV2DesertTestScene());
+assert.deepEqual(desert.lanes.find(lane => lane.id === "far")?.tracks.map(track => track.id), ["desert-sky", "desert-far"], "same-role Desert tracks share Far");
+assert.deepEqual(desert.lanes.find(lane => lane.id === "far")?.tracks.flatMap(track => track.objects).map(object => object.id), ["sun", "clouds"], "Desert sky objects project into Far");
+assert.deepEqual(desert.lanes.find(lane => lane.id === "foreground")?.tracks.flatMap(track => track.objects).map(object => object.id), ["foreground-band"], "Desert foreground object projects into Foreground");
 const unavailable = projectBackgroundV2Timeline(scene, {}, 0);
 assert.equal(unavailable.gameplay.available, false);
 assert.deepEqual(unavailable.gameplay.ranges, []);
@@ -44,5 +51,5 @@ assert.equal(shouldApplyPixelBgrV1Draft(null), true, "empty state keeps existing
 const uiSource=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
 assert.match(uiSource,/if \(shouldApplyPixelBgrV1Draft\(activeState\)\) this\.applyIfValid\(\)/,"constructor gates V1 application before replacing active state");
 assert.match(uiSource,/getBackgroundSceneV2\(globalThis\)/,"render path detects the current typed V2 source");
-assert.match(uiSource,/Gameplay chunks\/markers: unavailable in current gameplay model/,"gameplay lane reports unavailable ownership without borrowing V1 data");
+assert.doesNotMatch(uiSource,/Gameplay chunks\/markers: unavailable in current gameplay model/,"normal compact view consumes no permanent gameplay row");
 console.log("[SMOKE] PixelBgrV2TimelineProjection OK ✅");

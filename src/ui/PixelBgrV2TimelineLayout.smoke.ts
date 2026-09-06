@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const source = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
+const layoutSource = readFileSync(new URL("./PixelBgrDevWorkspaceLayout.ts", import.meta.url), "utf8");
 const cssRule = (selector: string): string => source.match(new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\{([^}]*)\\}`))?.[1] ?? "";
 
 const workspaceRule = cssRule(".cm-v2-workspace");
@@ -9,24 +10,29 @@ assert.match(workspaceRule, /flex:1 1 auto;min-height:0/, "the V2 inspector work
 assert.match(workspaceRule, /overflow-x:hidden;overflow-y:auto/, "one workspace owns vertical scrolling without adding horizontal overflow");
 
 const panelRule = cssRule(".cm-v2-panel");
-assert.match(panelRule, /flex:1 0 auto;min-width:0;min-height:100%;overflow:visible;display:flex;flex-direction:column/, "the timeline panel fills the bottom region but exposes excess lane height to the region scroll owner");
+assert.match(panelRule, /flex:1 0 auto;min-width:0;overflow:visible;display:flex;flex-direction:column/, "the compact timeline panel does not require a vertical scroll owner");
 assert.match(panelRule, /box-sizing:border-box/, "panel padding stays inside the assigned full-width timeline surface");
 
 const scrollRule = cssRule(".cm-v2-timeline-scroll");
-assert.match(scrollRule, /width:100%;max-width:100%;height:auto/, "the timeline viewport stays bounded to the available Lab width and its full interaction height");
+assert.match(scrollRule, /width:100%;max-width:100%;height:145px/, "the canonical ruler and four lanes stay within the compact height budget");
 assert.match(scrollRule, /overflow-x:auto;overflow-y:hidden/, "the dedicated timeline viewport scrolls only in authored world X");
 
 const mountedScrollRule = cssRule(".cm-bgr-workspace-timeline .cm-v2-timeline-scroll");
-assert.match(mountedScrollRule, /flex:0 0 auto;min-height:0/, "timeline lane content keeps its height so the containing bottom region can scroll vertically when needed");
+assert.match(mountedScrollRule, /flex:0 0 auto;min-height:0/, "timeline lane content keeps its compact authored height");
+assert.match(layoutSource, /grid-template-rows: minmax\(0, 1fr\) 149px;/, "the compact timeline returns vertical space to the game viewport");
+assert.match(layoutSource, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-y: hidden;/, "the standard four-role timeline has no vertical scroll dependency");
 
 const timelineRule = cssRule(".cm-v2-timeline");
-assert.match(timelineRule, /min-height:136px/, "the visible timeline interaction band has a usable minimum height");
+assert.match(timelineRule, /height:128px/, "the visible timeline interaction band has a fixed compact height");
 assert.match(timelineRule, /pointer-events:auto/, "the timeline remains directly pointer-interactive");
 
 const laneLabelRule = cssRule(".cm-v2-lane-label");
-const trackLabelRule = cssRule(".cm-v2-track-label");
 assert.match(laneLabelRule, /position:sticky;left:4px/, "lane labels remain visible during horizontal scrolling");
-assert.match(trackLabelRule, /position:sticky;left:144px/, "track labels remain visible during horizontal scrolling");
+assert.doesNotMatch(source, /cm-v2-track-label/, "same-role tracks do not create nested or additional visual rows");
+
+assert.match(source, /const rowHeight=27;[\s\S]*?const headerHeight=20;[\s\S]*?projection\.lanes\.length\*rowHeight/, "timeline height is one ruler plus exactly the projected role lanes");
+assert.equal(source.match(/el\("div","cm-cursor cm-v2-cursor"\)/g)?.length, 1, "one Player X cursor is rendered");
+assert.match(cssRule(".cm-v2-cursor"), /top:0;bottom:0;[\s\S]*border-left:2px solid/, "Player X cursor spans ruler and every lane above authored content");
 
 assert.match(source, /cm-v2-segment-handle left[\s\S]*?beginV2SegmentDrag\(e,track\.id,segment\.id,"resize-left",scale\)/, "left resize handles retain their edit event wiring");
 assert.match(source, /cm-v2-segment-handle right[\s\S]*?beginV2SegmentDrag\(e,track\.id,segment\.id,"resize-right",scale\)/, "right resize handles retain their edit event wiring");
