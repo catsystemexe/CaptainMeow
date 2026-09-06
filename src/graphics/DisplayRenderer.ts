@@ -13,12 +13,15 @@ export type DisplayInfo = {
   presentH: number;       // logicH*scale
 };
 
+export type DisplayVerticalAlign = "top" | "center";
+
 export function computeDisplay(
   logicW: number,
   logicH: number,
   cssW: number,
   cssH: number,
   dpr: number,
+  verticalAlign: DisplayVerticalAlign = "center",
 ): DisplayInfo {
   const physW = Math.max(1, Math.floor(cssW * dpr));
   const physH = Math.max(1, Math.floor(cssH * dpr));
@@ -31,7 +34,9 @@ export function computeDisplay(
   const presentH = logicH * scale;
 
   const viewportX = Math.floor((physW - presentW) / 2);
-  const viewportY = Math.floor((physH - presentH) / 2);
+  // WebGL viewports use a bottom-left origin, so top alignment places all
+  // unused vertical letterbox space below the game image.
+  const viewportY = verticalAlign === "top" ? physH - presentH : Math.floor((physH - presentH) / 2);
 
   return { cssW, cssH, dpr, scale, viewportX, viewportY, viewportW: presentW, viewportH: presentH, presentW, presentH };
 }

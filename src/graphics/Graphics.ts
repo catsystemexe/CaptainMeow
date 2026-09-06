@@ -1,6 +1,6 @@
 import { getGL } from "./gl";
 import { RenderTarget } from "./RenderTarget";
-import { computeDisplay, type DisplayInfo } from "./DisplayRenderer";
+import { computeDisplay, type DisplayInfo, type DisplayVerticalAlign } from "./DisplayRenderer";
 import { createBlitProgram, type BlitProgram } from "./BlitProgram";
 import { createPostProcessPass, type PostProcessPass } from "./PostProcessPass";
 
@@ -49,7 +49,7 @@ export class Graphics {
     return this.gl;
   }
 
-  resize(cssW: number, cssH: number, dpr: number): void {
+  resize(cssW: number, cssH: number, dpr: number, verticalAlign: DisplayVerticalAlign = "center"): void {
     const gl = this.gl;
     // fyzická velikost canvasu
     const physW = Math.max(1, Math.floor(cssW * dpr));
@@ -60,7 +60,7 @@ export class Graphics {
     this.canvas.style.width = cssW + "px";
     this.canvas.style.height = cssH + "px";
 
-    this.display = computeDisplay(this.logicW, this.logicH, cssW, cssH, dpr);
+    this.display = computeDisplay(this.logicW, this.logicH, cssW, cssH, dpr, verticalAlign);
 
     // viewport se nastavuje až v present()
     gl.viewport(0, 0, physW, physH);
@@ -200,7 +200,9 @@ export class Graphics {
     }
     return {
       x: d.viewportX,
-      y: d.viewportY,
+      // Display viewport Y is WebGL bottom-origin; presentation consumers use
+      // canvas/CSS top-origin coordinates.
+      y: this.canvas.height - d.viewportY - d.viewportH,
       w: d.viewportW,
       h: d.viewportH,
       scale: (d as any).scale ?? 1,

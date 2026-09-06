@@ -406,7 +406,10 @@ async function main() {
   }
   (window as any).__CM.renderer = renderer;
   (globalThis as any).__CM_BG_PRESET__ ??= 0;
-  type PresentationGeometrySource = { getGamePresentationRect(): { x: number; y: number; width: number; height: number } };
+  type PresentationGeometrySource = {
+    getGamePresentationRect(): { x: number; y: number; width: number; height: number };
+    getPresentationVerticalAlign(): "top" | "center";
+  };
   let presentationGeometrySource: PresentationGeometrySource | null = null;
   function resize() {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
@@ -423,7 +426,7 @@ async function main() {
     canvas.style.position = "fixed";
     canvas.style.left = `${presentation.x}px`;
     canvas.style.top = `${presentation.y}px`;
-    gfx.resize(cssW, cssH, dpr);
+    gfx.resize(cssW, cssH, dpr, presentationGeometrySource?.getPresentationVerticalAlign() ?? "center");
 
     const pr = (gfx as any).getPresentRect?.();
     if (pr) {
