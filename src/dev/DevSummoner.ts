@@ -935,7 +935,7 @@ export class DevSummoner {
 
     const groupOptionRow = document.createElement("div");
     groupOptionRow.id = "ds-group-form-coh-row";
-    groupOptionRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;align-items:center;min-width:0;";
+    groupOptionRow.style.cssText = "display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:5px;align-items:center;min-width:0;";
     const makeCompactChoice = <T extends string>(label: string, options: ReadonlyArray<{ value: T; label: string }>, defaultValue: T) => {
       const wrap = createSelectLabel(label);
       const select = createCompactSelect(`ds-group-${label.toLowerCase()}`);
@@ -993,7 +993,7 @@ export class DevSummoner {
     const formationWrap = formationChoice.wrap;
     const cohesionWrap = cohesionChoice.wrap;
     formationWrap.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px;align-items:center;min-width:0;";
-    cohesionWrap.style.cssText = "display:grid;grid-template-columns:auto auto;gap:2px;align-items:center;min-width:0;";
+    cohesionWrap.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px;align-items:center;min-width:0;white-space:nowrap;";
     groupOptionRow.appendChild(formationWrap);
     groupOptionRow.appendChild(cohesionWrap);
     groupControls.appendChild(groupOptionRow);
@@ -1069,7 +1069,7 @@ export class DevSummoner {
     groupControls.appendChild(formationParamRow);
     const primaryParamRow = document.createElement("div");
     primaryParamRow.id = "ds-group-space-tight-catch-row";
-    primaryParamRow.style.cssText = "display:flex;gap:2px;align-items:center;justify-content:space-between;min-width:0;white-space:nowrap;";
+    primaryParamRow.style.cssText = "display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;align-items:center;min-width:0;white-space:nowrap;";
     primaryParamRow.appendChild(spacingStepper.wrap);
     primaryParamRow.appendChild(responseStepper.wrap);
     primaryParamRow.appendChild(catchStepper.wrap);
@@ -1304,6 +1304,11 @@ export class DevSummoner {
     fsmPresetToolbar.id = "ds-fsm-preset-toolbar";
     fsmPresetToolbar.style.cssText = "display:grid;grid-column:1 / -1;grid-template-columns:repeat(6,22px);gap:1px;align-items:center;justify-content:end;";
     fsmPresetSection.appendChild(fsmPresetLabel);
+
+    const fsmGroupSetup = document.createElement("div");
+    fsmGroupSetup.id = "ds-fsm-group-setup";
+    fsmGroupSetup.setAttribute("data-fsm-scope", "global-preset");
+    fsmGroupSetup.style.cssText = "display:flex;flex-direction:column;gap:3px;margin-bottom:5px;";
 
     const fsmBasicSection = document.createElement("div");
     fsmBasicSection.id = "ds-fsm-basic-setup";
@@ -1661,6 +1666,7 @@ export class DevSummoner {
     const stateTriggerSummaryNodes = new Map<string, HTMLElement>();
     const editorSection = document.createElement("div");
     editorSection.id = "ds-fsm-selected-state-editor";
+    editorSection.setAttribute("data-fsm-scope", "selected-state");
     editorSection.style.cssText = "display:flex;flex-direction:column;gap:3px;width:100%;box-sizing:border-box;padding:0;background:transparent;";
     editorSection.addEventListener("click", (ev) => ev.stopPropagation());
     editorSection.addEventListener("input", (ev) => ev.stopPropagation());
@@ -1978,8 +1984,9 @@ ${d.states.join(", ")}` : "No preset selected";
     previewRestartBtn.addEventListener("click", () => { previewSession.restart(); renderPresetEditor(); });
     previewStopBtn.addEventListener("click", () => { previewSession.stop(); renderPresetEditor(); });
     renderPresetEditor();
-    fsmLabSection.appendChild(fsmPresetSection);
-    fsmLabSection.appendChild(fsmBasicSection);
+    fsmGroupSetup.appendChild(fsmPresetSection);
+    fsmGroupSetup.appendChild(fsmBasicSection);
+    fsmLabSection.appendChild(fsmGroupSetup);
     fsmLabSection.appendChild(presetPanel);
     fsmLabSection.appendChild(createSectionGap());
 

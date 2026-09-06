@@ -114,12 +114,15 @@ function mount() {
 const { panel, emitted } = mount();
 clickButtonByText(panel, "FSM");
 const fsm = panel.findById("ds-fsm-lab-section")!;
+const groupSetup = panel.findById("ds-fsm-group-setup")!;
 const presets = panel.findById("ds-fsm-preset-section")!;
 const basic = panel.findById("ds-fsm-basic-setup")!;
 assert.equal(fsm.findAll((el) => el.textContent === "FSM LAB").length, 0, "FSM LAB heading is not visible in FSM mode");
 assert(panel.findById("ds-fsm-lab-section"), "FSM wrapper remains present");
-assert(fsm.children.indexOf(presets) < fsm.children.indexOf(basic), "PRESETS appears before BASIC SETUP");
-assert(fsm.children.indexOf(basic) < fsm.children.indexOf(panel.findById("ds-fsm-preset-editor")!), "existing FSM editor remains below BASIC SETUP");
+assert.equal(groupSetup.getAttribute("data-fsm-scope"), "global-preset", "group setup exposes its global/preset ownership");
+assert(groupSetup.children.indexOf(presets) < groupSetup.children.indexOf(basic), "Preset appears before the remaining group setup");
+assert(fsm.children.indexOf(groupSetup) < fsm.children.indexOf(panel.findById("ds-fsm-preset-editor")!), "selected-state area remains below the complete group setup");
+assert.equal(panel.findById("ds-fsm-selected-state-editor")!.getAttribute("data-fsm-scope"), "selected-state", "state editor exposes selected-state ownership");
 assert.equal(presets.findAll((el) => el.textContent === "Preset").length, 0, "PRESETS has no visible redundant Preset row label");
 assert(panel.findById("ds-fsm-preset"), "preset dropdown remains present");
 const toolbar = panel.findById("ds-fsm-preset-toolbar")!;
