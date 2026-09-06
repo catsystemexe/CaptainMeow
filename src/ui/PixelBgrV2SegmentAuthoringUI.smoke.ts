@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
-assert.match(source,/V2 · SCENE AUTHORING/);
+assert.match(source,/heading\.textContent="SCENE AUTHORING"/);
 assert.match(source,/track\.mode==="sequence"/);
 assert.match(source,/Repeat segment authoring is limited\/read-only/);
-assert.match(source,/Gameplay chunks\/markers: unavailable in current gameplay model/);
-assert.match(source,/environment configured above/);
 assert.match(source,/setBackgroundSceneV2\(result\.scene,globalThis\)/);
 assert.match(source,/Object inspector/);
 assert.match(source,/place segment on canvas/);

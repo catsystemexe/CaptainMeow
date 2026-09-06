@@ -54,6 +54,7 @@ const SMOKES = [
   "../render/bg/v2/BackgroundV2Persistence.smoke",
   "../ui/PixelBgrV2EnvironmentEditing.smoke",
   "../ui/PixelBgrV2EnvironmentAuthoringUI.smoke",
+  "../ui/SceneLabCompactUI.smoke",
   "../ui/PixelBgrV2TimelineProjection.smoke",
   "../ui/PixelBgrV2SegmentEditing.smoke",
   "../ui/PixelBgrV2SegmentAuthoringUI.smoke",

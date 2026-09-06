@@ -64,15 +64,15 @@ assert(!enemyLabSource.includes("--cm-scene-lab-opacity"), "Enemy Lab does not c
 assert(sceneLabSource.includes("setPointerCapture") && sceneLabSource.includes("window.addEventListener(\"pointermove\", this.onTimelinePointerMove)"), "timeline drag uses pointer capture plus window-level move handling");
 assert(sceneLabSource.includes("releasePointerCapture") && sceneLabSource.includes("window.removeEventListener(\"pointerup\", this.onTimelinePointerUp)"), "timeline drag cleans up window-level pointer listeners on pointerup/cancel");
 assert(sceneLabSource.includes("beginCursorDrag"), "Current X cursor has a drag path");
-assert(sceneLabSource.includes("Player X:"), "Scene Lab presents the user-facing value as player level X");
+assert(!sceneLabSource.includes("Player X:"), "Scene Lab omits the redundant Player X chrome label");
 assert(!sceneLabSource.includes(`scrollX",this.numericStepper`), "Scene Lab no longer exposes preview scrollX as a competing main control");
 assert(!sceneLabSource.includes("PREVIEW") && !sceneLabSource.includes("GAMEPLAY"), "Scene Lab removes preview/gameplay mode labels");
-assert(sceneLabSource.includes("Previous chunk") && sceneLabSource.includes("Stop and return to scene start") && sceneLabSource.includes("Next chunk"), "transport controls expose required labels");
+assert(sceneLabSource.includes("Reset to scene start") && sceneLabSource.includes("Stop and return to scene start"), "compact transport controls expose reset and stop labels");
 assert(sceneLabSource.includes("timeline:get") || sceneLabSource.includes("timeline,minX"), "cursor drag stores the active timeline for absolute local coordinate mapping");
 assert(sceneLabSource.includes("cursorDragCurrentX({currentClientX:e.clientX,timelineLeft:rect.left,timelineWidthPx:rect.width"), "cursor drag maps absolute pointer X through timeline-local coordinates");
 assert(sceneLabSource.includes("pointercancel") && sceneLabSource.includes("this.onCursorPointerUp"), "pointer cancel clears cursor drag state");
 assert(sceneLabSource.includes("__CM_SCENE_TIMELINE_DRAG_ACTIVE__") && sceneLabSource.includes("isolateTimelinePointerEvent(e)"), "timeline cursor drag activates the input guard and isolates pointer events");
-assert(sceneLabSource.includes("this.cursorEl") && sceneLabSource.includes("this.currentXLabel"), "cursor drag updates cursor and Player X label immediately without waiting for full rerender");
+assert(sceneLabSource.includes("this.cursorEl"), "cursor drag updates the timeline cursor immediately without waiting for full rerender");
 assert(sceneLabSource.includes("isTimelinePlacementTarget") && sceneLabSource.includes("cm-ruler"), "timeline click placement excludes child controls such as chunks and markers");
 assert(!sceneLabSource.includes("Preview mode:"), "Scene Lab removes the visible preview toggle");
 assert(sceneLabSource.includes("seekGameplayToPlayerX"), "timeline click/drag writes through the gameplay seek API");

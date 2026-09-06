@@ -6,7 +6,7 @@ const source = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf
 assert.equal(source.match(/createPixelBgrDevWorkspaceShell\(\)/g)?.length, 1, "Lab creates one stable workspace shell during construction");
 assert(source.includes("this.workspace.left.appendChild(this.root)"), "existing Lab UI remains the transitional authoring owner in the left dock");
 assert(source.includes("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))"), "V2 timeline is mounted in the full-width workspace timeline region");
-assert(source.includes("this.root.append(leftHeading,this.renderV2Environment(v2Scene))"), "the environment surface remains within the BGR Lab composition");
+assert(source.includes("this.root.append(this.renderV2Environment(v2Scene))"), "the environment surface remains within the BGR Lab composition");
 assert(source.includes("while (this.root.childNodes.length > 1)") && source.includes("this.workspace.timeline.replaceChildren()"), "rerenders replace owned BGR and timeline contents without duplicating nodes or the shell");
 assert(!source.includes(".cm-pixel-bgr-lab{position:fixed"), "DEV Lab no longer uses root-level floating-window geometry");
 assert(source.includes('this.setDisplayMode("dev")'), "opening the Lab activates DEV presentation");
