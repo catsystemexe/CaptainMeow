@@ -178,19 +178,6 @@ async function main() {
   window.__CM.game = game;
 
 
-  // Dev Summoner / Enemy Lab
-  let enemyLabPanel: HTMLElement | null = null;
-  try {
-    const { mountEnemyLabRuntime } = await import("./dev/EnemyLabBootstrap");
-    const enemyLab = mountEnemyLabRuntime(game, LOGIC_W, LOGIC_H);
-    window.__CM.enemyLab = enemyLab;
-    enemyLabPanel = enemyLab.panel;
-    if (!enemyLab.mounted) console.warn("[EnemyLab] mount failed", enemyLab.error);
-  } catch (e) {
-    console.warn("[EnemyLab] bootstrap failed", e);
-  }
-
-
   // ---- Dev API bridge
   window.__CM.dev = {
     waves: () => window.__CM.director?.getWaveStates?.(),
@@ -249,50 +236,6 @@ async function main() {
     off: () => { audioEnabled = false; (game as any).audio?.setEnabled(false); console.log("[AUDIO] OFF"); },
     freqs: () => (game as any).audio?.getFreqs(),
   };
-
-  // DevUI disabled (we use minimal DevHotkeys overlay instead)
-
-  // ---- BG Lab UI (F7 toggle) ----
-  try {
-    const mod = await import("./ui/BgLabUI");
-    (globalThis as any).__CM_BG_LAB_UI__ = new mod.BgLabUI();
-  } catch (e) {
-    console.warn("[BG_LAB] init failed", e);
-  }
-
-  // ---- Pixel BGR Lab UI (F8 toggle) ----
-  try {
-    const oldUi = (globalThis as any).__CM_PIXEL_BGR_LAB_UI__;
-    if (oldUi && typeof oldUi.dispose === "function") oldUi.dispose();
-    const mod = await import("./ui/PixelBgrLabUI");
-    const pixelBgrLabUi = new mod.PixelBgrLabUI();
-    pixelBgrLabUi.mountEnemyLab(enemyLabPanel);
-    (globalThis as any).__CM_PIXEL_BGR_LAB_UI__ = pixelBgrLabUi;
-  } catch (e) {
-    console.warn("[PIXEL_BGR_LAB] init failed", e);
-  }
-
-  try {
-    const pixelBgrLabUi = (globalThis as any).__CM_PIXEL_BGR_LAB_UI__;
-    if (pixelBgrLabUi && typeof pixelBgrLabUi.toggle === "function") {
-      const oldButton = (globalThis as any).__CM_PIXEL_BGR_LAB_BUTTON__;
-      if (oldButton && typeof oldButton.dispatchEvent === "function") oldButton.dispatchEvent(new Event("cm-pixel-bgr-destroy"));
-      if (oldButton && typeof oldButton.remove === "function") oldButton.remove();
-      (globalThis as any).__CM_PIXEL_BGR_LAB_BUTTON__ = null;
-    }
-  } catch (e) {
-    console.warn("[PIXEL_BGR_LAB] launch button init failed", e);
-  }
-
-  // ---- Grid Lab UI (G toggle) ----
-  try {
-    const mod = await import("./ui/GridLabUI");
-    (globalThis as any).__CM_GRID_UI__ = new mod.GridLabUI();
-  } catch (e) {
-    console.warn("[GRID_LAB] init failed", e);
-  }
-
-  // (window as any).__CM.devui = new DevUI(() => window.__CM?.dev ?? null);
 
   // --- HUD mode mirror (so we can gate pointer/touch)
   type HudMode = "PLAY" | "TITLE" | "GAME_OVER";
@@ -501,6 +444,60 @@ async function main() {
 
   requestResize();
 
+  async function mountDevTools() {
+    // Enemy Lab remains the lifecycle owner of this panel; Pixel BGR reparents it.
+    let enemyLabPanel: HTMLElement | null = null;
+    try {
+      const { mountEnemyLabRuntime } = await import("./dev/EnemyLabBootstrap");
+      const enemyLab = mountEnemyLabRuntime(game!, LOGIC_W, LOGIC_H);
+      window.__CM.enemyLab = enemyLab;
+      enemyLabPanel = enemyLab.panel;
+      if (!enemyLab.mounted) console.warn("[EnemyLab] mount failed", enemyLab.error);
+    } catch (e) {
+      console.warn("[EnemyLab] bootstrap failed", e);
+    }
+
+    // ---- BG Lab UI (F7 toggle) ----
+    try {
+      const mod = await import("./ui/BgLabUI");
+      (globalThis as any).__CM_BG_LAB_UI__ = new mod.BgLabUI();
+    } catch (e) {
+      console.warn("[BG_LAB] init failed", e);
+    }
+
+    // ---- Pixel BGR Lab UI (F8 toggle) ----
+    try {
+      const oldUi = (globalThis as any).__CM_PIXEL_BGR_LAB_UI__;
+      if (oldUi && typeof oldUi.dispose === "function") oldUi.dispose();
+      const mod = await import("./ui/PixelBgrLabUI");
+      const pixelBgrLabUi = new mod.PixelBgrLabUI();
+      pixelBgrLabUi.mountEnemyLab(enemyLabPanel);
+      (globalThis as any).__CM_PIXEL_BGR_LAB_UI__ = pixelBgrLabUi;
+    } catch (e) {
+      console.warn("[PIXEL_BGR_LAB] init failed", e);
+    }
+
+    try {
+      const pixelBgrLabUi = (globalThis as any).__CM_PIXEL_BGR_LAB_UI__;
+      if (pixelBgrLabUi && typeof pixelBgrLabUi.toggle === "function") {
+        const oldButton = (globalThis as any).__CM_PIXEL_BGR_LAB_BUTTON__;
+        if (oldButton && typeof oldButton.dispatchEvent === "function") oldButton.dispatchEvent(new Event("cm-pixel-bgr-destroy"));
+        if (oldButton && typeof oldButton.remove === "function") oldButton.remove();
+        (globalThis as any).__CM_PIXEL_BGR_LAB_BUTTON__ = null;
+      }
+    } catch (e) {
+      console.warn("[PIXEL_BGR_LAB] launch button init failed", e);
+    }
+
+    // ---- Grid Lab UI (G toggle) ----
+    try {
+      const mod = await import("./ui/GridLabUI");
+      (globalThis as any).__CM_GRID_UI__ = new mod.GridLabUI();
+    } catch (e) {
+      console.warn("[GRID_LAB] init failed", e);
+    }
+  }
+
   let last = performance.now();
 
   // --- top debug overlay (default OFF; throttled) ---
@@ -670,6 +667,14 @@ async function main() {
   
   (window as any).__CM.__running = true;
   (window as any).__CM.__rafId = requestAnimationFrame(frame);
+  // Give resize + rendering a full animation-frame opportunity before loading
+  // nonessential authoring surfaces. The second rAF avoids competing with the
+  // first frame's callbacks while still guaranteeing prompt DEV availability.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if ((window as any).__BOOT_N__ === bootN) void mountDevTools();
+    });
+  });
   }
 main().catch((err) => {
   console.error("[BOOT] main() failed", err);
