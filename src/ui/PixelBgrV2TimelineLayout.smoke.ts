@@ -9,7 +9,8 @@ assert.match(workspaceRule, /flex:1 1 auto;min-height:0/, "the V2 inspector work
 assert.match(workspaceRule, /overflow-x:hidden;overflow-y:auto/, "one workspace owns vertical scrolling without adding horizontal overflow");
 
 const panelRule = cssRule(".cm-v2-panel");
-assert.match(panelRule, /min-height:100%;height:max-content;overflow:visible;display:flex;flex-direction:column/, "the timeline panel fills the bottom region but exposes excess height to the region scroll owner");
+assert.match(panelRule, /flex:1 0 auto;min-width:0;min-height:100%;overflow:visible;display:flex;flex-direction:column/, "the timeline panel fills the bottom region but exposes excess lane height to the region scroll owner");
+assert.match(panelRule, /box-sizing:border-box/, "panel padding stays inside the assigned full-width timeline surface");
 
 const scrollRule = cssRule(".cm-v2-timeline-scroll");
 assert.match(scrollRule, /width:100%;max-width:100%;height:auto/, "the timeline viewport stays bounded to the available Lab width and its full interaction height");
@@ -21,6 +22,14 @@ assert.match(mountedScrollRule, /flex:0 0 auto;min-height:0/, "timeline lane con
 const timelineRule = cssRule(".cm-v2-timeline");
 assert.match(timelineRule, /min-height:136px/, "the visible timeline interaction band has a usable minimum height");
 assert.match(timelineRule, /pointer-events:auto/, "the timeline remains directly pointer-interactive");
+
+const laneLabelRule = cssRule(".cm-v2-lane-label");
+const trackLabelRule = cssRule(".cm-v2-track-label");
+assert.match(laneLabelRule, /position:sticky;left:4px/, "lane labels remain visible during horizontal scrolling");
+assert.match(trackLabelRule, /position:sticky;left:144px/, "track labels remain visible during horizontal scrolling");
+
+assert.match(source, /cm-v2-segment-handle left[\s\S]*?beginV2SegmentDrag\(e,track\.id,segment\.id,"resize-left",scale\)/, "left resize handles retain their edit event wiring");
+assert.match(source, /cm-v2-segment-handle right[\s\S]*?beginV2SegmentDrag\(e,track\.id,segment\.id,"resize-right",scale\)/, "right resize handles retain their edit event wiring");
 
 const timelineMount = source.indexOf("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))");
 const inspectorCreation = source.indexOf('const inspector=el("div","cm-v2-workspace")', timelineMount);
