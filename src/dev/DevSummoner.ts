@@ -874,23 +874,27 @@ export class DevSummoner {
     enemyControls.appendChild(createSectionGap());
 
     const groupTypeRow = document.createElement("div");
-    groupTypeRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:5px;align-items:center;min-width:0;";
+    groupTypeRow.id = "ds-group-type-count-row";
+    groupTypeRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:3px;align-items:center;min-width:0;";
     const groupTypeLabel = document.createElement("span");
     groupTypeLabel.textContent = "Type:";
     applyLabelTextStyle(groupTypeLabel);
     const groupEnemySelect = document.createElement("select");
     groupEnemySelect.id = "ds-group-enemy";
-    applyNativeSelectStyle(groupEnemySelect);
+    applyTextSelectStyle(groupEnemySelect);
     for (const id of Object.keys(ENEMY_DEFS)) appendOption(groupEnemySelect, id);
     groupTypeRow.appendChild(groupTypeLabel);
     groupTypeRow.appendChild(groupEnemySelect);
 
     let groupCount = 5;
+    const countLabel = document.createElement("span");
+    countLabel.textContent = "Count:";
+    applyLabelTextStyle(countLabel);
     const countSegment = document.createElement("div");
     countSegment.id = "ds-group-count";
     countSegment.setAttribute("role", "spinbutton");
     countSegment.setAttribute("aria-label", "Group count");
-    countSegment.style.cssText = "display:grid;grid-template-columns:24px 22px 24px;gap:1px;align-items:center;align-self:end;min-width:72px;";
+    countSegment.style.cssText = "display:grid;grid-template-columns:12px 12px 12px;gap:0;align-items:center;min-width:36px;";
     const countDecButton = document.createElement("button");
     const countValue = document.createElement("span");
     const countIncButton = document.createElement("button");
@@ -901,9 +905,12 @@ export class DevSummoner {
     countDecButton.setAttribute("aria-label", "Decrease group count");
     countIncButton.setAttribute("aria-label", "Increase group count");
     countValue.textContent = String(groupCount);
-    countValue.style.cssText = "display:flex;align-items:center;justify-content:center;color:#eee;min-height:26px;box-sizing:border-box;font-weight:800;";
+    countValue.style.cssText = "display:flex;align-items:center;justify-content:center;color:#eee;min-height:18px;box-sizing:border-box;font-weight:800;";
     const styleCountButton = (button: HTMLButtonElement) => {
       applyInlineStepperButtonStyle(button);
+      button.style.minWidth = "12px";
+      button.style.minHeight = "18px";
+      button.style.padding = "0";
     };
     const refreshGroupCount = () => {
       groupCount = enemyLabMode === "fsm" ? normalizeFsmSpawnCount(groupCount) : normalizeGroupCount(groupCount);
@@ -921,12 +928,14 @@ export class DevSummoner {
     countSegment.appendChild(countValue);
     countSegment.appendChild(countIncButton);
     refreshGroupCount();
+    groupTypeRow.appendChild(countLabel);
     groupTypeRow.appendChild(countSegment);
     groupControls.appendChild(groupTypeRow);
     groupControls.appendChild(createSectionGap());
 
     const groupOptionRow = document.createElement("div");
-    groupOptionRow.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:4px;align-items:end;";
+    groupOptionRow.id = "ds-group-form-coh-row";
+    groupOptionRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;align-items:center;min-width:0;";
     const makeCompactChoice = <T extends string>(label: string, options: ReadonlyArray<{ value: T; label: string }>, defaultValue: T) => {
       const wrap = createSelectLabel(label);
       const select = createCompactSelect(`ds-group-${label.toLowerCase()}`);
@@ -983,6 +992,8 @@ export class DevSummoner {
     const cohesionChoice = makeSegmentedChoice<CohesionId>("Coh", "Group cohesion", ENEMY_GROUP_COHESION_IDS.map((id) => ({ value: id, label: id === "rigid" ? "Rigid" : "Elastic" })), "rigid");
     const formationWrap = formationChoice.wrap;
     const cohesionWrap = cohesionChoice.wrap;
+    formationWrap.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px;align-items:center;min-width:0;";
+    cohesionWrap.style.cssText = "display:grid;grid-template-columns:auto auto;gap:2px;align-items:center;min-width:0;";
     groupOptionRow.appendChild(formationWrap);
     groupOptionRow.appendChild(cohesionWrap);
     groupControls.appendChild(groupOptionRow);
@@ -990,14 +1001,14 @@ export class DevSummoner {
     const makeParamStepper = (label: string, key: GroupParamKey, defaultValue: number) => {
       let value = defaultValue;
       const wrap = document.createElement("div");
-      wrap.style.cssText = "display:grid;grid-template-columns:max-content minmax(0,1fr);gap:1px;align-items:center;min-width:0;";
+      wrap.style.cssText = "display:grid;grid-template-columns:max-content auto;gap:0;align-items:center;min-width:0;";
       const labelNode = document.createElement("span");
       labelNode.textContent = label;
       applyLabelTextStyle(labelNode, "secondary");
       const segment = document.createElement("div");
       segment.setAttribute("role", "spinbutton");
       segment.setAttribute("aria-label", `Group ${label}`);
-      segment.style.cssText = "display:grid;grid-template-columns:22px minmax(20px,1fr) 22px;gap:0;align-items:center;min-width:0;";
+      segment.style.cssText = "display:grid;grid-template-columns:10px minmax(8px,auto) 10px;gap:0;align-items:center;min-width:0;border:0;background:transparent;";
       const decButton = document.createElement("button");
       const valueLabel = document.createElement("span");
       const incButton = document.createElement("button");
@@ -1007,11 +1018,15 @@ export class DevSummoner {
       incButton.textContent = "+";
       decButton.setAttribute("aria-label", `Decrease ${label}`);
       incButton.setAttribute("aria-label", `Increase ${label}`);
-      valueLabel.style.cssText = "display:flex;align-items:center;justify-content:center;color:#eee;min-height:26px;box-sizing:border-box;font-weight:800;";
+      valueLabel.style.cssText = "display:flex;align-items:center;justify-content:center;color:#eee;min-height:18px;box-sizing:border-box;font-weight:800;";
       styleCountButton(decButton);
       styleCountButton(incButton);
-      decButton.style.minWidth = "22px";
-      incButton.style.minWidth = "22px";
+      decButton.style.minWidth = "10px";
+      incButton.style.minWidth = "10px";
+      decButton.style.minHeight = "18px";
+      incButton.style.minHeight = "18px";
+      decButton.style.padding = "0";
+      incButton.style.padding = "0";
       const refresh = () => {
         value = normalizeGroupStepperValue(key, value, cohesionChoice.value);
         const limits = key === "spacing" ? ENEMY_GROUP_PARAM_LIMITS.formation.spacing
@@ -1043,21 +1058,22 @@ export class DevSummoner {
     const startAngleStepper = makeParamStepper("Start", "startAngle", 0);
     const responseStepper = makeParamStepper("Tight", "response", ENEMY_GROUP_PARAM_LIMITS.cohesion.response.default);
     const catchStepper = makeParamStepper("Catch", "maxCatchupSpeed", ENEMY_GROUP_PARAM_LIMITS.cohesion.maxCatchupSpeed.rigidDefault);
-    const paramRow1 = document.createElement("div");
-    paramRow1.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2px;align-items:center;min-width:0;";
-    paramRow1.appendChild(wedgeFacingChoice.wrap);
-    paramRow1.appendChild(arcFacingChoice.wrap);
-    paramRow1.appendChild(spacingStepper.wrap);
-    paramRow1.appendChild(depthStepper.wrap);
-    paramRow1.appendChild(radiusStepper.wrap);
-    paramRow1.appendChild(angleStepper.wrap);
-    paramRow1.appendChild(startAngleStepper.wrap);
-    groupControls.appendChild(paramRow1);
-    const paramRow2 = document.createElement("div");
-    paramRow2.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2px;align-items:center;min-width:0;";
-    paramRow2.appendChild(responseStepper.wrap);
-    paramRow2.appendChild(catchStepper.wrap);
-    groupControls.appendChild(paramRow2);
+    const formationParamRow = document.createElement("div");
+    formationParamRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2px;align-items:center;min-width:0;";
+    formationParamRow.appendChild(wedgeFacingChoice.wrap);
+    formationParamRow.appendChild(arcFacingChoice.wrap);
+    formationParamRow.appendChild(depthStepper.wrap);
+    formationParamRow.appendChild(radiusStepper.wrap);
+    formationParamRow.appendChild(angleStepper.wrap);
+    formationParamRow.appendChild(startAngleStepper.wrap);
+    groupControls.appendChild(formationParamRow);
+    const primaryParamRow = document.createElement("div");
+    primaryParamRow.id = "ds-group-space-tight-catch-row";
+    primaryParamRow.style.cssText = "display:flex;gap:2px;align-items:center;justify-content:space-between;min-width:0;white-space:nowrap;";
+    primaryParamRow.appendChild(spacingStepper.wrap);
+    primaryParamRow.appendChild(responseStepper.wrap);
+    primaryParamRow.appendChild(catchStepper.wrap);
+    groupControls.appendChild(primaryParamRow);
     groupControls.appendChild(createSectionGap());
     const setStepperVisible = (wrap: HTMLElement, visible: boolean) => {
       wrap.style.display = visible ? "grid" : "none";
