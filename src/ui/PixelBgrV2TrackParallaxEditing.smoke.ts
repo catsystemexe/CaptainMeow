@@ -5,11 +5,11 @@ import { updateV2TrackParallaxX, V2_PARALLAX_AUTHORING_POLICY } from "./PixelBgr
 const scene = createBackgroundV2DesertTestScene();
 const snapshot = structuredClone(scene);
 const farIndex = scene.tracks.findIndex(track => track.id === "desert-far");
-const skyIndex = scene.tracks.findIndex(track => track.id === "desert-sky");
+const midIndex = scene.tracks.findIndex(track => track.id === "desert-mid");
 const result = updateV2TrackParallaxX(scene, "desert-far", .2);
 assert(result.ok); if (!result.ok) throw Error(result.error);
 assert.equal(result.scene.tracks[farIndex].parallax.x, .2);
-assert.strictEqual(result.scene.tracks[skyIndex], scene.tracks[skyIndex], "other same-role tracks retain identity");
+assert.strictEqual(result.scene.tracks[midIndex], scene.tracks[midIndex], "other tracks retain identity");
 assert.strictEqual(result.scene.tracks[farIndex].segments, scene.tracks[farIndex].segments);
 assert.strictEqual(result.scene.tracks[farIndex].objects, scene.tracks[farIndex].objects);
 assert.deepEqual(scene, snapshot, "input scene and track geometry remain immutable");

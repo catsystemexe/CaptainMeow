@@ -12,6 +12,12 @@ Replace the cramped floating Pixel BGR Lab layout with a dual-mode display model
 
 > **Approved P1.X.2 timeline contract:** DEV mode permanently shows one compact timeline containing exactly a ruler plus **Foreground, Near, Mid, Far** lanes in that user-facing order. Environment remains in the left BGR Lab, while gameplay-reference data consumes no permanent row. Tracks with the same canonical role are composited into one lane, and objects are shown directly in their owning track's role lane. The Player X cursor is a strong, full-height timeline reference. The standard canonical view has no vertical timeline scrolling; exact authored X scaling and horizontal scrolling remain unchanged.
 
+> **Approved P1.X.10 backdrop contract:** An optional scene-global **Static Bgr**
+> is a single fixed screen-space PNG/image, independent from Environment and
+> outside Far/Mid/Near/Front multitrack projection. It has no parallax or
+> world-X interval. Scene Lab exposes its enabled state beside Environment, and
+> runtime order is `Environment → Static Bgr → BGR tracks`.
+
 The older workspace sections remain below as historical planning context. Where they prescribe a large top bar, scene navigator plus center canvas plus right BGR inspector, or editor-style workspace framing, those placement assumptions are superseded by this pivot.
 
 This plan is the active work plan for the current Pixel BGR dev-workspace implementation sequence. It defines target UX structure and scope; current code remains authoritative for implemented behavior.

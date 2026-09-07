@@ -213,6 +213,17 @@ interface BackgroundEnvironment {
 }
 ```
 
+### 10.1 Scene-global Static Bgr
+
+V2 may also contain one optional `staticBackdrop`. It is a fixed screen-space
+PNG/image surface, independent from Environment and outside the multitrack. It
+has no parallax, world-X duration, role, segments, or objects and therefore does
+not participate in timeline projection or bounds. The render order is
+`Environment → Static Bgr → BGR tracks` (with foreground tracks still rendered
+after gameplay). A track with `parallax.x = 0` remains mathematically valid when
+imported, but newly authored fixed backdrops should use `staticBackdrop` rather
+than a normal track.
+
 ### 11. Composite Z
 
 BGR ordering uses:

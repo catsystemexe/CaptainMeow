@@ -14,16 +14,17 @@ assert.equal(scene.id, "bgr-v2-desert-authoring-test");
 assert.equal(scene.environment.starfield, undefined, "starfield is disabled by default");
 
 const tracks = new Map(scene.tracks.map((track) => [track.id, track]));
-for (const id of ["desert-sky", "desert-far", "desert-mid", "desert-near", "desert-foreground"]) {
+for (const id of ["desert-far", "desert-mid", "desert-near", "desert-foreground"]) {
   assert(tracks.has(id), `expected ${id} track`);
 }
 assert.deepEqual(scene.tracks.map((track) => track.parallax), [
-  { x: 0, y: 0 },
   { x: 0.1, y: 0.05 },
   { x: 0.3, y: 0.15 },
   { x: 0.6, y: 0.3 },
   { x: 0.9, y: 0.6 },
 ]);
+assert.deepEqual(scene.staticBackdrop, { enabled: true, asset: { id: "desert-test-sky", url: "/assets/bg/test/desert/desert_sky.png" }, x: 0, y: -180, width: 1672, opacity: 1, blend: "normal" });
+assert.equal(scene.tracks.some(track => track.id === "desert-sky" || track.parallax.x === 0), false, "fixed sky is not duplicated as a track");
 
 const mid = tracks.get("desert-mid")!;
 assert(mid.segments.length >= 2, "Mid has consecutive authored segments");
@@ -41,7 +42,7 @@ assert(tracks.get("desert-foreground")!.objects.length > 0, "foreground content 
 assert.equal(tracks.get("desert-foreground")!.objects.find((object) => object.id === "foreground-band")?.opacity, 1, "Desert foreground band is fully opaque");
 
 const catalogUrls = new Set(BACKGROUND_ASSET_CATALOG.map((entry) => entry.url));
-const fixtureUrls = scene.tracks.flatMap((track) => [...track.segments, ...track.objects]).map((item) => item.asset.url);
+const fixtureUrls = [scene.staticBackdrop!.asset.url, ...scene.tracks.flatMap((track) => [...track.segments, ...track.objects]).map((item) => item.asset.url)];
 for (const url of fixtureUrls) assert(catalogUrls.has(url), `fixture URL is registered: ${url}`);
 
 const validation = validateBackgroundSceneV2(scene);
@@ -58,8 +59,8 @@ assert(frame.foreground.length > 0, "evaluator produces foreground output");
 assert.deepEqual(scene, sourceBeforeEvaluation, "evaluation leaves the source scene immutable");
 
 const second = createBackgroundV2DesertTestScene();
-scene.tracks[0].segments[0].asset.url = "/mutated.png";
-assert.notEqual(second.tracks[0].segments[0].asset.url, scene.tracks[0].segments[0].asset.url, "fixture instances do not share mutable asset refs");
+scene.staticBackdrop!.asset.url = "/mutated.png";
+assert.notEqual(second.staticBackdrop!.asset.url, scene.staticBackdrop!.asset.url, "fixture instances do not share mutable asset refs");
 
 const seekCalls: Array<{ targetX: number; options: unknown }> = [];
 const verificationRoot = {

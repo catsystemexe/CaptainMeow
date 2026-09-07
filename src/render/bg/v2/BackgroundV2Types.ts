@@ -17,6 +17,18 @@ export interface BackgroundEnvironment {
   starfield?: StarfieldConfig;
 }
 
+/** One scene-global, camera-fixed image surface outside the track timeline. */
+export interface BackgroundStaticBackdrop {
+  enabled: boolean;
+  asset: BackgroundAssetRef;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  opacity: number;
+  blend: BackgroundBlendMode;
+}
+
 export interface BackgroundSegment {
   id: string;
   startTrackX: number;
@@ -60,6 +72,7 @@ export interface BackgroundSceneV2 {
   version: 2;
   id: string;
   environment: BackgroundEnvironment;
+  staticBackdrop?: BackgroundStaticBackdrop;
   tracks: BackgroundTrack[];
 }
 
@@ -90,7 +103,18 @@ export interface EvaluatedBackgroundEnvironment {
   starfield?: StarfieldConfig;
 }
 
+export interface EvaluatedBackgroundStaticBackdrop {
+  asset: BackgroundAssetRef;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  opacity: number;
+  blend: BackgroundBlendMode;
+}
+
 export interface EvaluatedBackgroundFrame {
+  staticBackdrop?: EvaluatedBackgroundStaticBackdrop;
   behindGameplay: BackgroundRenderInstance[];
   foreground: BackgroundRenderInstance[];
   environment: EvaluatedBackgroundEnvironment;

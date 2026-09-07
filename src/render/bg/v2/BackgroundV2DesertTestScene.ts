@@ -13,20 +13,16 @@ export function createBackgroundV2DesertTestScene(): BackgroundSceneV2 {
     version: 2,
     id: "bgr-v2-desert-authoring-test",
     environment: {},
+    staticBackdrop: {
+      enabled: true,
+      asset: asset("desert-test-sky", "desert_sky.png"),
+      x: 0,
+      y: -180,
+      width: ASSET_WIDTH,
+      opacity: 1,
+      blend: "normal",
+    },
     tracks: [
-      {
-        id: "desert-sky",
-        name: "Sky: fixed backdrop",
-        role: "far",
-        mode: "sequence",
-        enabled: true,
-        parallax: { x: 0, y: 0 },
-        zBase: -50,
-        segments: [
-          { id: "sky", startTrackX: 0, widthPx: ASSET_WIDTH, asset: asset("desert-test-sky", "desert_sky.png"), offsetY: -180, opacity: 1, blend: "normal", localZ: 0, enabled: true },
-        ],
-        objects: [],
-      },
       {
         id: "desert-far",
         name: "Far: mesas, sun, and clouds",
