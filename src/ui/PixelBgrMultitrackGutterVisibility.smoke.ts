@@ -16,7 +16,7 @@ assert.match(cssRule(layout, ".cm-bgr-workspace-center"), /overflow: visible;/, 
 
 assert.match(ui, /zoomOut=this\.iconButton\("Zoom out"/, "zoom out control has its accessible label");
 assert.match(ui, /zoomIn=this\.iconButton\("Zoom in"/, "zoom in control has its accessible label");
-assert.match(ui, /gutterRow\.append\(label,eye\)/, "role labels appear before their eye controls");
+assert.match(ui, /gutterRow\.append\(label,eye,parallax\)/, "role labels appear before their eye controls");
 assert.deepEqual([...ui.matchAll(/lane\.label/g)].length > 0, true, "projected Front, Near, Mid and Far labels remain the gutter label authority");
 assert.match(ui, /panel\.append\(gutter,scroll\)/, "gutter stays outside horizontal scrolling and authored timeline content remains the second grid column");
 

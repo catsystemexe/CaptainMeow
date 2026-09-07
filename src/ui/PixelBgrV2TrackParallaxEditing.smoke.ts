@@ -1,0 +1,20 @@
+import assert from "node:assert/strict";
+import { createBackgroundV2DesertTestScene } from "../render/bg/v2/BackgroundV2DesertTestScene";
+import { updateV2TrackParallaxX, V2_PARALLAX_AUTHORING_POLICY } from "./PixelBgrV2TrackParallaxEditing";
+
+const scene = createBackgroundV2DesertTestScene();
+const snapshot = structuredClone(scene);
+const farIndex = scene.tracks.findIndex(track => track.id === "desert-far");
+const skyIndex = scene.tracks.findIndex(track => track.id === "desert-sky");
+const result = updateV2TrackParallaxX(scene, "desert-far", .2);
+assert(result.ok); if (!result.ok) throw Error(result.error);
+assert.equal(result.scene.tracks[farIndex].parallax.x, .2);
+assert.strictEqual(result.scene.tracks[skyIndex], scene.tracks[skyIndex], "other same-role tracks retain identity");
+assert.strictEqual(result.scene.tracks[farIndex].segments, scene.tracks[farIndex].segments);
+assert.strictEqual(result.scene.tracks[farIndex].objects, scene.tracks[farIndex].objects);
+assert.deepEqual(scene, snapshot, "input scene and track geometry remain immutable");
+const zero = updateV2TrackParallaxX(scene, "desert-far", 0); assert(zero.ok); if (zero.ok) assert.equal(zero.scene.tracks[farIndex].parallax.x, 0);
+for (const value of [-.1, Number.NaN, Number.POSITIVE_INFINITY]) assert.equal(updateV2TrackParallaxX(scene, "desert-far", value).ok, false);
+assert.equal(updateV2TrackParallaxX(scene, "missing", .5).ok, false);
+assert.equal(V2_PARALLAX_AUTHORING_POLICY, "preserve-track-geometry");
+console.log("[SMOKE] PixelBgrV2TrackParallaxEditing OK ✅");

@@ -128,25 +128,9 @@ Track content is projected onto the shared world-X authoring timeline according 
 
 ### 5. Parallax edit semantics
 
-Changing track parallax requires an explicit semantic choice.
+The canonical authoring policy is `preserve-track-geometry`. Changing `track.parallax.x` changes only that selected track's parallax value: stored segment/object track-space geometry, asset geometry, local Z, Y, and other track data remain unchanged.
 
-Default:
-
-```text
-Preserve world timing / rebase
-```
-
-The editor rebases track-space placement so authored gameplay timing remains stable.
-
-Advanced explicit operation:
-
-```text
-Preserve track geometry
-```
-
-This intentionally changes gameplay-world timing.
-
-No silent semantic change is allowed.
+The multitrack ruler, Player X, viewport, seek, segment blocks, and object markers share gameplay/world-X. For positive invertible parallax, `worldX = trackX / parallaxX`, so projected world width is stored track width divided by horizontal parallax. A horizontal parallax of zero is valid fixed-backdrop runtime data but is non-invertible; its track remains selectable and controllable while finite segment/object blocks are omitted from world-X projection rather than assigned a fake duration.
 
 ### 6. Segment geometry
 
@@ -581,7 +565,7 @@ Status: COMPLETE — STATIC + RUNTIME VERIFIED
 - Added a pure immutable V2 segment edit path for lookup/selection, create, duplicate, delete, move, resize, property validation, stable identity, and geometric overlap calculation.
 - Scene Lab now provides sequence-track selection and segment controls, isolated timeline move/edge-resize dragging, independent per-track geometry, overlap visualization, and a focused selected-segment inspector.
 - Repeat tracks remain explicitly read-only for M6 placement semantics; track modes are visible and are never silently converted.
-- Track parallax remains read-only, with the required future semantic choice surfaced: keep authored track-space positions or preserve visual alignment using an explicitly defined rebase.
+- At the M6 checkpoint track parallax was read-only; the later P1.X.9B decision supersedes that limitation with selected-track editing that preserves track-space geometry.
 - Successful edits replace the active authoritative `BackgroundSceneV2` through the typed in-memory state write path for live renderer observation. M6 adds no file or local-storage persistence.
 - Focused editing/projection/timeline/Lab/gameplay-seek/V2 smokes, typecheck, and production build pass. The broad smoke runner reaches the documented unrelated `BombExplosionChain.smoke.ts` / `DamageSystem.rules.onExplosion` baseline failure after the M6 smokes pass.
 - Runtime browser verification remained pending at static implementation closure and is completed by the runtime verification checkpoint below.
@@ -591,7 +575,7 @@ Status: COMPLETE — STATIC + RUNTIME VERIFIED
 - Local VS Code/browser verification passed for V2 source preservation, V2 segment authoring mode, selection and inspector behavior, create/duplicate/delete, move with Player X isolation, left/right resize, numeric editing and validation, presentation editing, independent track lengths, overlap visualization, repeat-track policy, parallax semantic policy surfacing, V1 regression, and cleanup.
 - Move isolation was confirmed by moving segment X from `360` to `400` while width remained `128`, Player X remained `511`, and world scroll X remained `508`.
 - A track visibly in `repeat` mode exposed no move controls, resize handles, or destructive/sequence authoring; it displayed the limited/read-only message and was not silently converted.
-- `BackgroundSceneV2` remains the sole authority, and V2 persistence remains in-memory only. Repeat mode remains intentionally limited/read-only, while changing parallax still requires an explicit future semantic choice.
+- `BackgroundSceneV2` remains the sole authority, and V2 persistence remains in-memory only. Repeat mode remains intentionally limited/read-only. The later P1.X.9B decision resolved parallax editing to preserve track-space geometry.
 - No M7 object/canvas authoring and no M8 persistence/environment authoring were introduced.
 - No page errors or new M6-specific runtime errors were observed. The known WebGL uniform-location warning remains a separate baseline renderer defect, is not M6-specific, and is not fixed here.
 

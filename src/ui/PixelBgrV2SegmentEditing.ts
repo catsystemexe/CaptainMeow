@@ -1,10 +1,10 @@
 import type { BackgroundSceneV2, BackgroundSegment, BackgroundTrack } from "../render/bg/v2/BackgroundV2Types";
+import { worldXToTrackX } from "../render/bg/v2/BackgroundV2Math";
 import { DEFAULT_CHUNK_TIMELINE_SNAP_PX, MIN_CHUNK_TIMELINE_LENGTH, snapTimelineValue } from "./PixelBgrTimeline";
 
 export const V2_SEGMENT_SNAP_PX = DEFAULT_CHUNK_TIMELINE_SNAP_PX;
 export const MIN_V2_SEGMENT_WIDTH = MIN_CHUNK_TIMELINE_LENGTH;
 export const V2_DUPLICATE_OFFSET_PX = DEFAULT_CHUNK_TIMELINE_SNAP_PX;
-export const V2_PARALLAX_AUTHORING_POLICY = "choice-required-before-track-parallax-edit" as const;
 
 export type V2SegmentEditErrorCode = "track-not-found" | "segment-not-found" | "sequence-required" | "invalid-value" | "duplicate-id" | "asset-required";
 export type V2SegmentEditResult =
@@ -95,13 +95,16 @@ export function updateV2Segment(scene: BackgroundSceneV2, trackId: string, segme
 export function applyV2SegmentDrag(scene: BackgroundSceneV2, trackId: string, segmentId: string, mode: V2SegmentDragMode, rawDeltaX: number): V2SegmentEditResult {
   const target = editable(scene, trackId, segmentId); if ("ok" in target) return target;
   if (!Number.isFinite(rawDeltaX)) return fail(scene, "invalid-value", "Drag delta must be finite.");
+  const projectedDelta = worldXToTrackX(rawDeltaX, target.track.parallax.x);
+  if (!projectedDelta.ok) return fail(scene, "invalid-value", "Timeline editing requires positive, invertible horizontal parallax.");
+  const trackDeltaX = projectedDelta.value;
   const segment = target.segment!, right = segment.startTrackX + segment.widthPx;
-  if (mode === "move") return updateV2Segment(scene, trackId, segmentId, { startTrackX: Math.max(0, snapTimelineValue(segment.startTrackX + rawDeltaX, V2_SEGMENT_SNAP_PX)) });
+  if (mode === "move") return updateV2Segment(scene, trackId, segmentId, { startTrackX: Math.max(0, snapTimelineValue(segment.startTrackX + trackDeltaX, V2_SEGMENT_SNAP_PX)) });
   if (mode === "resize-right") {
-    const end = Math.max(segment.startTrackX + MIN_V2_SEGMENT_WIDTH, snapTimelineValue(right + rawDeltaX, V2_SEGMENT_SNAP_PX));
+    const end = Math.max(segment.startTrackX + MIN_V2_SEGMENT_WIDTH, snapTimelineValue(right + trackDeltaX, V2_SEGMENT_SNAP_PX));
     return updateV2Segment(scene, trackId, segmentId, { widthPx: end - segment.startTrackX });
   }
-  const start = Math.min(Math.max(0, snapTimelineValue(segment.startTrackX + rawDeltaX, V2_SEGMENT_SNAP_PX)), right - MIN_V2_SEGMENT_WIDTH);
+  const start = Math.min(Math.max(0, snapTimelineValue(segment.startTrackX + trackDeltaX, V2_SEGMENT_SNAP_PX)), right - MIN_V2_SEGMENT_WIDTH);
   return updateV2Segment(scene, trackId, segmentId, { startTrackX: start, widthPx: right - start });
 }
 
