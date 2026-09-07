@@ -30,6 +30,20 @@ export interface V2TimelineProjection {
   playerX: number;
 }
 
+export type V2RoleVisibility = "all" | "none" | "mixed";
+
+/** Derives lane visibility exclusively from the represented tracks' enabled fields. */
+export function v2RoleVisibility(tracks: readonly Pick<V2ProjectedTrack, "enabled">[]): V2RoleVisibility {
+  if (tracks.length === 0 || tracks.every(track => !track.enabled)) return "none";
+  return tracks.every(track => track.enabled) ? "all" : "mixed";
+}
+
+/** Materializes a scene edit against BackgroundTrack.enabled; mixed lanes are enabled on click. */
+export function setV2RoleTracksEnabled(scene: BackgroundSceneV2, trackIds: readonly string[], enabled: boolean): BackgroundSceneV2 {
+  const ids = new Set(trackIds);
+  return { ...scene, tracks: scene.tracks.map(track => ids.has(track.id) ? { ...track, enabled } : track) };
+}
+
 const STANDARD_ROLES = ["foreground", "near", "mid", "far"] as const;
 const roleLabel = (role: BackgroundTrackRole): string => role[0].toUpperCase() + role.slice(1);
 const finite = (value: number): boolean => Number.isFinite(value);

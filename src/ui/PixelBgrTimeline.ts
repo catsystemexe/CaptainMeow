@@ -37,13 +37,14 @@ export function createTimelineScale(chunks: readonly Pick<BackgroundChunk, "star
   return { minX: minX - pad, maxX: maxX + pad, widthPx: Math.max(1, widthPx) };
 }
 
-export function createExactTimelineScale(startX: number, endX: number, widthPx: number): TimelineScale {
+export function createExactTimelineScale(startX: number, endX: number, widthPx: number, zoom = 1): TimelineScale {
   const minX = Number.isFinite(startX) ? startX : 0;
   const authoredEndX = Number.isFinite(endX) ? endX : minX + MIN_SPAN;
+  const exactZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
   return {
     minX,
     maxX: Math.max(minX + MIN_SPAN, authoredEndX),
-    widthPx: Math.max(1, Number.isFinite(widthPx) ? widthPx : 1),
+    widthPx: Math.max(1, Number.isFinite(widthPx) ? widthPx * exactZoom : 1),
   };
 }
 

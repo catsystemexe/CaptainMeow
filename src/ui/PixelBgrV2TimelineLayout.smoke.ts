@@ -10,7 +10,7 @@ assert.match(workspaceRule, /flex:1 1 auto;min-height:0/, "the V2 inspector work
 assert.match(workspaceRule, /overflow:visible/, "the V2 inspector delegates scrolling to the unchanged outer right dock");
 
 const panelRule = cssRule(".cm-v2-panel");
-assert.match(panelRule, /flex:1 0 auto;min-width:0;overflow:visible;display:flex;flex-direction:column/, "the compact timeline panel does not require a vertical scroll owner");
+assert.match(panelRule, /flex:1 0 auto;min-width:0;overflow:hidden;display:grid;grid-template-columns:100px minmax\(0,1fr\)/, "the fixed gutter and horizontal surface share the compact timeline panel");
 assert.match(panelRule, /box-sizing:border-box/, "panel padding stays inside the assigned full-width timeline surface");
 
 const scrollRule = cssRule(".cm-v2-timeline-scroll");
@@ -26,8 +26,10 @@ const timelineRule = cssRule(".cm-v2-timeline");
 assert.match(timelineRule, /height:128px/, "the visible timeline interaction band has a fixed compact height");
 assert.match(timelineRule, /pointer-events:auto/, "the timeline remains directly pointer-interactive");
 
-const laneLabelRule = cssRule(".cm-v2-lane-label");
-assert.match(laneLabelRule, /position:sticky;left:4px/, "lane labels remain visible during horizontal scrolling");
+const gutterRule = cssRule(".cm-v2-timeline-gutter");
+assert.match(gutterRule, /width:100px;height:128px;display:grid;grid-template-rows:20px repeat\(4,27px\);overflow:hidden/, "the fixed gutter shares the exact ruler plus four-lane geometry");
+assert.match(source, /panel\.append\(gutter,scroll\)/, "the gutter is a sibling before the horizontal scroll owner");
+assert.doesNotMatch(source, /position:sticky/, "lane labels no longer live inside the scrolling timeline");
 assert.doesNotMatch(source, /cm-v2-track-label/, "same-role tracks do not create nested or additional visual rows");
 assert.match(source, /lane\.tracks\.length===1[\s\S]*?button\(lane\.label,\(\)=>this\.selectV2Track\(track\.id\)\)/, "a single-track role lane exposes direct track-only selection on its label");
 assert.match(source, /lane\.tracks\.length>1[\s\S]*?for\(const track of lane\.tracks\)[\s\S]*?option\.value=track\.id[\s\S]*?trackSelect\.onchange=\(\)=>this\.selectV2Track\(trackSelect\.value\)/, "a multi-track role lane exposes every underlying track through a deterministic same-row selector");
@@ -44,7 +46,7 @@ const timelineMount = source.indexOf("this.workspace.timeline.appendChild(this.r
 const leftComposition = source.indexOf("this.root.append(this.renderV2Toolbar()", timelineMount);
 assert.ok(timelineMount >= 0 && leftComposition > timelineMount, "timeline and left-side tools render from one Lab owner into their dedicated regions");
 
-const timelineWidth = source.indexOf("timeline.style.width=`${widthPx}px`");
+const timelineWidth = source.indexOf("timeline.style.width=`${scale.widthPx}px`");
 const horizontalViewport = source.indexOf("scroll.appendChild(timeline)", timelineWidth);
 assert.ok(timelineWidth >= 0 && horizontalViewport > timelineWidth, "authored timeline width is retained inside its dedicated horizontal viewport");
 
