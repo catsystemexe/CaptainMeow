@@ -183,6 +183,9 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 }
 
 .cm-bgr-workspace-timeline {
+  /* Paint the negative-offset gutter above the positioned Scene Lab sibling. */
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   border-top: 1px solid rgba(255, 255, 255, .16);

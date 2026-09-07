@@ -28,6 +28,7 @@ assert.match(timelineRule, /pointer-events:auto/, "the timeline remains directly
 
 const gutterRule = cssRule(".cm-v2-timeline-gutter");
 assert.match(gutterRule, /width:100px;height:128px;display:grid;grid-template-rows:20px repeat\(4,27px\);overflow:hidden/, "the fixed gutter shares the exact ruler plus four-lane geometry");
+assert.match(gutterRule, /background:#000/, "the visible gutter uses compact monochrome presentation");
 assert.match(source, /panel\.append\(gutter,scroll\)/, "the gutter is a sibling before the horizontal scroll owner");
 assert.doesNotMatch(source, /position:sticky/, "lane labels no longer live inside the scrolling timeline");
 assert.doesNotMatch(source, /cm-v2-track-label/, "same-role tracks do not create nested or additional visual rows");

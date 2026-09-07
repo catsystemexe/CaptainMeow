@@ -10,7 +10,7 @@ const scene: BackgroundSceneV2 = { version: 2, id: "readability", environment: {
 assert.deepEqual(projectBackgroundV2Timeline(scene).lanes.map(lane => lane.label), ["Front", "Near", "Mid", "Far"]);
 assert(!projectBackgroundV2Timeline(scene).lanes.some(lane => lane.label === "Foreground"));
 assert.deepEqual(timelineViewportRange(640, 896), { startX: 640, endX: 1536 }, "viewport derives directly from world scroll and presentation width");
-assert.deepEqual([.75, 1, 1.25, 2, 3, 4].map(timelineMajorTickInterval), [400, 400, 200, 200, 100, 100]);
+assert.deepEqual([.05, .1, .2, .25, .5, 1, 2].map(timelineMajorTickInterval), [1000, 1000, 500, 500, 400, 200, 100]);
 assert.deepEqual([0, 400, 800, 1200, 1600].map(formatTimelineWorldX), ["0", "400", "800", "1.2k", "1.6k"]);
 assert.match(ui, /timelineViewportRange\(this\.currentScroll\(\)\.x,this\.logicW\)/, "runtime world scroll and logical presentation width are the range authority");
 assert.match(ui, /createExactTimelineScale\(timelineBounds\.startX,timelineBounds\.endX,baseWidthPx,this\.v2TimelineZoom\)/);

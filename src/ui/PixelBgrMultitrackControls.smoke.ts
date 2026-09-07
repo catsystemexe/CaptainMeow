@@ -18,19 +18,20 @@ assert.equal(v2RoleVisibility(projectBackgroundV2Timeline(enabled).lanes.find(la
 assert(enabled.tracks.filter(track => track.role === "far").every(track => track.enabled), "mutation writes BackgroundTrack.enabled for every Far track");
 assert.equal(mixed.tracks.find(track => track.id === "desert-far")?.enabled, true, "derivation does not silently normalize other tracks");
 
-assert.deepEqual(PIXEL_BGR_TIMELINE_ZOOM_LEVELS, [0.75, 1, 1.25, 1.5, 2, 3, 4], "zoom is bounded and deterministic");
+assert.deepEqual(PIXEL_BGR_TIMELINE_ZOOM_LEVELS, [0.05, 0.1, 0.2, 0.5, 1, 2], "zoom is bounded around practical overview authoring scales");
 const scale1 = createExactTimelineScale(0, 1000, 1000, 1);
 const scale2 = createExactTimelineScale(0, 1000, 1000, 2);
 assert.equal(worldToTimelinePx(400, scale2), worldToTimelinePx(400, scale1) * 2, "zoom feeds the canonical exact scale");
 assert.equal(clickedTimelineCurrentX(worldToTimelinePx(400, scale2), 0, scale2), 400, "zoomed seek remains the exact inverse mapping");
 assert.equal(timelinePointerDeltaWorld(0, 200, scale2), 100, "zoomed editing uses that same scale authority");
 
-assert.match(source, /private v2TimelineZoom = 1/, "zoom defaults in PixelBgrLabUI presentation state");
+assert.match(source, /private v2TimelineZoom = 0\.1/, "presentation zoom defaults to the practical 1:10 overview");
 assert.match(source, /createExactTimelineScale\([^;]*this\.v2TimelineZoom\)/, "ruler, cursor, seek, drag and resize receive one zoomed scale");
 assert.match(source, /cursorViewportX[\s\S]*this\.v2TimelineZoom=next;this\.render\(\)[\s\S]*newScroll\.scrollLeft/, "zoom preserves Player X's viewport position without seeking");
 assert.doesNotMatch(source.slice(source.indexOf("private changeV2TimelineZoom"), source.indexOf("private selectV2Track")), /setCurrentX|setBackgroundSceneV2/, "zoom mutates neither Player X nor scene data");
 assert.match(source, /eye\.onpointerdown=isolateTimelinePointerEvent/, "eye pointerdown uses timeline pointer isolation");
 assert.match(source, /visibility!=="all"/, "mixed and disabled lanes deterministically enable all on click");
+assert.match(source, /gutterRow\.append\(label,eye\)/, "each compact gutter row places its label before its eye control");
 assert.equal((source.match(/for\(const lane of projection\.lanes\)/g) ?? []).length >= 2, true, "all four projected role lanes receive gutter controls and timeline rows");
 assert.match(source, /panel\.append\(gutter,scroll\)/, "fixed gutter is outside the horizontal scroll owner");
 assert.match(layout, /grid-template-rows: minmax\(0, 1fr\) 149px/, "center timeline allocation remains 149px");
