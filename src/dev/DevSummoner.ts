@@ -921,8 +921,8 @@ export class DevSummoner {
     groupControls.appendChild(createSectionGap());
 
     const groupOptionRow = document.createElement("div");
-    groupOptionRow.id = "ds-group-form-coh-row";
-    groupOptionRow.style.cssText = "display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:5px;align-items:center;min-width:0;";
+    groupOptionRow.id = "ds-group-form-row";
+    groupOptionRow.style.cssText = "display:flex;flex-direction:column;gap:2px;min-width:0;";
     const makeCompactChoice = <T extends string>(label: string, options: ReadonlyArray<{ value: T; label: string }>, defaultValue: T) => {
       const wrap = createSelectLabel(label);
       const select = createCompactSelect(`ds-group-${label.toLowerCase()}`);
@@ -982,8 +982,12 @@ export class DevSummoner {
     formationWrap.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px;align-items:center;min-width:0;";
     cohesionWrap.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px;align-items:center;min-width:0;white-space:nowrap;";
     groupOptionRow.appendChild(formationWrap);
-    groupOptionRow.appendChild(cohesionWrap);
     groupControls.appendChild(groupOptionRow);
+    const groupCoherenceRow = document.createElement("div");
+    groupCoherenceRow.id = "ds-group-coh-row";
+    groupCoherenceRow.style.cssText = "display:flex;flex-direction:column;min-width:0;";
+    groupCoherenceRow.appendChild(cohesionWrap);
+    groupControls.appendChild(groupCoherenceRow);
 
     const makeParamStepper = (label: string, key: GroupParamKey, defaultValue: number) => {
       let value = defaultValue;
@@ -1056,7 +1060,7 @@ export class DevSummoner {
     groupControls.appendChild(formationParamRow);
     const primaryParamRow = document.createElement("div");
     primaryParamRow.id = "ds-group-space-tight-catch-row";
-    primaryParamRow.style.cssText = "display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;align-items:center;min-width:0;white-space:nowrap;";
+    primaryParamRow.style.cssText = "display:flex;flex-direction:column;gap:2px;min-width:0;white-space:nowrap;";
     primaryParamRow.appendChild(spacingStepper.wrap);
     primaryParamRow.appendChild(responseStepper.wrap);
     primaryParamRow.appendChild(catchStepper.wrap);
@@ -1312,7 +1316,7 @@ export class DevSummoner {
 
     const fsmFormationRow = document.createElement("div");
     fsmFormationRow.id = "ds-fsm-formation-row";
-    fsmFormationRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;gap:2px;align-items:center;";
+    fsmFormationRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px;align-items:center;min-width:0;";
     const fsmFormationLabel = document.createElement("span");
     fsmFormationLabel.textContent = "form:";
     applyLabelTextStyle(fsmFormationLabel);
@@ -1334,10 +1338,14 @@ export class DevSummoner {
     }
     fsmFormationRow.appendChild(fsmFormationLabel);
     fsmFormationRow.appendChild(fsmFormationButtons);
-    fsmFormationRow.appendChild(fsmCoherenceLabel);
-    fsmFormationRow.appendChild(fsmRigidButton);
-    fsmFormationRow.appendChild(fsmElasticButton);
     fsmBasicSection.appendChild(fsmFormationRow);
+    const fsmCoherenceRow = document.createElement("div");
+    fsmCoherenceRow.id = "ds-fsm-coherence-row";
+    fsmCoherenceRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:2px;align-items:center;min-width:0;";
+    fsmCoherenceRow.appendChild(fsmCoherenceLabel);
+    fsmCoherenceRow.appendChild(fsmRigidButton);
+    fsmCoherenceRow.appendChild(fsmElasticButton);
+    fsmBasicSection.appendChild(fsmCoherenceRow);
 
     const fsmSpacingSlider = createRangeRow("ds-fsm-spacing", "space:", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
     const fsmElasticitySlider = createRangeRow("ds-fsm-elasticity", "elast:", { min: 0, max: 10, default: 0, step: 1 });
@@ -1345,18 +1353,10 @@ export class DevSummoner {
     const fsmBaseSpeedSlider = createRangeRow("ds-fsm-base-speed", "speed:", ENEMY_LAB_BASIC_SETUP_LIMITS.baseSpeed);
     fsmFollowSlider.wrap.title = "Delay per group member in seconds. 0.00 s keeps members on the current anchor path.";
     fsmBaseSpeedSlider.wrap.title = "FSM preset base movement speed. State Speed × multiplies this value at runtime.";
-    const fsmSpaceElasticRow = document.createElement("div");
-    fsmSpaceElasticRow.id = "ds-fsm-space-elast-row";
-    fsmSpaceElasticRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px;";
-    fsmSpaceElasticRow.appendChild(fsmSpacingSlider.wrap);
-    fsmSpaceElasticRow.appendChild(fsmElasticitySlider.wrap);
-    const fsmFollowSpeedRow = document.createElement("div");
-    fsmFollowSpeedRow.id = "ds-fsm-follow-speed-row";
-    fsmFollowSpeedRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px;";
-    fsmFollowSpeedRow.appendChild(fsmFollowSlider.wrap);
-    fsmFollowSpeedRow.appendChild(fsmBaseSpeedSlider.wrap);
-    fsmBasicSection.appendChild(fsmSpaceElasticRow);
-    fsmBasicSection.appendChild(fsmFollowSpeedRow);
+    fsmBasicSection.appendChild(fsmSpacingSlider.wrap);
+    fsmBasicSection.appendChild(fsmElasticitySlider.wrap);
+    fsmBasicSection.appendChild(fsmFollowSlider.wrap);
+    fsmBasicSection.appendChild(fsmBaseSpeedSlider.wrap);
 
     const formationIconLabels: Record<FormationId, { icon: string; label: string }> = {
       "line.horizontal": { icon: "━", label: "Line formation" },
@@ -1397,13 +1397,14 @@ export class DevSummoner {
     fsmElasticButton.addEventListener("click", () => { if (fsmElasticitySlider.value === 0) fsmElasticitySlider.setValue(1); refreshFsmFormationIcons(); if (enemyLabMode === "fsm") editFsmBasicSetupDraft?.(); });
 
     const setFsmGroupOnlyVisible = (el: HTMLElement, visible: boolean) => {
-      el.style.display = visible ? (el.tagName === "LABEL" ? "grid" : el.id === "ds-fsm-formation-row" ? "grid" : "flex") : "none";
+      el.style.display = visible ? (el.tagName === "LABEL" || el.id === "ds-fsm-formation-row" || el.id === "ds-fsm-coherence-row" ? "grid" : "flex") : "none";
       el.setAttribute("aria-hidden", String(!visible));
     };
 
     function refreshFsmBasicSetupVisibility(): void {
       const isGroup = normalizeFsmSpawnCount(groupCount) > 1;
       setFsmGroupOnlyVisible(fsmFormationRow, isGroup);
+      setFsmGroupOnlyVisible(fsmCoherenceRow, isGroup);
       setFsmGroupOnlyVisible(fsmSpacingSlider.wrap, isGroup);
       setFsmGroupOnlyVisible(fsmElasticitySlider.wrap, isGroup);
       setFsmGroupOnlyVisible(fsmFollowSlider.wrap, isGroup);
@@ -1677,9 +1678,11 @@ export class DevSummoner {
     const stateFollowSlider = createRangeRow("ds-fsm-state-follow", "follow:", ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay);
     const stateSpeedSlider = createRangeRow("ds-fsm-state-speed", "speed:", { min: 0.25, max: 3, default: 1, step: 0.05 });
     stateFollowSlider.wrap.title = "Delay per group member in seconds for this state.";
-    const stateSpaceElasticRow = document.createElement("div"); stateSpaceElasticRow.id = "ds-fsm-state-space-elast-row"; stateSpaceElasticRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px;"; stateSpaceElasticRow.appendChild(stateSpacingSlider.wrap); stateSpaceElasticRow.appendChild(stateElasticitySlider.wrap);
-    const stateFollowSpeedRow = document.createElement("div"); stateFollowSpeedRow.id = "ds-fsm-state-follow-speed-row"; stateFollowSpeedRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px;"; stateFollowSpeedRow.appendChild(stateFollowSlider.wrap); stateFollowSpeedRow.appendChild(stateSpeedSlider.wrap);
-    formationControls.appendChild(stateSpaceElasticRow); formationControls.appendChild(stateFollowSpeedRow); editorSection.appendChild(formationBlock);
+    formationControls.appendChild(stateSpacingSlider.wrap);
+    formationControls.appendChild(stateElasticitySlider.wrap);
+    formationControls.appendChild(stateFollowSlider.wrap);
+    formationControls.appendChild(stateSpeedSlider.wrap);
+    editorSection.appendChild(formationBlock);
     const triggerBlock = document.createElement("div"); triggerBlock.setAttribute("data-fsm-editor-block", "Trigger"); triggerBlock.style.cssText = "display:flex;flex-direction:column;gap:3px;"; const triggerLabel = Object.assign(document.createElement("div"), { textContent: "trigger:" }); applyLabelTextStyle(triggerLabel); triggerBlock.appendChild(triggerLabel);
     const triggerSelect = document.createElement("select"); applyTextSelectStyle(triggerSelect); for (const [v,l] of [["never","Never"],["time","Time"],["screenXBelow","scrX"],["hit","Hit"]] as const) appendOption(triggerSelect, v, l); triggerBlock.appendChild(triggerSelect);
     const triggerParamWrap = document.createElement("div"); triggerParamWrap.style.cssText = "display:flex;flex-direction:column;gap:3px;"; triggerBlock.appendChild(triggerParamWrap);

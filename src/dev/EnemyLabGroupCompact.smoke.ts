@@ -4,12 +4,14 @@ import { readFileSync } from "node:fs";
 const source = readFileSync(new URL("./DevSummoner.ts", import.meta.url), "utf8");
 const layout = readFileSync(new URL("../ui/PixelBgrDevWorkspaceLayout.ts", import.meta.url), "utf8");
 
-assert(source.includes('groupOptionRow.id = "ds-group-form-coh-row"'), "Form and Coh expose one focused compact row");
-assert(source.includes("groupOptionRow.appendChild(formationWrap)") && source.includes("groupOptionRow.appendChild(cohesionWrap)"), "Form and Coh remain children of the same row");
-assert(source.includes('primaryParamRow.id = "ds-group-space-tight-catch-row"'), "primary group parameters expose one focused compact row");
+assert(source.includes('groupOptionRow.id = "ds-group-form-row"'), "Form exposes its own group row");
+assert(source.includes('groupCoherenceRow.id = "ds-group-coh-row"'), "Coh exposes its own group row");
+assert(source.includes("groupOptionRow.appendChild(formationWrap)") && source.includes("groupCoherenceRow.appendChild(cohesionWrap)"), "Form and Coh remain in separate semantic rows");
+assert(source.includes('primaryParamRow.id = "ds-group-space-tight-catch-row"'), "primary group parameters expose one semantic stack");
 for (const control of ["spacingStepper.wrap", "responseStepper.wrap", "catchStepper.wrap"]) {
-  assert(source.includes(`primaryParamRow.appendChild(${control})`), `${control} remains in the shared compact row`);
+  assert(source.includes(`primaryParamRow.appendChild(${control})`), `${control} remains in the semantic stack`);
 }
+assert(source.includes('primaryParamRow.style.cssText = "display:flex;flex-direction:column;'), "Space, Tight, and Catch stack without horizontal collisions");
 
 assert(source.includes('groupTypeRow.id = "ds-group-type-count-row"') && source.includes("groupTypeRow.appendChild(countSegment)"), "Count remains alongside group Type");
 assert(source.includes('countDecButton.addEventListener("click"') && source.includes('countIncButton.addEventListener("click"'), "Count decrement and increment handlers remain connected");
