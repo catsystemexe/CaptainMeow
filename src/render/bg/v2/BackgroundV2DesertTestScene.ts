@@ -80,7 +80,7 @@ export function createBackgroundV2DesertTestScene(): BackgroundSceneV2 {
         zBase: 30,
         segments: [],
         objects: [
-          { id: "foreground-band", asset: asset("desert-test-near-band", "desert_near_band.png"), startTrackX: 1850, y: 175, width: 1003, height: 565, localZ: 0, opacity: 0.92, blend: "normal", enabled: true },
+          { id: "foreground-band", asset: asset("desert-test-near-band", "desert_near_band.png"), startTrackX: 1850, y: 175, width: 1003, height: 565, localZ: 0, opacity: 1, blend: "normal", enabled: true },
         ],
       },
     ],
