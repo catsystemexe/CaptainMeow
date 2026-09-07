@@ -20,7 +20,7 @@ assert.equal(v2RoleVisibility(projectBackgroundV2Timeline(enabled).lanes.find(la
 assert(enabled.tracks.filter(track => track.role === "far").every(track => track.enabled), "mutation writes BackgroundTrack.enabled for every Far track");
 assert.equal(mixed.tracks.find(track => track.id === "desert-far")?.enabled, true, "derivation does not silently normalize other tracks");
 
-assert.deepEqual(PIXEL_BGR_TIMELINE_ZOOM_LEVELS, [0.05, 0.1, 0.2, 0.5, 1, 2], "zoom is bounded around practical overview authoring scales");
+assert.deepEqual(PIXEL_BGR_TIMELINE_ZOOM_LEVELS, [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2], "zoom supports deep overview authoring scales");
 const scale1 = createExactTimelineScale(0, 1000, 1000, 1);
 const scale2 = createExactTimelineScale(0, 1000, 1000, 2);
 assert.equal(worldToTimelinePx(400, scale2), worldToTimelinePx(400, scale1) * 2, "zoom feeds the canonical exact scale");

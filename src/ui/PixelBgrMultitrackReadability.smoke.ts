@@ -10,7 +10,10 @@ const scene: BackgroundSceneV2 = { version: 2, id: "readability", environment: {
 assert.deepEqual(projectBackgroundV2Timeline(scene).lanes.map(lane => lane.label), ["Front", "Near", "Mid", "Far"]);
 assert(!projectBackgroundV2Timeline(scene).lanes.some(lane => lane.label === "Foreground"));
 assert.deepEqual(timelineViewportRange(640, 896), { startX: 640, endX: 1536 }, "viewport derives directly from world scroll and presentation width");
-assert.deepEqual([.05, .1, .2, .25, .5, 1, 2].map(timelineMajorTickInterval), [1000, 1000, 500, 500, 400, 200, 100]);
+assert.deepEqual([.01, .02, .05, .1, .2, .25, .5, 1, 2].map(timelineMajorTickInterval), [10000, 5000, 2000, 1000, 500, 500, 400, 200, 100]);
+assert.match(ui, /\.cm-v2-zoom-button,\.cm-v2-eye\{[^}]*background:transparent;[^}]*border:0;[^}]*border-radius:0;[^}]*appearance:none;[^}]*-webkit-appearance:none/, "gutter buttons reset native chrome independently of the Lab ancestor");
+assert.match(ui, /\.cm-v2-zoom-button:disabled,\.cm-v2-eye:disabled\{[^}]*opacity:/, "disabled gutter buttons use opacity rather than native disabled styling");
+assert.match(ui, /\.cm-v2-zoom-button svg,\.cm-v2-eye svg\{[^}]*stroke:currentColor/, "gutter icon strokes remain visible against black");
 assert.deepEqual([0, 400, 800, 1200, 1600].map(formatTimelineWorldX), ["0", "400", "800", "1.2k", "1.6k"]);
 assert.match(ui, /timelineViewportRange\(this\.currentScroll\(\)\.x,this\.logicW\)/, "runtime world scroll and logical presentation width are the range authority");
 assert.match(ui, /createExactTimelineScale\(timelineBounds\.startX,timelineBounds\.endX,baseWidthPx,this\.v2TimelineZoom\)/);
