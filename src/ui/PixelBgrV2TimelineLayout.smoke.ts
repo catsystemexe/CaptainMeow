@@ -27,7 +27,7 @@ assert.match(timelineRule, /height:128px/, "the visible timeline interaction ban
 assert.match(timelineRule, /pointer-events:auto/, "the timeline remains directly pointer-interactive");
 
 const gutterRule = cssRule(".cm-v2-timeline-gutter");
-assert.match(gutterRule, /width:100px;height:128px;margin-left:auto;display:grid;grid-template-rows:20px repeat\(4,27px\);overflow:hidden/, "the fixed gutter shares the exact ruler plus four-lane geometry");
+assert.match(gutterRule, /width:100%;height:128px;display:grid;grid-template-rows:20px repeat\(4,27px\);overflow:visible/, "the full-width gutter shares the exact ruler plus four-lane geometry");
 assert.match(gutterRule, /background:#000/, "the visible gutter uses compact monochrome presentation");
 assert.match(source, /this\.workspace\.gutter\.appendChild\(gutter\)/, "the gutter mounts into the left workspace region");
 assert.match(source, /panel\.appendChild\(scroll\)/, "the center timeline panel contains only the horizontal lane viewport");
@@ -35,7 +35,7 @@ assert.match(cssRule(".cm-v2-lane-track-select"), /position:sticky;left:3px/, "o
 assert.doesNotMatch(source, /cm-v2-track-label/, "same-role tracks do not create nested or additional visual rows");
 assert.match(source, /const labelTrack=lane\.tracks\.find[\s\S]*?button\(lane\.label,\(\)=>this\.selectV2Track\(labelTrack\.id\)\)/, "every gutter row keeps its canonical role label as the direct selection affordance");
 assert.match(source, /lane\.tracks\.length>1[\s\S]*?el\("select","cm-v2-lane-track-select"\)[\s\S]*?trackSelect\.onchange=\(\)=>this\.selectV2Track\(trackSelect\.value\)/, "a multi-track role lane exposes every underlying track through a compact lane selector");
-assert.match(cssRule(".cm-v2-lane-label"), /flex:1 1 auto;[\s\S]*height:23px/, "canonical role labels receive the remaining compact gutter width");
+assert.match(cssRule(".cm-v2-lane-label"), /min-width:0;[\s\S]*height:23px/, "canonical role labels remain constrained within their grid column");
 
 assert.match(source, /const rowHeight=27;[\s\S]*?const headerHeight=20;[\s\S]*?projection\.lanes\.length\*rowHeight/, "timeline height is one ruler plus exactly the projected role lanes");
 assert.equal(source.match(/el\("div","cm-cursor cm-v2-cursor"\)/g)?.length, 1, "one Player X cursor is rendered");

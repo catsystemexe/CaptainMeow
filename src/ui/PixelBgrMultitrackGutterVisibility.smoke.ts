@@ -14,12 +14,12 @@ assert.doesNotMatch(ui, /margin-left:-100px|calc\(100% \+ (?:100px|var\(--cm-v2-
 assert.doesNotMatch(cssRule(layout, ".cm-bgr-workspace-timeline"), /z-index/, "gutter visibility does not depend on a timeline stacking layer");
 assert.match(layout, /data-timeline-mode="v2"\] \.cm-bgr-workspace-left \{\s*grid-template-rows: minmax\(0, 1fr\) 149px;/, "V2 reserves a fixed 149px bottom left-region surface");
 assert.match(layout, /data-timeline-mode="disabled"\] \.cm-bgr-workspace-left \{\s*grid-template-rows: minmax\(0, 1fr\) 0;/, "non-V2 restores the full Scene Lab height");
-assert.match(cssRule(ui, ".cm-v2-timeline-gutter"), /width:100px;height:128px;margin-left:auto/, "the 100px canonical gutter aligns its right edge with the canvas origin");
+assert.match(cssRule(ui, ".cm-v2-timeline-gutter"), /width:100%;height:128px/, "the canonical gutter uses the available left-region width");
 assert.match(cssRule(ui, ".cm-v2-panel"), /width:100%/, "timeline content begins at the center/canvas origin");
 
 const projection = projectBackgroundV2Timeline(createBackgroundV2DesertTestScene());
 assert.deepEqual(projection.lanes.map(lane => lane.label), ["Front", "Near", "Mid", "Far"], "all canonical gutter roles are present");
-assert.match(ui, /gutterRow\.append\(label,eye,parallax\)/, "each role keeps label, eye, parallax order");
+assert.match(ui, /gutterRow\.append\(label,eye,parallax,add\)/, "each role keeps label, eye, parallax, add order");
 assert.match(ui, /lane\.tracks\.length>1[\s\S]*?row\.appendChild\(trackSelect\)/, "selectors remain conditional on genuinely multitrack lanes");
 assert.equal(projection.lanes.find(lane => lane.label === "Far")?.tracks.length, 1, "Desert no longer creates a selector for its single Far track");
 
