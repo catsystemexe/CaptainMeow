@@ -204,6 +204,20 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   overflow: auto;
 }
 
+.cm-right-lab-host { min-height:100%; background:#000; color:#eee; font:12px/1.2 ui-monospace,Menlo,Consolas,monospace; }
+.cm-right-lab-selector { display:flex; gap:8px; padding:4px; }
+.cm-right-lab-selector button,.cm-dev-text-choice,.cm-hud-fx-lab>button { min-height:18px; padding:0 2px; border:0; border-radius:0; background:transparent; color:#eee; font:inherit; }
+.cm-right-lab-selector button[aria-selected="true"],.cm-dev-text-choice[aria-pressed="true"] { background:#eee; color:#000; font-weight:800; }
+.cm-right-lab-body[hidden] { display:none; }
+.cm-right-lab-body { min-height:0; }
+.cm-hud-fx-lab { padding:4px; color:#eee; background:#000; }
+.cm-hud-fx-lab h3 { margin:0 0 5px; font-size:12px; letter-spacing:1px; }
+.cm-dev-label { margin:5px 0 2px; color:#888; }
+.cm-hud-fx-events { display:grid; grid-template-columns:repeat(3,max-content); gap:2px 7px; }
+.cm-hud-fx-row { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; gap:4px; margin:2px 0; }
+.cm-hud-fx-row input[type="range"] { width:100%; min-width:0; accent-color:#6f8fc0; }
+.cm-hud-fx-row input[type="range"]:disabled { opacity:.35; }
+
 .cm-bgr-workspace-timeline {
   display: flex;
   flex-direction: column;

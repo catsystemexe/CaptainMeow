@@ -29,6 +29,8 @@ import { SCENE_LAB_SCENE_CATALOG, type SceneLabCatalogEntry } from "./SceneLabSc
 import { setV2StaticBackdropEnabled } from "./PixelBgrV2StaticBackdropEditing";
 import { insertV2LaneObject, insertV2LaneSegment, resolveV2LaneInsertTrack } from "./PixelBgrV2LaneInsert";
 import { isV2YNudgeTextTarget, nudgeV2SelectionY } from "./PixelBgrV2YNudge";
+import { createHudFxLabUI } from "../dev/HudFxLabUI";
+import { createRightLabHost } from "../dev/RightLabHost";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -159,7 +161,8 @@ export class PixelBgrLabUI {
     panel.style.maxHeight = "none";
     panel.style.height = "100%";
     panel.style.borderRadius = "0";
-    this.workspace.right.appendChild(panel);
+    const hudLab = createHudFxLabUI();
+    this.workspace.right.appendChild(createRightLabHost(panel, hudLab).root);
   }
   getDisplayMode(): PixelBgrDisplayMode { return this.displayMode; }
   getPresentationVerticalAlign(): "top" | "center" { return this.displayMode === "dev" ? "top" : "center"; }

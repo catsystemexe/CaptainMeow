@@ -11,7 +11,7 @@ assert(source.includes("while (this.root.childNodes.length > 1)") && source.incl
 assert(!source.includes(".cm-pixel-bgr-lab{position:fixed"), "DEV Lab no longer uses root-level floating-window geometry");
 assert(source.includes('this.setDisplayMode("dev")'), "opening the Lab activates DEV presentation");
 assert(source.includes('this.visible = mode === "dev"'), "one display mode owns GAME/DEV presentation visibility");
-assert(source.includes("this.workspace.right.appendChild(panel)"), "the existing Enemy Lab panel is reparented into the right dock");
+assert(source.includes("createRightLabHost(panel, hudLab)"), "the existing Enemy Lab panel is reparented into the mutually exclusive right-lab host");
 assert(source.includes("this.enemyLabOriginalStyle") && source.includes("document.body.appendChild(this.enemyLabPanel)"), "workspace disposal restores the existing Enemy Lab lifecycle owner");
 assert(source.includes("this.workspace.root.remove()"), "dispose removes the owned workspace DOM");
 
