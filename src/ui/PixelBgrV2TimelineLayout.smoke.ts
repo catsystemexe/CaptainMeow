@@ -10,8 +10,8 @@ assert.match(workspaceRule, /flex:1 1 auto;min-height:0/, "the V2 inspector work
 assert.match(workspaceRule, /overflow:visible/, "the V2 inspector delegates scrolling to the unchanged outer right dock");
 
 const panelRule = cssRule(".cm-v2-panel");
-assert.match(panelRule, /flex:1 0 auto;min-width:0;overflow:hidden;display:grid;grid-template-columns:100px minmax\(0,1fr\)/, "the fixed gutter and horizontal surface share the compact timeline panel");
-assert.match(panelRule, /box-sizing:border-box/, "panel padding stays inside the assigned full-width timeline surface");
+assert.match(panelRule, /width:calc\(100% \+ var\(--cm-v2-gutter-width\)\).*grid-template-columns:var\(--cm-v2-gutter-width\) minmax\(0,1fr\)/, "the panel adds the gutter outside the game-aligned timeline width");
+assert.match(panelRule, /margin:0 0 0 calc\(-1 \* var\(--cm-v2-gutter-width\)\).*box-sizing:border-box/, "the fixed gutter is offset left without shifting the timeline axis");
 
 const scrollRule = cssRule(".cm-v2-timeline-scroll");
 assert.match(scrollRule, /width:100%;max-width:100%;height:145px/, "the canonical ruler and four lanes stay within the compact height budget");
@@ -56,7 +56,7 @@ const selectionOverlay = source.slice(selectionOverlayStart, placementOverlaySta
 assert.match(selectionOverlay, /overlay\.style\.pointerEvents="none"/, "normal V2 selection overlay is non-interactive");
 assert.doesNotMatch(selectionOverlay, /box\.style\.pointerEvents="auto"|box\.onpointerdown/, "normal placement boxes cannot intercept timeline navigation");
 const activePlacementOverlay = source.slice(placementOverlayStart, source.indexOf("private pointerInternal", placementOverlayStart));
-assert.match(activePlacementOverlay, /overlay\.style\.pointerEvents="auto"/, "explicit canvas placement mode remains interactive");
+assert.match(activePlacementOverlay, /overlay\.style\.pointerEvents="none"[\s\S]*box\.style\.pointerEvents="auto"/, "only the explicit placement handle remains interactive");
 
 assert.equal(source.match(/this\.workspace\.timeline\.appendChild\(this\.renderV2Timeline\(projection\)\)/g)?.length, 1, "the render contract creates only one V2 timeline instance");
 

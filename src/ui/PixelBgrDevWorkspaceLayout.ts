@@ -78,6 +78,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   overflow: hidden;
   background: transparent;
   color: #eaf6ff;
+  pointer-events: none;
 }
 
 .cm-bgr-workspace-main {
@@ -102,7 +103,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   grid-template-rows: minmax(0, 1fr) 0;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   background: transparent;
 }
 
@@ -184,8 +185,8 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 .cm-bgr-workspace-timeline {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid rgba(120, 220, 255, .16);
-  overflow-x: hidden;
+  border-top: 1px solid rgba(255, 255, 255, .16);
+  overflow-x: visible;
   overflow-y: hidden;
   pointer-events: auto;
 }

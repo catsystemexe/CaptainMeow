@@ -45,7 +45,7 @@ export function setV2RoleTracksEnabled(scene: BackgroundSceneV2, trackIds: reado
 }
 
 const STANDARD_ROLES = ["foreground", "near", "mid", "far"] as const;
-const roleLabel = (role: BackgroundTrackRole): string => role[0].toUpperCase() + role.slice(1);
+const roleLabel = (role: BackgroundTrackRole): string => role === "foreground" ? "Front" : role[0].toUpperCase() + role.slice(1);
 const finite = (value: number): boolean => Number.isFinite(value);
 
 export function projectBackgroundV2Timeline(
