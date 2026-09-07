@@ -5,6 +5,7 @@ export interface PixelBgrDevWorkspaceRegions {
   modeToggle: HTMLElement;
   main: HTMLElement;
   left: HTMLElement;
+  center: HTMLElement;
   viewport: HTMLElement;
   right: HTMLElement;
   timeline: HTMLElement;
@@ -15,6 +16,7 @@ export const PIXEL_BGR_WORKSPACE_REGION_CLASSES = {
   modeToggle: "cm-bgr-workspace-mode-toggle",
   main: "cm-bgr-workspace-main",
   left: "cm-bgr-workspace-left",
+  center: "cm-bgr-workspace-center",
   viewport: "cm-bgr-workspace-viewport",
   right: "cm-bgr-workspace-right",
   timeline: "cm-bgr-workspace-timeline",
@@ -46,14 +48,16 @@ export function createPixelBgrDevWorkspaceShell(documentRef: Document = document
   const modeToggle = region(documentRef, "nav", PIXEL_BGR_WORKSPACE_REGION_CLASSES.modeToggle, "mode-toggle");
   const main = region(documentRef, "main", PIXEL_BGR_WORKSPACE_REGION_CLASSES.main, "main");
   const left = region(documentRef, "aside", PIXEL_BGR_WORKSPACE_REGION_CLASSES.left, "left");
+  const center = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.center, "center");
   const viewport = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.viewport, "viewport");
   const right = region(documentRef, "aside", PIXEL_BGR_WORKSPACE_REGION_CLASSES.right, "right");
   const timeline = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.timeline, "timeline");
 
-  main.append(left, viewport, right);
-  root.append(modeToggle, main, timeline);
+  center.append(viewport, timeline);
+  main.append(left, center, right);
+  root.append(modeToggle, main);
 
-  return { root, modeToggle, main, left, viewport, right, timeline };
+  return { root, modeToggle, main, left, center, viewport, right, timeline };
 }
 
 export function setPixelBgrWorkspaceDisplayMode(root: HTMLElement, mode: PixelBgrDisplayMode): void {
@@ -68,7 +72,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   inset: 0;
   z-index: 100001;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 30px;
+  grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -86,10 +90,20 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 
 .cm-bgr-workspace-left,
 .cm-bgr-workspace-right,
+.cm-bgr-workspace-center,
 .cm-bgr-workspace-timeline {
   min-width: 0;
   min-height: 0;
   background: #040810;
+}
+
+.cm-bgr-workspace-center {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent;
 }
 
 .cm-v2-timeline-disabled {
@@ -176,12 +190,12 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   pointer-events: auto;
 }
 
-.cm-bgr-workspace-shell[data-timeline-mode="v2"] {
+.cm-bgr-workspace-shell[data-timeline-mode="v2"] .cm-bgr-workspace-center {
   grid-template-rows: minmax(0, 1fr) 149px;
 }
 
-.cm-bgr-workspace-shell[data-timeline-mode="disabled"] {
-  grid-template-rows: minmax(0, 1fr) 30px;
+.cm-bgr-workspace-shell[data-timeline-mode="disabled"] .cm-bgr-workspace-center {
+  grid-template-rows: minmax(0, 1fr) 0;
 }
 
 .cm-bgr-workspace-left,
@@ -205,12 +219,18 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 
 .cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-main > .cm-bgr-workspace-left,
 .cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-main > .cm-bgr-workspace-right,
-.cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-timeline {
+.cm-bgr-workspace-shell.is-game .cm-bgr-workspace-timeline {
   display: none;
 }
 
 .cm-bgr-workspace-shell.is-game > .cm-bgr-workspace-main {
   display: block;
+}
+
+.cm-bgr-workspace-shell.is-game .cm-bgr-workspace-center {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 `;

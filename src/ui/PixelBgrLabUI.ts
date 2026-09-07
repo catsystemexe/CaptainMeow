@@ -195,9 +195,6 @@ export class PixelBgrLabUI {
       return;
     }
     this.root.appendChild(this.renderSceneToolbar());
-    const disabledTimeline=el("div","cm-v2-timeline-disabled");
-    disabledTimeline.textContent="Timeline unavailable for this scene format";
-    this.workspace.timeline.appendChild(disabledTimeline);
     const tabs = el("div", "cm-pixel-tabs"); tabs.setAttribute("role", "tablist");
     for (const tab of PIXEL_BGR_LEFT_TOOLS) {
       const b = button(PIXEL_BGR_LAB_TAB_LABELS[tab], () => this.setActiveTab(tab));
