@@ -38,6 +38,7 @@ assert(far.objects.some((object) => {
     && object.startTrackX + width > segment.startTrackX);
 }), "at least one independent object overlaps a segment");
 assert(tracks.get("desert-foreground")!.objects.length > 0, "foreground content exists");
+assert.equal(tracks.get("desert-foreground")!.objects.find((object) => object.id === "foreground-band")?.opacity, 1, "Desert foreground band is fully opaque");
 
 const catalogUrls = new Set(BACKGROUND_ASSET_CATALOG.map((entry) => entry.url));
 const fixtureUrls = scene.tracks.flatMap((track) => [...track.segments, ...track.objects]).map((item) => item.asset.url);

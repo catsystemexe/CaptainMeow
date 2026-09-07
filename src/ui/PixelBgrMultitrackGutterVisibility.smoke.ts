@@ -16,7 +16,9 @@ assert.match(cssRule(layout, ".cm-bgr-workspace-center"), /overflow: visible;/, 
 
 assert.match(ui, /zoomOut=this\.iconButton\("Zoom out"/, "zoom out control has its accessible label");
 assert.match(ui, /zoomIn=this\.iconButton\("Zoom in"/, "zoom in control has its accessible label");
-assert.match(ui, /gutterRow\.append\(label,eye,parallax\)/, "role labels appear before their eye controls");
+assert.match(ui, /gutterRow\.append\(label,eye,parallax\)/, "each canonical row preserves label, eye, then parallax order");
+assert.match(ui, /const labelTrack=lane\.tracks\.find[\s\S]*?button\(lane\.label/, "all role labels remain canonical gutter content regardless of track count");
+assert.match(ui, /lane\.tracks\.length>1[\s\S]*?row\.appendChild\(trackSelect\)/, "multi-track selection lives in the timeline lane rather than the gutter label container");
 assert.deepEqual([...ui.matchAll(/lane\.label/g)].length > 0, true, "projected Front, Near, Mid and Far labels remain the gutter label authority");
 assert.match(ui, /panel\.append\(gutter,scroll\)/, "gutter stays outside horizontal scrolling and authored timeline content remains the second grid column");
 
