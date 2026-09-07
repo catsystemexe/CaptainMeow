@@ -5,6 +5,7 @@ export interface PixelBgrDevWorkspaceRegions {
   modeToggle: HTMLElement;
   main: HTMLElement;
   left: HTMLElement;
+  gutter: HTMLElement;
   center: HTMLElement;
   viewport: HTMLElement;
   right: HTMLElement;
@@ -20,6 +21,7 @@ export const PIXEL_BGR_WORKSPACE_REGION_CLASSES = {
   viewport: "cm-bgr-workspace-viewport",
   right: "cm-bgr-workspace-right",
   timeline: "cm-bgr-workspace-timeline",
+  gutter: "cm-bgr-workspace-gutter",
 } as const;
 
 function region<K extends keyof HTMLElementTagNameMap>(
@@ -48,16 +50,18 @@ export function createPixelBgrDevWorkspaceShell(documentRef: Document = document
   const modeToggle = region(documentRef, "nav", PIXEL_BGR_WORKSPACE_REGION_CLASSES.modeToggle, "mode-toggle");
   const main = region(documentRef, "main", PIXEL_BGR_WORKSPACE_REGION_CLASSES.main, "main");
   const left = region(documentRef, "aside", PIXEL_BGR_WORKSPACE_REGION_CLASSES.left, "left");
+  const gutter = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.gutter, "gutter");
   const center = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.center, "center");
   const viewport = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.viewport, "viewport");
   const right = region(documentRef, "aside", PIXEL_BGR_WORKSPACE_REGION_CLASSES.right, "right");
   const timeline = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.timeline, "timeline");
 
+  left.append(gutter);
   center.append(viewport, timeline);
   main.append(left, center, right);
   root.append(modeToggle, main);
 
-  return { root, modeToggle, main, left, center, viewport, right, timeline };
+  return { root, modeToggle, main, left, gutter, center, viewport, right, timeline };
 }
 
 export function setPixelBgrWorkspaceDisplayMode(root: HTMLElement, mode: PixelBgrDisplayMode): void {
@@ -164,8 +168,26 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 .cm-bgr-workspace-left {
   box-sizing: border-box;
   padding-top: 36px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 0;
+  overflow: hidden;
+}
+
+.cm-bgr-workspace-left > .cm-pixel-bgr-lab {
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+.cm-bgr-workspace-gutter {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 2px;
+  box-sizing: border-box;
+  border-top: 1px solid rgba(255, 255, 255, .16);
+  background: #000;
+  pointer-events: auto;
 }
 
 .cm-bgr-workspace-viewport {
@@ -183,13 +205,10 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 }
 
 .cm-bgr-workspace-timeline {
-  /* Paint the negative-offset gutter above the positioned Scene Lab sibling. */
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
   border-top: 1px solid rgba(255, 255, 255, .16);
-  overflow-x: visible;
+  overflow-x: hidden;
   overflow-y: hidden;
   pointer-events: auto;
 }
@@ -198,7 +217,15 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   grid-template-rows: minmax(0, 1fr) 149px;
 }
 
+.cm-bgr-workspace-shell[data-timeline-mode="v2"] .cm-bgr-workspace-left {
+  grid-template-rows: minmax(0, 1fr) 149px;
+}
+
 .cm-bgr-workspace-shell[data-timeline-mode="disabled"] .cm-bgr-workspace-center {
+  grid-template-rows: minmax(0, 1fr) 0;
+}
+
+.cm-bgr-workspace-shell[data-timeline-mode="disabled"] .cm-bgr-workspace-left {
   grid-template-rows: minmax(0, 1fr) 0;
 }
 

@@ -35,7 +35,8 @@ assert.match(source, /eye\.onpointerdown=isolateTimelinePointerEvent/, "eye poin
 assert.match(source, /visibility!=="all"/, "mixed and disabled lanes deterministically enable all on click");
 assert.match(source, /gutterRow\.append\(label,eye,parallax\)/, "each compact gutter row places its label before its eye control");
 assert.equal((source.match(/for\(const lane of projection\.lanes\)/g) ?? []).length >= 2, true, "all four projected role lanes receive gutter controls and timeline rows");
-assert.match(source, /panel\.append\(gutter,scroll\)/, "fixed gutter is outside the horizontal scroll owner");
+assert.match(source, /this\.workspace\.gutter\.appendChild\(gutter\)/, "fixed gutter is mounted in the left workspace region");
+assert.match(source, /panel\.appendChild\(scroll\)/, "timeline lanes remain in the center horizontal scroll owner");
 assert.match(layout, /grid-template-rows: minmax\(0, 1fr\) 149px/, "center timeline allocation remains 149px");
-assert.match(layout, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-x: visible;[\s\S]*?overflow-y: hidden;/, "outer center timeline retains no vertical scrollbar");
+assert.match(layout, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-x: hidden;[\s\S]*?overflow-y: hidden;/, "outer center timeline retains no vertical scrollbar");
 console.log("[SMOKE] PixelBgrMultitrackControls OK ✅");
