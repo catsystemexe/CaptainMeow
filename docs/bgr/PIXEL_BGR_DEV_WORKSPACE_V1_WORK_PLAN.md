@@ -429,3 +429,12 @@ BGR DEV WORKSPACE
 ```
 
 Phase 1 succeeds when the BGR authoring experience is structurally a workspace while already verified V2 editing/runtime contracts remain intact.
+
+
+## P1.X.9B — Per-track parallax and world-X multitrack
+
+The shared multitrack axis is gameplay/world X. Segment and object X geometry remains stored in each track's track-space and is projected through the canonical background V2 math helpers. For positive horizontal parallax, `worldX = trackX / parallaxX`, and projected world width is `track width / parallaxX`.
+
+The parallax authoring policy is `preserve-track-geometry`: editing the selected `BackgroundTrack.parallax.x` changes no segment/object/asset geometry or unrelated track data. Zero remains valid fixed/non-invertible parallax; the lane and track controls remain available, but no fake finite segment/object world interval is projected.
+
+Each gutter row is ordered `role label → role visibility eye → selected-track parallax X → timeline origin/lane`. Visibility remains a role-level aggregate over `track.enabled`; parallax remains owned by the active underlying track, including independently selectable tracks in multi-track roles.

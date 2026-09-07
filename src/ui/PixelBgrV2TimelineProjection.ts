@@ -1,4 +1,5 @@
 import type { BackgroundSceneV2, BackgroundTrackRole } from "../render/bg/v2/BackgroundV2Types";
+import { trackXToWorldX } from "../render/bg/v2/BackgroundV2Math";
 
 export interface GameplayTimelineRange { id: string; label: string; startX: number; endX: number }
 export interface GameplayTimelineMarker { id: string; label: string; x: number }
@@ -14,7 +15,7 @@ export interface V2ProjectedObject {
   id: string; trackId: string; x: number; width: number | null; enabled: boolean; effectiveZ: number;
 }
 export interface V2ProjectedTrack {
-  id: string; label: string; role: BackgroundTrackRole; mode: "sequence" | "repeat"; enabled: boolean; sceneIndex: number;
+  id: string; label: string; role: BackgroundTrackRole; mode: "sequence" | "repeat"; enabled: boolean; sceneIndex: number; parallaxX: number; projectable: boolean;
   segments: V2ProjectedSegment[]; objects: V2ProjectedObject[];
 }
 export interface V2ProjectedLane {
@@ -53,31 +54,31 @@ export function projectBackgroundV2Timeline(
   gameplay: GameplayTimelineReference = {},
   playerX = 0,
 ): V2TimelineProjection {
-  const tracks = scene.tracks.map((track, sceneIndex): V2ProjectedTrack => ({
-    id: track.id,
-    label: track.name,
-    role: track.role,
-    mode: track.mode,
-    enabled: track.enabled,
-    sceneIndex,
-    segments: track.segments.map(segment => ({
-      id: segment.id,
-      trackId: track.id,
-      startX: segment.startTrackX,
-      endX: segment.startTrackX + segment.widthPx,
-      widthPx: segment.widthPx,
-      enabled: segment.enabled,
-      effectiveZ: track.zBase + segment.localZ,
-    })),
-    objects: track.objects.map(object => ({
-      id: object.id,
-      trackId: track.id,
-      x: object.startTrackX,
-      width: finite(object.width ?? Number.NaN) ? object.width! : null,
-      enabled: object.enabled,
-      effectiveZ: track.zBase + object.localZ,
-    })),
-  }));
+  const tracks = scene.tracks.map((track, sceneIndex): V2ProjectedTrack => {
+    const project = (trackX: number): number | null => {
+      const result = trackXToWorldX(trackX, track.parallax.x);
+      return result.ok ? result.value : null;
+    };
+    const projectable = project(0) !== null;
+    return {
+      id: track.id, label: track.name, role: track.role, mode: track.mode, enabled: track.enabled, sceneIndex,
+      parallaxX: track.parallax.x, projectable,
+      segments: projectable ? track.segments.flatMap(segment => {
+        const startX = project(segment.startTrackX);
+        const endX = project(segment.startTrackX + segment.widthPx);
+        return startX === null || endX === null ? [] : [{
+          id: segment.id, trackId: track.id, startX, endX, widthPx: endX - startX,
+          enabled: segment.enabled, effectiveZ: track.zBase + segment.localZ,
+        }];
+      }) : [],
+      objects: projectable ? track.objects.flatMap(object => {
+        const x = project(object.startTrackX);
+        if (x === null) return [];
+        const endX = finite(object.width ?? Number.NaN) ? project(object.startTrackX + object.width!) : null;
+        return [{ id: object.id, trackId: track.id, x, width: endX === null ? null : endX - x, enabled: object.enabled, effectiveZ: track.zBase + object.localZ }];
+      }) : [],
+    };
+  });
 
   // The canonical timeline is a projection by depth role, not by track. Custom
   // tracks remain in the scene model but have no evidence-backed depth mapping.
