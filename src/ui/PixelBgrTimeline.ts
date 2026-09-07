@@ -23,8 +23,11 @@ export function timelineViewportRange(scrollX: number, viewportWorldWidth: numbe
 }
 
 /** Presentation-only ruler density; authored coordinates remain unchanged. */
-export function timelineMajorTickInterval(zoom: number): 100 | 200 | 400 | 500 | 1000 {
+export function timelineMajorTickInterval(zoom: number): 100 | 200 | 400 | 500 | 1000 | 2000 | 5000 | 10000 {
   const value = Number.isFinite(zoom) ? zoom : 1;
+  if (value <= 0.01) return 10000;
+  if (value <= 0.02) return 5000;
+  if (value <= 0.05) return 2000;
   if (value <= 0.1) return 1000;
   if (value <= 0.25) return 500;
   if (value <= 0.5) return 400;
