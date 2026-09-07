@@ -10,8 +10,8 @@ assert.match(workspaceRule, /flex:1 1 auto;min-height:0/, "the V2 inspector work
 assert.match(workspaceRule, /overflow:visible/, "the V2 inspector delegates scrolling to the unchanged outer right dock");
 
 const panelRule = cssRule(".cm-v2-panel");
-assert.match(panelRule, /width:calc\(100% \+ var\(--cm-v2-gutter-width\)\).*grid-template-columns:var\(--cm-v2-gutter-width\) minmax\(0,1fr\)/, "the panel adds the gutter outside the game-aligned timeline width");
-assert.match(panelRule, /margin:0 0 0 calc\(-1 \* var\(--cm-v2-gutter-width\)\).*box-sizing:border-box/, "the fixed gutter is offset left without shifting the timeline axis");
+assert.match(panelRule, /width:100%.*display:block.*margin:0/, "the center panel occupies only the canvas-aligned timeline width");
+assert.doesNotMatch(panelRule, /calc\(100% \+|margin-left:-100px|calc\(-1 \*/, "the panel uses no cross-column gutter transport");
 
 const scrollRule = cssRule(".cm-v2-timeline-scroll");
 assert.match(scrollRule, /width:100%;max-width:100%;height:145px/, "the canonical ruler and four lanes stay within the compact height budget");
@@ -27,9 +27,10 @@ assert.match(timelineRule, /height:128px/, "the visible timeline interaction ban
 assert.match(timelineRule, /pointer-events:auto/, "the timeline remains directly pointer-interactive");
 
 const gutterRule = cssRule(".cm-v2-timeline-gutter");
-assert.match(gutterRule, /width:100px;height:128px;display:grid;grid-template-rows:20px repeat\(4,27px\);overflow:hidden/, "the fixed gutter shares the exact ruler plus four-lane geometry");
+assert.match(gutterRule, /width:100px;height:128px;margin-left:auto;display:grid;grid-template-rows:20px repeat\(4,27px\);overflow:hidden/, "the fixed gutter shares the exact ruler plus four-lane geometry");
 assert.match(gutterRule, /background:#000/, "the visible gutter uses compact monochrome presentation");
-assert.match(source, /panel\.append\(gutter,scroll\)/, "the gutter is a sibling before the horizontal scroll owner");
+assert.match(source, /this\.workspace\.gutter\.appendChild\(gutter\)/, "the gutter mounts into the left workspace region");
+assert.match(source, /panel\.appendChild\(scroll\)/, "the center timeline panel contains only the horizontal lane viewport");
 assert.match(cssRule(".cm-v2-lane-track-select"), /position:sticky;left:3px/, "only the secondary multi-track selector stays visible with its timeline lane");
 assert.doesNotMatch(source, /cm-v2-track-label/, "same-role tracks do not create nested or additional visual rows");
 assert.match(source, /const labelTrack=lane\.tracks\.find[\s\S]*?button\(lane\.label,\(\)=>this\.selectV2Track\(labelTrack\.id\)\)/, "every gutter row keeps its canonical role label as the direct selection affordance");

@@ -15,7 +15,7 @@ assert.deepEqual([0, 400, 800, 1200, 1600].map(formatTimelineWorldX), ["0", "400
 assert.match(ui, /timelineViewportRange\(this\.currentScroll\(\)\.x,this\.logicW\)/, "runtime world scroll and logical presentation width are the range authority");
 assert.match(ui, /createExactTimelineScale\(timelineBounds\.startX,timelineBounds\.endX,baseWidthPx,this\.v2TimelineZoom\)/);
 assert.match(ui, /worldToTimelinePx\(viewportRange\.startX,scale\)[\s\S]*worldToTimelinePx\(projection\.playerX,scale\)/, "viewport and Player X use one exact scale without mutation");
-assert.match(ui, /--cm-v2-gutter-width:100px[\s\S]*margin:0 0 0 calc\(-1 \* var\(--cm-v2-gutter-width\)\)/, "gutter is offset left of independently aligned content");
+assert.doesNotMatch(ui, /margin-left:-100px|calc\(100% \+ (?:100px|var\(--cm-v2-gutter-width\))\)/, "gutter uses no cross-column transport");
 assert.match(ui, /cm-v2-viewport-range\{[^}]*rgba\(255,255,255/);
 assert.match(layout, /grid-template-rows: minmax\(0, 1fr\) 149px/);
 assert.match(layout, /\.cm-bgr-workspace-timeline \{[\s\S]*overflow-y: hidden/);

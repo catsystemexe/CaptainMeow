@@ -1,25 +1,26 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createBackgroundV2DesertTestScene } from "../render/bg/v2/BackgroundV2DesertTestScene";
+import { projectBackgroundV2Timeline } from "./PixelBgrV2TimelineProjection";
 
 const ui = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 const layout = readFileSync(new URL("./PixelBgrDevWorkspaceLayout.ts", import.meta.url), "utf8");
 const cssRule = (source: string, selector: string): string => source.match(new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
 
-const panel = cssRule(ui, ".cm-v2-panel");
-assert.match(panel, /--cm-v2-gutter-width:100px/, "gutter has the approved fixed width");
-assert.match(panel, /width:calc\(100% \+ var\(--cm-v2-gutter-width\)\)/, "gutter width is added outside the canvas-aligned track width");
-assert.match(panel, /margin:0 0 0 calc\(-1 \* var\(--cm-v2-gutter-width\)\)/, "gutter right edge terminates at the timeline and canvas origin");
+assert.match(layout, /left\.append\(gutter\)/, "the gutter DOM is owned by workspace.left");
+assert.match(ui, /this\.workspace\.gutter\.appendChild\(gutter\)/, "V2 rendering mounts the canonical gutter in the left region");
+assert.match(ui, /this\.workspace\.timeline\.appendChild\(this\.renderV2Timeline\(projection\)\)/, "timeline lanes remain mounted in the center timeline region");
+assert.doesNotMatch(ui, /margin-left:-100px|calc\(100% \+ (?:100px|var\(--cm-v2-gutter-width\))\)/, "there is no negative-offset or expanded-width gutter transport");
+assert.doesNotMatch(cssRule(layout, ".cm-bgr-workspace-timeline"), /z-index/, "gutter visibility does not depend on a timeline stacking layer");
+assert.match(layout, /data-timeline-mode="v2"\] \.cm-bgr-workspace-left \{\s*grid-template-rows: minmax\(0, 1fr\) 149px;/, "V2 reserves a fixed 149px bottom left-region surface");
+assert.match(layout, /data-timeline-mode="disabled"\] \.cm-bgr-workspace-left \{\s*grid-template-rows: minmax\(0, 1fr\) 0;/, "non-V2 restores the full Scene Lab height");
+assert.match(cssRule(ui, ".cm-v2-timeline-gutter"), /width:100px;height:128px;margin-left:auto/, "the 100px canonical gutter aligns its right edge with the canvas origin");
+assert.match(cssRule(ui, ".cm-v2-panel"), /width:100%/, "timeline content begins at the center/canvas origin");
 
-assert.match(layout, /\.cm-bgr-workspace-timeline \{[\s\S]*?position: relative;\s*z-index: 1;/, "timeline establishes the stacking layer needed to paint its left gutter above the positioned Scene Lab");
-assert.match(layout, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-x: visible;\s*overflow-y: hidden;/, "outer timeline does not clip its left gutter and retains no vertical scrollbar");
-assert.match(cssRule(layout, ".cm-bgr-workspace-center"), /overflow: visible;/, "center permits the gutter to extend left without moving authored content");
-
-assert.match(ui, /zoomOut=this\.iconButton\("Zoom out"/, "zoom out control has its accessible label");
-assert.match(ui, /zoomIn=this\.iconButton\("Zoom in"/, "zoom in control has its accessible label");
-assert.match(ui, /gutterRow\.append\(label,eye,parallax\)/, "each canonical row preserves label, eye, then parallax order");
-assert.match(ui, /const labelTrack=lane\.tracks\.find[\s\S]*?button\(lane\.label/, "all role labels remain canonical gutter content regardless of track count");
-assert.match(ui, /lane\.tracks\.length>1[\s\S]*?row\.appendChild\(trackSelect\)/, "multi-track selection lives in the timeline lane rather than the gutter label container");
-assert.deepEqual([...ui.matchAll(/lane\.label/g)].length > 0, true, "projected Front, Near, Mid and Far labels remain the gutter label authority");
-assert.match(ui, /panel\.append\(gutter,scroll\)/, "gutter stays outside horizontal scrolling and authored timeline content remains the second grid column");
+const projection = projectBackgroundV2Timeline(createBackgroundV2DesertTestScene());
+assert.deepEqual(projection.lanes.map(lane => lane.label), ["Front", "Near", "Mid", "Far"], "all canonical gutter roles are present");
+assert.match(ui, /gutterRow\.append\(label,eye,parallax\)/, "each role keeps label, eye, parallax order");
+assert.match(ui, /lane\.tracks\.length>1[\s\S]*?row\.appendChild\(trackSelect\)/, "the Far multi-track selector remains in its timeline lane");
+assert.equal(projection.lanes.find(lane => lane.label === "Far")?.tracks.length, 2, "the fixture exercises the Far selector");
 
 console.log("[SMOKE] PixelBgrMultitrackGutterVisibility OK ✅");
