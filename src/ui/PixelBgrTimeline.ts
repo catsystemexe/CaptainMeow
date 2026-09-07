@@ -2,6 +2,7 @@ import type { BackgroundChunk } from "../render/webgl/bg/layers/BackgroundSceneT
 
 export interface TimelineRange { startX: number; endX: number }
 export interface TimelineScale { minX: number; maxX: number; widthPx: number }
+export interface TimelineViewportRange { startX: number; endX: number }
 export interface ChunkTimelineBlock extends TimelineRange { id: string; leftPx: number; widthPx: number; selected: boolean }
 export type ChunkTimelineDragMode = "move" | "resize-left" | "resize-right";
 export interface ChunkTimelineDragOptions { snapPx?: number; minStartX?: number; minLength?: number }
@@ -13,6 +14,28 @@ const MIN_SPAN = 1;
 const PADDING = 120;
 export const DEFAULT_CHUNK_TIMELINE_SNAP_PX = 16;
 export const MIN_CHUNK_TIMELINE_LENGTH = 64;
+
+/** The rendered camera interval, derived from the gameplay world's scroll authority. */
+export function timelineViewportRange(scrollX: number, viewportWorldWidth: number): TimelineViewportRange {
+  const startX = Number.isFinite(scrollX) ? scrollX : 0;
+  const width = Math.max(0, Number.isFinite(viewportWorldWidth) ? viewportWorldWidth : 0);
+  return { startX, endX: startX + width };
+}
+
+/** Presentation-only ruler density; authored coordinates remain unchanged. */
+export function timelineMajorTickInterval(zoom: number): 100 | 200 | 400 {
+  const value = Number.isFinite(zoom) ? zoom : 1;
+  if (value <= 1) return 400;
+  if (value <= 2) return 200;
+  return 100;
+}
+
+export function formatTimelineWorldX(x: number): string {
+  if (!Number.isFinite(x)) return "0";
+  if (Math.abs(x) < 1000) return String(Math.round(x));
+  const compact = Math.round((x / 1000) * 10) / 10;
+  return `${compact}k`;
+}
 
 export function chunkEndX(chunk: Pick<BackgroundChunk, "startX" | "length">): number {
   return chunk.startX + chunk.length;

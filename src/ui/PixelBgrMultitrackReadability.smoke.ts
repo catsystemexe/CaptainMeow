@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { formatTimelineWorldX, timelineMajorTickInterval, timelineViewportRange } from "./PixelBgrTimeline";
+import { projectBackgroundV2Timeline } from "./PixelBgrV2TimelineProjection";
+import type { BackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Types";
+
+const ui = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
+const layout = readFileSync(new URL("./PixelBgrDevWorkspaceLayout.ts", import.meta.url), "utf8");
+const scene: BackgroundSceneV2 = { version: 2, id: "readability", environment: {}, tracks: [] };
+assert.deepEqual(projectBackgroundV2Timeline(scene).lanes.map(lane => lane.label), ["Front", "Near", "Mid", "Far"]);
+assert(!projectBackgroundV2Timeline(scene).lanes.some(lane => lane.label === "Foreground"));
+assert.deepEqual(timelineViewportRange(640, 896), { startX: 640, endX: 1536 }, "viewport derives directly from world scroll and presentation width");
+assert.deepEqual([.75, 1, 1.25, 2, 3, 4].map(timelineMajorTickInterval), [400, 400, 200, 200, 100, 100]);
+assert.deepEqual([0, 400, 800, 1200, 1600].map(formatTimelineWorldX), ["0", "400", "800", "1.2k", "1.6k"]);
+assert.match(ui, /timelineViewportRange\(this\.currentScroll\(\)\.x,this\.logicW\)/, "runtime world scroll and logical presentation width are the range authority");
+assert.match(ui, /createExactTimelineScale\(timelineBounds\.startX,timelineBounds\.endX,baseWidthPx,this\.v2TimelineZoom\)/);
+assert.match(ui, /worldToTimelinePx\(viewportRange\.startX,scale\)[\s\S]*worldToTimelinePx\(projection\.playerX,scale\)/, "viewport and Player X use one exact scale without mutation");
+assert.match(ui, /--cm-v2-gutter-width:100px[\s\S]*margin:0 0 0 calc\(-1 \* var\(--cm-v2-gutter-width\)\)/, "gutter is offset left of independently aligned content");
+assert.match(ui, /cm-v2-viewport-range\{[^}]*rgba\(255,255,255/);
+assert.match(layout, /grid-template-rows: minmax\(0, 1fr\) 149px/);
+assert.match(layout, /\.cm-bgr-workspace-timeline \{[\s\S]*overflow-y: hidden/);
+console.log("[SMOKE] PixelBgrMultitrackReadability OK ✅");

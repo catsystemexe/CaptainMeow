@@ -34,5 +34,5 @@ assert.match(source, /visibility!=="all"/, "mixed and disabled lanes determinist
 assert.equal((source.match(/for\(const lane of projection\.lanes\)/g) ?? []).length >= 2, true, "all four projected role lanes receive gutter controls and timeline rows");
 assert.match(source, /panel\.append\(gutter,scroll\)/, "fixed gutter is outside the horizontal scroll owner");
 assert.match(layout, /grid-template-rows: minmax\(0, 1fr\) 149px/, "center timeline allocation remains 149px");
-assert.match(layout, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-x: hidden;[\s\S]*?overflow-y: hidden;/, "outer center timeline retains no vertical scrollbar");
+assert.match(layout, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-x: visible;[\s\S]*?overflow-y: hidden;/, "outer center timeline retains no vertical scrollbar");
 console.log("[SMOKE] PixelBgrMultitrackControls OK ✅");

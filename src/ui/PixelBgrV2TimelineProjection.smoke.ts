@@ -25,7 +25,7 @@ const gameplay = { ranges: [{ id: "future-range", label: "Range", startX: 600, e
 const beforeScene = structuredClone(scene), beforeGameplay = structuredClone(gameplay);
 const projection = projectBackgroundV2Timeline(scene, gameplay, 1100);
 
-assert.deepEqual(projection.lanes.map(lane => lane.label), ["Foreground", "Near", "Mid", "Far"]);
+assert.deepEqual(projection.lanes.map(lane => lane.label), ["Front", "Near", "Mid", "Far"]);
 assert.equal(projection.lanes.length, 4, "the compact projection has exactly four content lanes");
 assert.equal(projection.lanes.some(lane => lane.id === "environment" || lane.id === "gameplay"), false);
 assert.deepEqual(projection.lanes.find(lane => lane.id === "far")?.tracks.map(track => track.id), ["far-a", "far-b"]);
