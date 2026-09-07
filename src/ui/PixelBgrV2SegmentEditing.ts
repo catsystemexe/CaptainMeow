@@ -1,4 +1,4 @@
-import type { BackgroundSceneV2, BackgroundSegment, BackgroundTrack } from "../render/bg/v2/BackgroundV2Types";
+import type { BackgroundAssetRef, BackgroundSceneV2, BackgroundSegment, BackgroundTrack } from "../render/bg/v2/BackgroundV2Types";
 import { worldXToTrackX } from "../render/bg/v2/BackgroundV2Math";
 import { DEFAULT_CHUNK_TIMELINE_SNAP_PX, MIN_CHUNK_TIMELINE_LENGTH, snapTimelineValue } from "./PixelBgrTimeline";
 
@@ -58,12 +58,14 @@ function validSegment(segment: BackgroundSegment): string | null {
   return null;
 }
 
-export function createV2Segment(scene: BackgroundSceneV2, trackId: string, startTrackX: number, templateSegmentId?: string): V2SegmentEditResult {
+export function createV2Segment(scene: BackgroundSceneV2, trackId: string, startTrackX: number, templateSegmentId?: string, fallbackAsset?: BackgroundAssetRef): V2SegmentEditResult {
   const target = editable(scene, trackId);
   if ("ok" in target) return target;
   const template = (templateSegmentId ? target.track.segments.find(item => item.id === templateSegmentId) : null) ?? target.track.segments[0];
-  if (!template) return fail(scene, "asset-required", "Create requires an existing segment asset on the target track; asset selection is outside M6.");
-  const next: BackgroundSegment = { ...template, asset: { ...template.asset }, id: uniqueSegmentId(scene, `${target.track.id}-segment`), startTrackX: snapTimelineValue(Math.max(0, startTrackX), V2_SEGMENT_SNAP_PX), widthPx: Math.max(MIN_V2_SEGMENT_WIDTH, template.widthPx) };
+  if (!template && !fallbackAsset) return fail(scene, "asset-required", "Create requires an existing segment asset or catalog fallback.");
+  const defaults: BackgroundSegment = { id: "", startTrackX: 0, widthPx: 256, asset: fallbackAsset!, offsetY: 0, opacity: 1, blend: "normal", localZ: 0, enabled: true };
+  const source = template ?? defaults;
+  const next: BackgroundSegment = { ...source, asset: { ...source.asset }, id: uniqueSegmentId(scene, `${target.track.id}-segment`), startTrackX: snapTimelineValue(Math.max(0, startTrackX), V2_SEGMENT_SNAP_PX), widthPx: Math.max(MIN_V2_SEGMENT_WIDTH, source.widthPx) };
   const invalid = validSegment(next);
   if (invalid) return fail(scene, "invalid-value", invalid);
   return success(replaceTrack(scene, { ...target.track, segments: [...target.track.segments, next] }), trackId, next.id);

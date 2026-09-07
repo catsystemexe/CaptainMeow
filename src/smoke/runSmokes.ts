@@ -64,6 +64,8 @@ const SMOKES = [
   "../ui/PixelBgrV2SegmentAuthoringUI.smoke",
   "../ui/PixelBgrV2ObjectEditing.smoke",
   "../ui/PixelBgrV2PlacementCoordinates.smoke",
+  "../ui/PixelBgrV2LaneInsert.smoke",
+  "../ui/PixelBgrV2YNudge.smoke",
   "../ui/PixelBgrRenderCoordinator.smoke",
   "../game/authoring/GameplaySeek.smoke",
   "../game/systems/BombExplosionChain.smoke",
