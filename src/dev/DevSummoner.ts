@@ -49,9 +49,9 @@ type CompactSelectOption = { value: string; label: string; disabled?: boolean };
 export function createDevSummonerPanelStyle(): string {
   return [
     "position:fixed", "top:8px", "right:8px", "z-index:9999",
-    "background:rgba(0,0,0,0.75)", "border:1px solid #444",
+    "background:rgba(0,0,0,0.75)", "border:0",
     "color:#eee", "font:12px monospace", "padding:3px",
-    "border-radius:2px", "display:flex", "flex-direction:column", "gap:5px",
+    "border-radius:0", "display:flex", "flex-direction:column", "gap:3px",
     "width:clamp(170px, 18vw, 190px)",
     "min-width:min(170px, calc(100vw - 16px))",
     "max-width:min(190px, calc(100vw - 16px))",
@@ -76,7 +76,7 @@ const CONTROL_RADIUS_PX = 2;
 const CONTROL_FONT = "12px monospace";
 const CONTROL_BG = "#111";
 const CONTROL_BORDER = "1px solid rgba(255,255,255,0.24)";
-const LABEL_WEIGHT = "800";
+const LABEL_WEIGHT = "400";
 const ICONS = { new: "+", edit: "✎", save: "✓", delete: "×", trash: "🗑", reset: "↻", duplicate: "⧉", up: "↑", down: "↓", stop: "■" } as const;
 
 function applyIconButtonStyle(button: HTMLButtonElement, disabled = false): void {
@@ -139,8 +139,8 @@ function applyLabelTextStyle(el: HTMLElement, prominence: "primary" | "secondary
   el.style.fontFamily = "monospace";
   el.style.fontSize = "12px";
   el.style.fontWeight = LABEL_WEIGHT;
-  el.style.color = prominence === "primary" ? "#f2f2f2" : "#d7d7d7";
-  el.style.opacity = prominence === "primary" ? "0.98" : "0.88";
+  el.style.color = prominence === "primary" ? "#aaa" : "#929292";
+  el.style.opacity = "1";
   el.style.lineHeight = "1.05";
   el.style.whiteSpace = "nowrap";
 }
@@ -317,7 +317,7 @@ function createSelectLabel(text: string, prominence: "primary" | "secondary" = "
   const label = document.createElement("label");
   label.style.cssText = "display:flex;flex-direction:column;gap:2px;min-width:0;";
   const span = document.createElement("span");
-  span.textContent = text;
+  span.textContent = text.endsWith(":") ? text : `${text}:`;
   applyLabelTextStyle(span, prominence);
   label.appendChild(span);
   return label;
@@ -807,7 +807,7 @@ export class DevSummoner {
     const modeRow = document.createElement("div");
     modeRow.style.cssText = "display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;";
     const modeLabel = document.createElement("span");
-    modeLabel.textContent = "Mode:";
+    modeLabel.textContent = "mode:";
     applyLabelTextStyle(modeLabel);
     const modeSegment = document.createElement("div");
     modeSegment.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:0;min-width:0;";
@@ -820,19 +820,6 @@ export class DevSummoner {
     spawnSection.appendChild(modeRow);
 
     let spawnMode: SpawnMode = "enemy";
-    const styleSegmentButton = (button: HTMLButtonElement, active: boolean, disabled = false) => {
-      button.style.cssText = [
-        "font:12px monospace",
-        "min-height:26px",
-        "padding:2px 6px",
-        "border:1px solid rgba(255,255,255,0.24)",
-        "background:" + (active ? "#26384f" : "#111"),
-        "color:" + (disabled ? "#777" : active ? "#fff" : "#bbb"),
-        "cursor:" + (disabled ? "not-allowed" : "pointer"),
-        "box-sizing:border-box",
-        "min-width:0",
-      ].join(";");
-    };
     const styleTextChoiceButton = (button: HTMLButtonElement, active: boolean, disabled = false) => {
       button.style.cssText = [
         "font:12px monospace",
@@ -866,7 +853,7 @@ export class DevSummoner {
     const enemyTypeRow = document.createElement("label");
     enemyTypeRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px;align-items:center;min-width:0;";
     const enemyTypeLabel = document.createElement("span");
-    enemyTypeLabel.textContent = "Type:";
+    enemyTypeLabel.textContent = "type:";
     applyLabelTextStyle(enemyTypeLabel);
     enemyTypeRow.appendChild(enemyTypeLabel);
     enemyTypeRow.appendChild(enemySelect);
@@ -877,7 +864,7 @@ export class DevSummoner {
     groupTypeRow.id = "ds-group-type-count-row";
     groupTypeRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:3px;align-items:center;min-width:0;";
     const groupTypeLabel = document.createElement("span");
-    groupTypeLabel.textContent = "Type:";
+    groupTypeLabel.textContent = "type:";
     applyLabelTextStyle(groupTypeLabel);
     const groupEnemySelect = document.createElement("select");
     groupEnemySelect.id = "ds-group-enemy";
@@ -888,7 +875,7 @@ export class DevSummoner {
 
     let groupCount = 5;
     const countLabel = document.createElement("span");
-    countLabel.textContent = "Count:";
+    countLabel.textContent = "count:";
     applyLabelTextStyle(countLabel);
     const countSegment = document.createElement("div");
     countSegment.id = "ds-group-count";
@@ -986,10 +973,10 @@ export class DevSummoner {
       wrap.appendChild(segment);
       return { wrap, get value() { return value; }, addEventListener(listener: () => void) { listeners.push(listener); } };
     };
-    const formationChoice = makeCompactChoice<FormationId>("Form", groupFormationSelectOptions(), "line.horizontal");
+    const formationChoice = makeCompactChoice<FormationId>("form", groupFormationSelectOptions(), "line.horizontal");
     const wedgeFacingChoice = makeSegmentedChoice<"left" | "right">("Facing", "Wedge facing", [{ value: "left", label: "Left" }, { value: "right", label: "Right" }], "left");
     const arcFacingChoice = makeSegmentedChoice<"left" | "right">("Arc", "Arc direction", [{ value: "left", label: "Forward" }, { value: "right", label: "Backward" }], "left");
-    const cohesionChoice = makeSegmentedChoice<CohesionId>("Coh", "Group cohesion", ENEMY_GROUP_COHESION_IDS.map((id) => ({ value: id, label: id === "rigid" ? "Rigid" : "Elastic" })), "rigid");
+    const cohesionChoice = makeSegmentedChoice<CohesionId>("coh", "Group cohesion", ENEMY_GROUP_COHESION_IDS.map((id) => ({ value: id, label: id === "rigid" ? "Rigid" : "Elastic" })), "rigid");
     const formationWrap = formationChoice.wrap;
     const cohesionWrap = cohesionChoice.wrap;
     formationWrap.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px;align-items:center;min-width:0;";
@@ -1003,7 +990,7 @@ export class DevSummoner {
       const wrap = document.createElement("div");
       wrap.style.cssText = "display:grid;grid-template-columns:max-content auto;gap:0;align-items:center;min-width:0;";
       const labelNode = document.createElement("span");
-      labelNode.textContent = label;
+      labelNode.textContent = label.endsWith(":") ? label : `${label}:`;
       applyLabelTextStyle(labelNode, "secondary");
       const segment = document.createElement("div");
       segment.setAttribute("role", "spinbutton");
@@ -1051,13 +1038,13 @@ export class DevSummoner {
       return { wrap, refresh, get value() { return value; } };
     };
 
-    const spacingStepper = makeParamStepper("Space", "spacing", ENEMY_GROUP_PARAM_LIMITS.formation.spacing.default);
+    const spacingStepper = makeParamStepper("space", "spacing", ENEMY_GROUP_PARAM_LIMITS.formation.spacing.default);
     const depthStepper = makeParamStepper("Depth", "depth", ENEMY_GROUP_PARAM_LIMITS.formation.depth.default);
     const radiusStepper = makeParamStepper("Radius", "radius", ENEMY_GROUP_PARAM_LIMITS.formation.radius.default);
     const angleStepper = makeParamStepper("Angle", "angle", ENEMY_GROUP_PARAM_LIMITS.formation.angle.default);
     const startAngleStepper = makeParamStepper("Start", "startAngle", 0);
-    const responseStepper = makeParamStepper("Tight", "response", ENEMY_GROUP_PARAM_LIMITS.cohesion.response.default);
-    const catchStepper = makeParamStepper("Catch", "maxCatchupSpeed", ENEMY_GROUP_PARAM_LIMITS.cohesion.maxCatchupSpeed.rigidDefault);
+    const responseStepper = makeParamStepper("tight", "response", ENEMY_GROUP_PARAM_LIMITS.cohesion.response.default);
+    const catchStepper = makeParamStepper("catch", "maxCatchupSpeed", ENEMY_GROUP_PARAM_LIMITS.cohesion.maxCatchupSpeed.rigidDefault);
     const formationParamRow = document.createElement("div");
     formationParamRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2px;align-items:center;min-width:0;";
     formationParamRow.appendChild(wedgeFacingChoice.wrap);
@@ -1111,7 +1098,7 @@ export class DevSummoner {
       const movementClassRow = document.createElement("div");
       movementClassRow.style.cssText = "display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;";
       const movementClassLabel = document.createElement("span");
-      movementClassLabel.textContent = "Move:";
+      movementClassLabel.textContent = "move:";
       applyLabelTextStyle(movementClassLabel);
       const movementClassSegment = document.createElement("div");
       movementClassSegment.id = `${prefix}-movement-class`;
@@ -1126,7 +1113,7 @@ export class DevSummoner {
         rememberedMovement.set(movementClass, { primitive: primitiveSelect.value, preset: presetSelect.value });
       };
       const primitiveWrap = createSelectLabel(primitiveLabel, "secondary");
-      const presetWrap = createSelectLabel("Preset:", "secondary");
+      const presetWrap = createSelectLabel("preset:", "secondary");
       primitiveWrap.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px;align-items:center;min-width:0;";
       presetWrap.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px;align-items:center;min-width:0;";
       primitiveWrap.appendChild(primitiveSelect.root);
@@ -1143,7 +1130,7 @@ export class DevSummoner {
         for (const [button, value, enabled] of [[dumbButton, "dumb", hasDumbPresets], [smartButton, "smart", hasSmartPresets]] as const) {
           const active = movementClass === value;
           button.type = "button";
-          button.textContent = value === "dumb" ? "Dumb" : "Smart";
+          button.textContent = value === "dumb" ? "DUMB" : "SMART";
           button.disabled = !enabled;
           button.setAttribute("role", "radio");
           button.setAttribute("aria-checked", String(active));
@@ -1195,10 +1182,10 @@ export class DevSummoner {
       return { movementClassRow, movementPresetRow, presetSelect, setMovementClass };
     };
 
-    const enemyMovement = makeMovementControls("ds", "Movement", "Formation:");
+    const enemyMovement = makeMovementControls("ds", "Movement", "path:");
     enemyControls.appendChild(enemyMovement.movementClassRow);
     enemyControls.appendChild(enemyMovement.movementPresetRow);
-    const fsmSpawnWrap = createSelectLabel("FSM", "secondary");
+    const fsmSpawnWrap = createSelectLabel("FSM:", "secondary");
     const fsmSpawnSelect = createCompactSelect("ds-fsm-preset");
     this.cleanupHandlers.push(() => fsmSpawnSelect.destroy());
     const refreshFsmSpawnSelect = (preferred?: string) => {
@@ -1208,7 +1195,7 @@ export class DevSummoner {
     fsmSpawnWrap.appendChild(fsmSpawnSelect.root);
     spawnSection.appendChild(fsmSpawnWrap);
     spawnSection.appendChild(createSectionGap());
-    const groupMovement = makeMovementControls("ds-group", "Move", "Formation:");
+    const groupMovement = makeMovementControls("ds-group", "Move", "path:");
     groupControls.appendChild(groupMovement.movementClassRow);
     groupControls.appendChild(groupMovement.movementPresetRow);
     groupControls.appendChild(createSectionGap());
@@ -1298,7 +1285,7 @@ export class DevSummoner {
     fsmPresetSection.id = "ds-fsm-preset-section";
     fsmPresetSection.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px;align-items:center;min-width:0;";
     const fsmPresetLabel = document.createElement("span");
-    fsmPresetLabel.textContent = "Preset:";
+    fsmPresetLabel.textContent = "preset:";
     applyLabelTextStyle(fsmPresetLabel);
     const fsmPresetToolbar = document.createElement("div");
     fsmPresetToolbar.id = "ds-fsm-preset-toolbar";
@@ -1318,7 +1305,7 @@ export class DevSummoner {
     fsmTypeRow.id = "ds-fsm-type-count-row";
     fsmTypeRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:3px;align-items:center;min-width:0;";
     const fsmTypeLabel = document.createElement("span");
-    fsmTypeLabel.textContent = "Type:";
+    fsmTypeLabel.textContent = "type:";
     applyLabelTextStyle(fsmTypeLabel);
     fsmTypeRow.appendChild(fsmTypeLabel);
     fsmBasicSection.appendChild(fsmTypeRow);
@@ -1327,7 +1314,7 @@ export class DevSummoner {
     fsmFormationRow.id = "ds-fsm-formation-row";
     fsmFormationRow.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;gap:2px;align-items:center;";
     const fsmFormationLabel = document.createElement("span");
-    fsmFormationLabel.textContent = "Form:";
+    fsmFormationLabel.textContent = "form:";
     applyLabelTextStyle(fsmFormationLabel);
     const fsmFormationButtons = document.createElement("div");
     fsmFormationButtons.id = "ds-fsm-formation-icons";
@@ -1335,7 +1322,7 @@ export class DevSummoner {
     fsmFormationButtons.setAttribute("aria-label", "FSM group formation");
     fsmFormationButtons.style.cssText = "display:grid;grid-template-columns:repeat(5,18px);gap:0;min-width:0;";
     const fsmCoherenceLabel = document.createElement("span");
-    fsmCoherenceLabel.textContent = "Coh:";
+    fsmCoherenceLabel.textContent = "coh:";
     applyLabelTextStyle(fsmCoherenceLabel);
     const fsmRigidButton = document.createElement("button");
     const fsmElasticButton = document.createElement("button");
@@ -1352,10 +1339,10 @@ export class DevSummoner {
     fsmFormationRow.appendChild(fsmElasticButton);
     fsmBasicSection.appendChild(fsmFormationRow);
 
-    const fsmSpacingSlider = createRangeRow("ds-fsm-spacing", "Space", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
-    const fsmElasticitySlider = createRangeRow("ds-fsm-elasticity", "Elast", { min: 0, max: 10, default: 0, step: 1 });
-    const fsmFollowSlider = createRangeRow("ds-fsm-follow", "Follow", ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay);
-    const fsmBaseSpeedSlider = createRangeRow("ds-fsm-base-speed", "Speed", ENEMY_LAB_BASIC_SETUP_LIMITS.baseSpeed);
+    const fsmSpacingSlider = createRangeRow("ds-fsm-spacing", "space:", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
+    const fsmElasticitySlider = createRangeRow("ds-fsm-elasticity", "elast:", { min: 0, max: 10, default: 0, step: 1 });
+    const fsmFollowSlider = createRangeRow("ds-fsm-follow", "follow:", ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay);
+    const fsmBaseSpeedSlider = createRangeRow("ds-fsm-base-speed", "speed:", ENEMY_LAB_BASIC_SETUP_LIMITS.baseSpeed);
     fsmFollowSlider.wrap.title = "Delay per group member in seconds. 0.00 s keeps members on the current anchor path.";
     fsmBaseSpeedSlider.wrap.title = "FSM preset base movement speed. State Speed × multiplies this value at runtime.";
     const fsmSpaceElasticRow = document.createElement("div");
@@ -1457,8 +1444,8 @@ export class DevSummoner {
     const refreshModeButtons = () => {
       enemyModeButton.type = "button";
       groupModeButton.type = "button";
-      enemyModeButton.textContent = "Single";
-      groupModeButton.textContent = "Group";
+      enemyModeButton.textContent = "SINGLE";
+      groupModeButton.textContent = "GROUP";
       enemyModeButton.setAttribute("aria-pressed", String(spawnMode === "enemy"));
       groupModeButton.setAttribute("aria-pressed", String(spawnMode === "group"));
       styleTextChoiceButton(enemyModeButton, spawnMode === "enemy");
@@ -1599,7 +1586,7 @@ export class DevSummoner {
     presetPanel.id = FSM_PRESET_EDITOR_ID;
     presetPanel.style.cssText = "display:flex;flex-direction:column;gap:3px;padding:0;background:transparent;font:12px monospace;overflow:visible;";
     const presetList = document.createElement("select");
-    applyNativeSelectStyle(presetList);
+    applyTextSelectStyle(presetList);
     const idInput = document.createElement("input"); idInput.placeholder = "preset id"; applyControlBaseStyle(idInput); idInput.style.width = "100%";
     const labelInput = document.createElement("input"); labelInput.placeholder = "label"; applyControlBaseStyle(labelInput); labelInput.style.width = "100%";
     const details = document.createElement("div"); details.style.cssText = "color:#ccc;line-height:1.35;white-space:pre-wrap;";
@@ -1639,7 +1626,9 @@ export class DevSummoner {
     statesSection.style.cssText = "display:flex;flex-direction:column;gap:4px;min-width:0;";
     const statesHeading = document.createElement("div");
     statesHeading.style.cssText = "display:flex;align-items:center;gap:2px;font-weight:bold;color:#fff;";
-    statesHeading.appendChild(Object.assign(document.createElement("span"), { textContent: "States" }));
+    const statesLabel = Object.assign(document.createElement("span"), { textContent: "states:" });
+    applyLabelTextStyle(statesLabel);
+    statesHeading.appendChild(statesLabel);
     const stateToolbar = document.createElement("div");
     stateToolbar.id = "ds-fsm-state-toolbar";
     stateToolbar.style.cssText = "display:flex;gap:1px;margin-left:auto;";
@@ -1676,23 +1665,23 @@ export class DevSummoner {
     selectedStateTitle.style.cssText = "color:#bfe3ff;font-weight:bold;";
     void selectedStateTitle;
     const behaviorBlock = document.createElement("label"); behaviorBlock.setAttribute("data-fsm-editor-block", "Behavior"); behaviorBlock.style.cssText = "display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px;align-items:center;";
-    behaviorBlock.appendChild(Object.assign(document.createElement("span"), { textContent: "Behavior:" }));
-    const movementPresetInput = document.createElement("select"); applyNativeSelectStyle(movementPresetInput); for (const id of Object.keys(EnemyBehaviorPresets).sort()) appendOption(movementPresetInput, id, id); behaviorBlock.appendChild(movementPresetInput); editorSection.appendChild(behaviorBlock);
+    const behaviorLabel = Object.assign(document.createElement("span"), { textContent: "behav:" }); applyLabelTextStyle(behaviorLabel); behaviorBlock.appendChild(behaviorLabel);
+    const movementPresetInput = document.createElement("select"); applyTextSelectStyle(movementPresetInput); for (const id of Object.keys(EnemyBehaviorPresets).sort()) appendOption(movementPresetInput, id, id); behaviorBlock.appendChild(movementPresetInput); editorSection.appendChild(behaviorBlock);
     const formationBlock = document.createElement("div"); formationBlock.setAttribute("data-fsm-editor-block", "Formation"); formationBlock.style.cssText = "display:flex;flex-direction:column;gap:3px;";
     const formationControls = document.createElement("div"); formationControls.id = "ds-fsm-state-formation-controls"; formationControls.style.cssText = "display:flex;flex-direction:column;gap:4px;"; formationBlock.appendChild(formationControls);
     const shapeButtons = document.createElement("div"); shapeButtons.id = "ds-fsm-state-shape-icons"; shapeButtons.style.cssText = "display:grid;grid-template-columns:repeat(5,1fr);gap:2px;"; formationControls.appendChild(shapeButtons);
     let selectedFormationShape: FormationId = "line.horizontal";
     const stateShapeButtons = ENEMY_GROUP_FORMATION_IDS.map((id) => { const b = document.createElement("button"); b.type = "button"; b.textContent = formationIconLabels[id].icon; b.title = id; b.setAttribute("aria-label", `State formation ${id}`); applyIconButtonStyle(b); b.addEventListener("click", () => { selectedFormationShape = id; const v = authoringModel.selectedStateView(); if (v) authoringModel.setLabFormationOverride(v.id, { ...v.formation, shape: id }); renderPresetEditor(); }); shapeButtons.appendChild(b); return { id, button: b }; });
-    const stateSpacingSlider = createRangeRow("ds-fsm-state-spacing", "Spacing", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
-    const stateElasticitySlider = createRangeRow("ds-fsm-state-elasticity", "Elasticity", { min: 0, max: 10, default: 0, step: 1 });
-    const stateFollowSlider = createRangeRow("ds-fsm-state-follow", "Follow", ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay);
-    const stateSpeedSlider = createRangeRow("ds-fsm-state-speed", "Speed ×", { min: 0.25, max: 3, default: 1, step: 0.05 });
+    const stateSpacingSlider = createRangeRow("ds-fsm-state-spacing", "spac:", { ...ENEMY_GROUP_PARAM_LIMITS.formation.spacing, step: 2 });
+    const stateElasticitySlider = createRangeRow("ds-fsm-state-elasticity", "elast:", { min: 0, max: 10, default: 0, step: 1 });
+    const stateFollowSlider = createRangeRow("ds-fsm-state-follow", "follow:", ENEMY_LAB_BASIC_SETUP_LIMITS.followDelay);
+    const stateSpeedSlider = createRangeRow("ds-fsm-state-speed", "speed:", { min: 0.25, max: 3, default: 1, step: 0.05 });
     stateFollowSlider.wrap.title = "Delay per group member in seconds for this state.";
     const stateSpaceElasticRow = document.createElement("div"); stateSpaceElasticRow.id = "ds-fsm-state-space-elast-row"; stateSpaceElasticRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px;"; stateSpaceElasticRow.appendChild(stateSpacingSlider.wrap); stateSpaceElasticRow.appendChild(stateElasticitySlider.wrap);
     const stateFollowSpeedRow = document.createElement("div"); stateFollowSpeedRow.id = "ds-fsm-state-follow-speed-row"; stateFollowSpeedRow.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px;"; stateFollowSpeedRow.appendChild(stateFollowSlider.wrap); stateFollowSpeedRow.appendChild(stateSpeedSlider.wrap);
     formationControls.appendChild(stateSpaceElasticRow); formationControls.appendChild(stateFollowSpeedRow); editorSection.appendChild(formationBlock);
-    const triggerBlock = document.createElement("div"); triggerBlock.setAttribute("data-fsm-editor-block", "Trigger"); triggerBlock.style.cssText = "display:flex;flex-direction:column;gap:3px;"; triggerBlock.appendChild(Object.assign(document.createElement("div"), { textContent: "Trigger:" }));
-    const triggerSelect = document.createElement("select"); applyNativeSelectStyle(triggerSelect); for (const [v,l] of [["never","Never"],["time","Time"],["screenXBelow","scrX"],["hit","Hit"]] as const) appendOption(triggerSelect, v, l); triggerBlock.appendChild(triggerSelect);
+    const triggerBlock = document.createElement("div"); triggerBlock.setAttribute("data-fsm-editor-block", "Trigger"); triggerBlock.style.cssText = "display:flex;flex-direction:column;gap:3px;"; const triggerLabel = Object.assign(document.createElement("div"), { textContent: "trigger:" }); applyLabelTextStyle(triggerLabel); triggerBlock.appendChild(triggerLabel);
+    const triggerSelect = document.createElement("select"); applyTextSelectStyle(triggerSelect); for (const [v,l] of [["never","Never"],["time","Time"],["screenXBelow","scrX"],["hit","Hit"]] as const) appendOption(triggerSelect, v, l); triggerBlock.appendChild(triggerSelect);
     const triggerParamWrap = document.createElement("div"); triggerParamWrap.style.cssText = "display:flex;flex-direction:column;gap:3px;"; triggerBlock.appendChild(triggerParamWrap);
         const makeTriggerStepper = (label: string, step: number, min: number, format: (n: number) => string, commit: (n: number) => void) => {
       let value = min;
@@ -1817,7 +1806,7 @@ ${d.states.join(", ")}` : "No preset selected";
       movementPresetInput.value = view?.behaviorPresetId ?? "none.hold"; movementPresetInput.disabled = authoringReadOnly || !view;
       const formation = view?.formation; formationControls.style.display = "flex";
       selectedFormationShape = ((formation?.shape as FormationId) || "line.horizontal");
-      for (const { id, button } of stateShapeButtons) { const active = id === selectedFormationShape; button.style.background = active ? "#2b5f8a" : "#111"; button.disabled = authoringReadOnly || !view; }
+      for (const { id, button } of stateShapeButtons) { const active = id === selectedFormationShape; styleTextChoiceButton(button, active, authoringReadOnly || !view); button.disabled = authoringReadOnly || !view; }
       stateSpacingSlider.setValue(formation?.spacing ?? 64); stateElasticitySlider.setValue(formation?.elasticity ?? 0); stateFollowSlider.setValue(formation?.followDelay ?? 0); stateSpeedSlider.setValue(formation?.speedMultiplier ?? 1);
       for (const el of [stateSpacingSlider.slider, stateElasticitySlider.slider, stateFollowSlider.slider, stateSpeedSlider.slider]) el.disabled = authoringReadOnly || !view;
       triggerSelect.value = view?.triggerType ?? "never"; triggerSelect.disabled = authoringReadOnly || !view || view.isLast;
@@ -1831,7 +1820,7 @@ ${d.states.join(", ")}` : "No preset selected";
       authoringDiagnostics.textContent = ad?.diagnostics.map((x) => `${x.severity.toUpperCase()} ${x.code} ${x.path}: ${x.message}`).join("\n") ?? "";
       runtimeDiagnosticsSection.style.display = runtimeDiagnosticsDockOpen ? "flex" : "none";
       runtimeDiagnosticsToggle.setAttribute("aria-pressed", String(runtimeDiagnosticsDockOpen));
-      runtimeDiagnosticsToggle.style.background = runtimeDiagnosticsDockOpen ? "#2b5f8a" : "transparent";
+      styleTextChoiceButton(runtimeDiagnosticsToggle, runtimeDiagnosticsDockOpen);
       statesAndDiagnosticsDock.style.gridTemplateColumns = "minmax(0,1fr)"; if (runtimeDiagnosticsDockOpen) positionRuntimeDiagnosticsPanel();
       dirtyBadge.textContent = authoringReadOnly ? "BUILT-IN / READ ONLY" : (ad?.dirty ? "DIRTY" : "Saved");
       const preview = previewSession.current();
@@ -1994,12 +1983,12 @@ ${d.states.join(", ")}` : "No preset selected";
     labPanel.id = ENEMY_LAB_DEBUG_PANEL_ID;
     labPanel.style.cssText = [
       "margin:0",
-      "padding:4px",
-      "background:rgba(255,255,255,0.06)",
-      "border:0px solid rgba(255,255,255,0.12)",
-      "border-radius:0px",
+      "padding:2px 0 0",
+      "background:transparent",
+      "border:0",
+      "border-radius:0",
       "font:12px monospace",
-      "line-height:2",
+      "line-height:1.2",
       "box-sizing:border-box"
     ].join(";");
     labPanel.textContent = EMPTY_ENEMY_LAB;
@@ -2049,7 +2038,7 @@ ${d.states.join(", ")}` : "No preset selected";
         groupMovement.setMovementClass("smart");
       } else {
         modeRow.style.display = "none";
-        applyNativeSelectStyle(enemySelect);
+        applyTextSelectStyle(enemySelect);
         refreshFsmSpawnSelect();
         if (!fsmPresetSection.contains(fsmSpawnSelect.root)) fsmPresetSection.appendChild(fsmSpawnSelect.root);
         if (!fsmTypeRow.contains(enemySelect)) fsmTypeRow.appendChild(enemySelect);
