@@ -39,9 +39,8 @@ assert.equal(projection.environmentLabels[0], "Starfield · seed 7 · density 0.
 assert.deepEqual(scene, beforeScene); assert.deepEqual(gameplay, beforeGameplay);
 assert.deepEqual(projectBackgroundV2Timeline(scene, gameplay, 1100), projection);
 const desert = projectBackgroundV2Timeline(createBackgroundV2DesertTestScene());
-assert.deepEqual(desert.lanes.find(lane => lane.id === "far")?.tracks.map(track => track.id), ["desert-sky", "desert-far"], "same-role Desert tracks share Far");
-assert.equal(desert.lanes.find(lane => lane.id === "far")?.tracks.find(track => track.id === "desert-sky")?.projectable, false, "fixed Desert sky remains represented without finite geometry");
-assert.deepEqual(desert.lanes.find(lane => lane.id === "far")?.tracks.find(track => track.id === "desert-sky")?.objects, [], "fixed Desert sky objects are not given fake world intervals");
+assert.deepEqual(desert.lanes.find(lane => lane.id === "far")?.tracks.map(track => track.id), ["desert-far"], "scene-global backdrop stays outside Far projection");
+assert.equal(desert.lanes.flatMap(lane => lane.tracks).some(track => track.id === "desert-sky"), false, "static backdrop has no timeline identity");
 assert.deepEqual(desert.lanes.find(lane => lane.id === "foreground")?.tracks.flatMap(track => track.objects).map(object => object.id), ["foreground-band"], "Desert foreground object projects into Foreground");
 const unavailable = projectBackgroundV2Timeline(scene, {}, 0);
 assert.equal(unavailable.gameplay.available, false);

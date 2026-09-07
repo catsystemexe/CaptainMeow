@@ -26,6 +26,7 @@ import { clearBackgroundSceneV2, loadBackgroundSceneV2, parseBackgroundSceneV2, 
 import { createPixelBgrDevWorkspaceShell, PIXEL_BGR_DEV_WORKSPACE_CSS, setPixelBgrWorkspaceDisplayMode, type PixelBgrDevWorkspaceRegions, type PixelBgrDisplayMode } from "./PixelBgrDevWorkspaceLayout";
 import { gamePresentationRect, type GamePresentationRect } from "./GamePresentationGeometry";
 import { SCENE_LAB_SCENE_CATALOG, type SceneLabCatalogEntry } from "./SceneLabSceneCatalog";
+import { setV2StaticBackdropEnabled } from "./PixelBgrV2StaticBackdropEditing";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -256,7 +257,13 @@ export class PixelBgrLabUI {
     const row=el("div","cm-scene-environment-row");
     row.append("Environment", " starfield", check(Boolean(starfield),enabled=>this.applyV2EnvironmentEdit(enabled?enableV2Starfield(scene):disableV2Starfield(scene))));
     if(starfield){const seed=num(starfield.seed,1,value=>this.applyV2EnvironmentEdit(updateV2Starfield(scene,{seed:value})));seed.title="Starfield seed";seed.setAttribute("aria-label","Starfield seed");const density=num(starfield.density,.05,value=>this.applyV2EnvironmentEdit(updateV2Starfield(scene,{density:value})));density.title="Starfield density";density.setAttribute("aria-label","Starfield density");row.append(seed,density,this.iconButton("Randomize starfield seed",RotateCcw,"RotateCcw",()=>{const values=new Uint32Array(1);crypto.getRandomValues(values);this.applyV2EnvironmentEdit(randomizeV2StarfieldSeed(scene,values[0]));}));}
-    p.append(row);
+    const backdropRow=el("div","cm-scene-environment-row");
+    const backdrop=scene.staticBackdrop;
+    backdropRow.append("Static Bgr");
+    const backdropEye=this.iconButton(backdrop?.enabled?"Hide Static Bgr":"Show Static Bgr",backdrop?.enabled?Eye:EyeOff,backdrop?.enabled?"Eye":"EyeOff",()=>{if(!backdrop)return;const result=setV2StaticBackdropEnabled(scene,!backdrop.enabled);if(result.ok)setBackgroundSceneV2(result.scene,globalThis);});
+    backdropEye.className="cm-v2-eye";backdropEye.disabled=!backdrop;backdropEye.setAttribute("aria-pressed",backdrop?.enabled?"true":"false");
+    backdropRow.append(backdropEye,backdrop?.asset.id??"unavailable");
+    p.append(row,backdropRow);
     if(this.message){const message=el("div","cm-pixel-msg");message.textContent=this.message;p.append(message);}return p;
   }
   private saveV2():void {const scene=getBackgroundSceneV2(globalThis);if(!scene)return;const result=saveBackgroundSceneV2(localStorage,scene);this.message=result.ok?`saved scene ${scene.id}`:`save failed: ${result.error}`;this.render();}

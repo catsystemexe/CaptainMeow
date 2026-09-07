@@ -7,7 +7,7 @@ import { activeBackgroundResourceKeys, backgroundTextureResourceKey, materialize
 
 const context = { playerWorldX: 15, cameraScrollX: 7, cameraScrollY: 3, viewportWidth: 25, viewportHeight: 25 };
 const shared = { id: "shared", url: " /assets//stars.png " };
-const scene: BackgroundSceneV2 = { version: 2, id: "commands", environment: {}, tracks: [
+const scene: BackgroundSceneV2 = { version: 2, id: "commands", environment: {}, staticBackdrop: { enabled: true, asset: { id: "backdrop", url: "/backdrop.png" }, x: 0, y: -20, opacity: 1, blend: "normal" }, tracks: [
   { id: "later", name: "later", role: "far", mode: "sequence", enabled: true, parallax: { x: 0, y: 0 }, zBase: 2, segments: [], objects: [{ id: "b", asset: shared, startTrackX: 2, y: 0, localZ: 0, opacity: 2, blend: "normal", enabled: true }] },
   { id: "first", name: "first", role: "near", mode: "sequence", enabled: true, parallax: { x: 0, y: 0 }, zBase: 1, segments: [], objects: [{ id: "a", asset: shared, startTrackX: 1, y: 0, width: 8, height: 9, localZ: 0, opacity: -1, blend: "additive", enabled: true }] },
   { id: "equal", name: "equal", role: "mid", mode: "sequence", enabled: true, parallax: { x: 0, y: 0 }, zBase: 2, segments: [], objects: [{ id: "c", asset: { id: "other", url: "/other.png" }, startTrackX: 3, y: 0, localZ: 0, opacity: 0.5, blend: "normal", enabled: true }] },
@@ -15,6 +15,8 @@ const scene: BackgroundSceneV2 = { version: 2, id: "commands", environment: {}, 
 ] };
 const before = JSON.stringify(scene);
 const commands = materializeBackgroundFrameCommands(evaluateBackgroundScene(scene, context), { playerWorldX: context.playerWorldX });
+assert(commands.staticBackdrop);
+assert.equal("sourceTrackId" in commands.staticBackdrop, false);
 assert.deepEqual(commands.behindGameplay.map((c) => c.sourceTrackId), ["first", "later", "equal"], "effective Z and evaluator equal-Z order are retained");
 assert.deepEqual(commands.foreground.map((c) => c.sourceTrackId), ["front"], "foreground remains physically separate");
 assert.equal(commands.behindGameplay[0].opacity, 0); assert.equal(commands.behindGameplay[1].opacity, 1);
@@ -24,7 +26,7 @@ assert.equal(backgroundTextureResourceKey(shared.url), backgroundTextureResource
 assert.deepEqual(resolveBackgroundCommandTiles(commands.behindGameplay[1], undefined, 25, 25), [], "native-size draw waits for metadata");
 assert.deepEqual(resolveBackgroundCommandTiles(commands.behindGameplay[0], undefined, 25, 25), [{ x: 1, y: 0, width: 8, height: 9 }], "explicit authored dimensions win");
 assert.deepEqual(commands.behindGameplay[0].clip, { x: 1, y: 0, width: 8, height: 9 }, "explicit object geometry establishes a rectangular clip");
-assert.deepEqual([...activeBackgroundResourceKeys([...commands.behindGameplay, ...commands.foreground])].sort(), ["url:/assets/stars.png", "url:/other.png"], "retention is deterministic and deduplicated");
+assert.deepEqual([...activeBackgroundResourceKeys([commands.staticBackdrop, ...commands.behindGameplay, ...commands.foreground])].sort(), ["url:/assets/stars.png", "url:/backdrop.png", "url:/other.png"], "retention includes the explicit backdrop and remains deterministic");
 assert.equal(JSON.stringify(scene), before, "source V2 scene is not mutated");
 
 const v1: BackgroundScene = { id: "compat", globalLayers: [{ id: "global", kind: "sprite", enabled: true, texture: { url: "/tile.png", filtering: "nearest" }, opacity: 0.6, blend: "normal", parallax: { x: 0, y: 0 }, offset: { x: 0, y: 0 }, repeat: { x: false, y: false } }], markers: [], chunks: [{ id: "chunk", startX: 10, length: 10, layers: [{ id: "xy", kind: "sprite", enabled: true, texture: { url: "/tile.png", filtering: "nearest" }, opacity: 1, blend: "normal", parallax: { x: 0, y: 0 }, offset: { x: 0, y: 0 }, repeat: { x: true, y: true } }], markers: [] }] };

@@ -1,5 +1,5 @@
 import type { BackgroundV1CompatibilityState } from "../../../bg/v2/BackgroundV1Adapter";
-import type { BackgroundRenderInstance, EvaluatedBackgroundFrame } from "../../../bg/v2/BackgroundV2Types";
+import type { BackgroundRenderInstance, EvaluatedBackgroundFrame, EvaluatedBackgroundStaticBackdrop } from "../../../bg/v2/BackgroundV2Types";
 import { clamp01, wrappedTileOrigins } from "../layers/backgroundLayerMath";
 
 export type BackgroundTextureResourceKey = string;
@@ -21,6 +21,18 @@ export interface BackgroundSpriteDrawCommand {
   repeat: { x: boolean; y: boolean };
   clip?: { x: number; y: number; width: number; height: number };
 }
+export interface BackgroundStaticBackdropDrawCommand {
+  resourceKey: BackgroundTextureResourceKey;
+  url: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  opacity: number;
+  blend: "normal" | "additive";
+  repeat: { x: false; y: false };
+}
+export type BackgroundV2DrawCommand = BackgroundSpriteDrawCommand | BackgroundStaticBackdropDrawCommand;
 
 export function normalizeBackgroundTextureUrl(url: string): string {
   const trimmed = url.trim().replace(/\\/g, "/");
@@ -77,14 +89,30 @@ export function materializeBackgroundCommands(
     .map((instance) => commandFor(instance, args.compatibility));
 }
 
-export function materializeBackgroundFrameCommands(frame: EvaluatedBackgroundFrame, args: { playerWorldX: number; compatibility?: BackgroundV1CompatibilityState }): { behindGameplay: BackgroundSpriteDrawCommand[]; foreground: BackgroundSpriteDrawCommand[] } {
+function materializeStaticBackdrop(backdrop: EvaluatedBackgroundStaticBackdrop | undefined): BackgroundStaticBackdropDrawCommand | undefined {
+  if (!backdrop) return undefined;
   return {
+    resourceKey: backgroundTextureResourceKey(backdrop.asset.url),
+    url: normalizeBackgroundTextureUrl(backdrop.asset.url),
+    x: backdrop.x,
+    y: backdrop.y,
+    width: backdrop.width,
+    height: backdrop.height,
+    opacity: clamp01(backdrop.opacity, 1),
+    blend: backdrop.blend,
+    repeat: { x: false, y: false },
+  };
+}
+
+export function materializeBackgroundFrameCommands(frame: EvaluatedBackgroundFrame, args: { playerWorldX: number; compatibility?: BackgroundV1CompatibilityState }): { staticBackdrop?: BackgroundStaticBackdropDrawCommand; behindGameplay: BackgroundSpriteDrawCommand[]; foreground: BackgroundSpriteDrawCommand[] } {
+  return {
+    staticBackdrop: materializeStaticBackdrop(frame.staticBackdrop),
     behindGameplay: materializeBackgroundCommands(frame.behindGameplay, args),
     foreground: materializeBackgroundCommands(frame.foreground, args),
   };
 }
 
-export function resolveBackgroundCommandTiles(command: BackgroundSpriteDrawCommand, metadata: BackgroundTextureMetadata | undefined, viewportWidth: number, viewportHeight: number): Array<{ x: number; y: number; width: number; height: number }> {
+export function resolveBackgroundCommandTiles(command: BackgroundV2DrawCommand, metadata: BackgroundTextureMetadata | undefined, viewportWidth: number, viewportHeight: number): Array<{ x: number; y: number; width: number; height: number }> {
   const width = command.width ?? metadata?.width;
   const height = command.height ?? metadata?.height;
   if (!width || !height || width <= 0 || height <= 0) return [];
@@ -93,6 +121,6 @@ export function resolveBackgroundCommandTiles(command: BackgroundSpriteDrawComma
   return ys.flatMap((y) => xs.map((x) => ({ x, y, width, height })));
 }
 
-export function activeBackgroundResourceKeys(commands: readonly BackgroundSpriteDrawCommand[]): Set<BackgroundTextureResourceKey> {
+export function activeBackgroundResourceKeys(commands: readonly BackgroundV2DrawCommand[]): Set<BackgroundTextureResourceKey> {
   return new Set(commands.map((command) => command.resourceKey));
 }

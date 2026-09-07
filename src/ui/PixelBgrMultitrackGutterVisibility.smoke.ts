@@ -20,7 +20,7 @@ assert.match(cssRule(ui, ".cm-v2-panel"), /width:100%/, "timeline content begins
 const projection = projectBackgroundV2Timeline(createBackgroundV2DesertTestScene());
 assert.deepEqual(projection.lanes.map(lane => lane.label), ["Front", "Near", "Mid", "Far"], "all canonical gutter roles are present");
 assert.match(ui, /gutterRow\.append\(label,eye,parallax\)/, "each role keeps label, eye, parallax order");
-assert.match(ui, /lane\.tracks\.length>1[\s\S]*?row\.appendChild\(trackSelect\)/, "the Far multi-track selector remains in its timeline lane");
-assert.equal(projection.lanes.find(lane => lane.label === "Far")?.tracks.length, 2, "the fixture exercises the Far selector");
+assert.match(ui, /lane\.tracks\.length>1[\s\S]*?row\.appendChild\(trackSelect\)/, "selectors remain conditional on genuinely multitrack lanes");
+assert.equal(projection.lanes.find(lane => lane.label === "Far")?.tracks.length, 1, "Desert no longer creates a selector for its single Far track");
 
 console.log("[SMOKE] PixelBgrMultitrackGutterVisibility OK ✅");

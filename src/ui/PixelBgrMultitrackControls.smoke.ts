@@ -11,14 +11,14 @@ const desert = createBackgroundV2DesertTestScene();
 const projection = projectBackgroundV2Timeline(desert);
 assert.deepEqual(projection.lanes.map((lane) => lane.label), ["Front", "Near", "Mid", "Far"], "all canonical gutter role labels remain present");
 const far = projection.lanes.find(lane => lane.id === "far")!;
-assert.deepEqual(far.tracks.map(track => track.id), ["desert-sky", "desert-far"], "Far represents both Desert tracks");
+assert.deepEqual(far.tracks.map(track => track.id), ["desert-far"], "Far contains only moving Desert content");
 assert.equal(v2RoleVisibility(far.tracks), "all", "eye state derives as all enabled");
-const mixed = setV2RoleTracksEnabled(desert, ["desert-sky"], false);
-assert.equal(v2RoleVisibility(projectBackgroundV2Timeline(mixed).lanes.find(lane => lane.id === "far")!.tracks), "mixed", "mixed enabled values remain distinguishable");
+const mixed = setV2RoleTracksEnabled(desert, ["desert-far"], false);
+assert.equal(v2RoleVisibility(projectBackgroundV2Timeline(mixed).lanes.find(lane => lane.id === "far")!.tracks), "none", "single Far track visibility remains authoritative");
 const enabled = setV2RoleTracksEnabled(mixed, far.tracks.map(track => track.id), true);
 assert.equal(v2RoleVisibility(projectBackgroundV2Timeline(enabled).lanes.find(lane => lane.id === "far")!.tracks), "all", "mixed click policy can enable every represented track");
 assert(enabled.tracks.filter(track => track.role === "far").every(track => track.enabled), "mutation writes BackgroundTrack.enabled for every Far track");
-assert.equal(mixed.tracks.find(track => track.id === "desert-far")?.enabled, true, "derivation does not silently normalize other tracks");
+assert.equal(mixed.tracks.find(track => track.id === "desert-far")?.enabled, false, "edit writes only the requested Far track");
 
 assert.deepEqual(PIXEL_BGR_TIMELINE_ZOOM_LEVELS, [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2], "zoom supports deep overview authoring scales");
 const scale1 = createExactTimelineScale(0, 1000, 1000, 1);

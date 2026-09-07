@@ -1117,7 +1117,7 @@ export class WebGLSceneRenderer {
       : null;
     const v2Commands = v2Frame
       ? materializeBackgroundFrameCommands(v2Frame, { playerWorldX: levelX })
-      : { behindGameplay: [] as BackgroundSpriteDrawCommand[], foreground: [] as BackgroundSpriteDrawCommand[] };
+      : { staticBackdrop: undefined, behindGameplay: [] as BackgroundSpriteDrawCommand[], foreground: [] as BackgroundSpriteDrawCommand[] };
     const resetSerial = consumeBackgroundMarkerRuntimeReset(globalThis);
     if (resetSerial !== this.seenMarkerResetSerial) {
       this.seenMarkerResetSerial = resetSerial;
@@ -1151,6 +1151,7 @@ export class WebGLSceneRenderer {
     if (sceneV2 && backgroundState?.enabled) {
       this.spriteBackground.retainLayerIds(new Set());
       this.starfieldBackgroundV2.draw(v2Frame?.environment.starfield, { logicW: this.logicW, logicH: this.logicH }, this.prog, this.vao, { logic: this.uLogic, pos: this.uPos, size: this.uSize, color: this.uColor });
+      if (v2Commands.staticBackdrop) this.spriteBackgroundV2.draw([v2Commands.staticBackdrop], { logicW: this.logicW, logicH: this.logicH });
       this.spriteBackgroundV2.draw(v2Commands.behindGameplay, { logicW: this.logicW, logicH: this.logicH });
     } else if (selectBackgroundFallback(backgroundState) === "layers") {
       this.drawBackgroundLayers(resolveBackgroundLayers({ enabled: true, source: { kind: "layers", layers } }), tSec, sx, sy);
@@ -1719,7 +1720,7 @@ export class WebGLSceneRenderer {
     this.drawDebugCollisionRings(debugCollisionCircles);
 
     this.spriteBackgroundV2.draw(v2Commands.foreground, { logicW: this.logicW, logicH: this.logicH });
-    this.spriteBackgroundV2.retainCommands([...v2Commands.behindGameplay, ...v2Commands.foreground]);
+    this.spriteBackgroundV2.retainCommands([...(v2Commands.staticBackdrop ? [v2Commands.staticBackdrop] : []), ...v2Commands.behindGameplay, ...v2Commands.foreground]);
     gl.bindVertexArray(null);
   }
 // --- BG flow disturbances: blast/hit ripples that perturb the flow field ---

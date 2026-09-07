@@ -92,6 +92,15 @@ export function evaluateBackgroundScene(
   });
 
   return {
+    staticBackdrop: scene.staticBackdrop?.enabled ? {
+      asset: { ...scene.staticBackdrop.asset },
+      x: scene.staticBackdrop.x,
+      y: scene.staticBackdrop.y,
+      width: scene.staticBackdrop.width,
+      height: scene.staticBackdrop.height,
+      opacity: scene.staticBackdrop.opacity,
+      blend: scene.staticBackdrop.blend,
+    } : undefined,
     behindGameplay: behindGameplay.sort(compareInstances).map(({ instance }) => instance),
     foreground: foreground.sort(compareInstances).map(({ instance }) => instance),
     environment: {

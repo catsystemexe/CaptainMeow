@@ -17,7 +17,7 @@ export function validateBackgroundSceneV2(value: unknown): BackgroundV2Validatio
   const errors: BackgroundV2ValidationIssue[] = [];
   const issue = (path: string, message: string) => errors.push({ path, message });
   if (!object(value)) return { valid: false, errors: [{ path: "scene", message: "must be an object" }] };
-  rejectUnknown(value, ["version", "id", "environment", "tracks"], "", issue);
+  rejectUnknown(value, ["version", "id", "environment", "staticBackdrop", "tracks"], "", issue);
   if (value.version !== 2) issue("version", "must equal 2 (V1 is not imported automatically)");
   if (!nonEmpty(value.id)) issue("id", "must be a non-empty string");
   if (!object(value.environment)) issue("environment", "must be an object");
@@ -31,6 +31,20 @@ export function validateBackgroundSceneV2(value: unknown): BackgroundV2Validatio
       if (!result.ok) issue("environment.starfield", result.error);
       rejectUnknown(sf, ["seed", "density"], "environment.starfield", issue);
     }
+    }
+  }
+  if (value.staticBackdrop !== undefined) {
+    const backdrop = value.staticBackdrop;
+    if (!object(backdrop)) issue("staticBackdrop", "must be an object");
+    else {
+      rejectUnknown(backdrop, ["enabled", "asset", "x", "y", "width", "height", "opacity", "blend"], "staticBackdrop", issue);
+      if (typeof backdrop.enabled !== "boolean") issue("staticBackdrop.enabled", "must be boolean");
+      if (!object(backdrop.asset) || !nonEmpty(backdrop.asset.id) || !nonEmpty(backdrop.asset.url)) issue("staticBackdrop.asset", "id and url must be non-empty strings");
+      else rejectUnknown(backdrop.asset, ["id", "url"], "staticBackdrop.asset", issue);
+      for (const key of ["x", "y"]) if (!finite(backdrop[key])) issue(`staticBackdrop.${key}`, "must be finite");
+      for (const key of ["width", "height"]) if (backdrop[key] !== undefined && (!finite(backdrop[key]) || (backdrop[key] as number) < 0)) issue(`staticBackdrop.${key}`, "must be a finite non-negative number when present");
+      if (!finite(backdrop.opacity) || backdrop.opacity < 0 || backdrop.opacity > 1) issue("staticBackdrop.opacity", "must be between 0 and 1");
+      if (!blends.has(String(backdrop.blend))) issue("staticBackdrop.blend", "is invalid");
     }
   }
   if (!Array.isArray(value.tracks)) issue("tracks", "must be an array");

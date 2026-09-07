@@ -1,4 +1,4 @@
-import { activeBackgroundResourceKeys, resolveBackgroundCommandTiles, type BackgroundSpriteDrawCommand, type BackgroundTextureResourceKey } from "./BackgroundV2RenderCommands";
+import { activeBackgroundResourceKeys, resolveBackgroundCommandTiles, type BackgroundV2DrawCommand, type BackgroundTextureResourceKey } from "./BackgroundV2RenderCommands";
 
 type Resource = { url: string; texture: WebGLTexture; state: "loading" | "ready" | "error"; width: number; height: number; generation: number; warned?: boolean };
 export type BackgroundV2TextureInfo = { resourceKey: string; url: string; state: Resource["state"]; width: number; height: number; generation: number };
@@ -31,7 +31,7 @@ export class BackgroundV2SpriteRenderer {
     gl.bindVertexArray(null); gl.bindBuffer(gl.ARRAY_BUFFER, null);
   }
 
-  draw(commands: readonly BackgroundSpriteDrawCommand[], args: { logicW: number; logicH: number }): void {
+  draw(commands: readonly BackgroundV2DrawCommand[], args: { logicW: number; logicH: number }): void {
     for (const command of commands) {
       const resource = this.ensureResource(command.resourceKey, command.url);
       if (resource.state !== "ready") {
@@ -44,7 +44,7 @@ export class BackgroundV2SpriteRenderer {
       gl.useProgram(this.program); gl.bindVertexArray(this.vao); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, resource.texture);
       gl.uniform1i(this.uTexture, 0); gl.uniform2f(this.uLogic, args.logicW, args.logicH); gl.uniform1f(this.uOpacity, command.opacity);
       gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, command.blend === "additive" ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA);
-      if (command.clip) {
+      if ("clip" in command && command.clip) {
         const height = Number.isFinite(command.clip.height) ? command.clip.height : args.logicH;
         gl.enable(gl.SCISSOR_TEST);
         gl.scissor(Math.floor(command.clip.x), Math.floor(args.logicH - command.clip.y - height), Math.ceil(command.clip.width), Math.ceil(height));
@@ -52,7 +52,7 @@ export class BackgroundV2SpriteRenderer {
       for (const tile of tiles) {
         gl.uniform2f(this.uPos, tile.x + tile.width / 2, tile.y + tile.height / 2); gl.uniform2f(this.uSize, tile.width, tile.height); gl.drawArrays(gl.TRIANGLES, 0, 6);
       }
-      if (command.clip) gl.disable(gl.SCISSOR_TEST);
+      if ("clip" in command && command.clip) gl.disable(gl.SCISSOR_TEST);
       gl.disable(gl.BLEND); gl.bindTexture(gl.TEXTURE_2D, null); gl.bindVertexArray(null);
     }
   }
@@ -60,7 +60,7 @@ export class BackgroundV2SpriteRenderer {
   retainResources(keys: Set<BackgroundTextureResourceKey>): void {
     for (const [key, resource] of this.resources) if (!keys.has(key)) { this.gl.deleteTexture(resource.texture); this.resources.delete(key); }
   }
-  retainCommands(commands: readonly BackgroundSpriteDrawCommand[]): void { this.retainResources(activeBackgroundResourceKeys(commands)); }
+  retainCommands(commands: readonly BackgroundV2DrawCommand[]): void { this.retainResources(activeBackgroundResourceKeys(commands)); }
   getTextureInfoSnapshot(): Record<string, BackgroundV2TextureInfo> {
     const snapshot: Record<string, BackgroundV2TextureInfo> = {};
     for (const [resourceKey, resource] of this.resources) snapshot[resourceKey] = { resourceKey, url: resource.url, state: resource.state, width: resource.width, height: resource.height, generation: resource.generation };
