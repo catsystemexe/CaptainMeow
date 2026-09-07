@@ -47,7 +47,7 @@ assert.equal(unavailable.gameplay.available, false);
 assert.deepEqual(unavailable.gameplay.ranges, []);
 assert.equal(shouldApplyPixelBgrV1Draft({ enabled: true, source: { kind: "scene-v2", scene } }), false, "active V2 prevents V1 draft application");
 assert.equal(shouldApplyPixelBgrV1Draft({ enabled: true, source: { kind: "scene", scene: { id: "v1", globalLayers: [], chunks: [] } } }), true, "V1 keeps existing draft application");
-assert.equal(shouldApplyPixelBgrV1Draft(null), true, "empty state keeps existing V1 draft application");
+assert.equal(shouldApplyPixelBgrV1Draft(null), false, "empty startup state does not activate a V1 draft");
 const uiSource=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
 assert.match(uiSource,/if \(shouldApplyPixelBgrV1Draft\(activeState\)\) this\.applyIfValid\(\)/,"constructor gates V1 application before replacing active state");
 assert.match(uiSource,/getBackgroundSceneV2\(globalThis\)/,"render path detects the current typed V2 source");
