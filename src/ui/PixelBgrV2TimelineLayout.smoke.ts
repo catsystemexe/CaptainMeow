@@ -7,7 +7,7 @@ const cssRule = (selector: string): string => source.match(new RegExp(`${selecto
 
 const workspaceRule = cssRule(".cm-v2-workspace");
 assert.match(workspaceRule, /flex:1 1 auto;min-height:0/, "the V2 inspector workspace is bounded by the right region");
-assert.match(workspaceRule, /overflow-x:hidden;overflow-y:auto/, "one workspace owns vertical scrolling without adding horizontal overflow");
+assert.match(workspaceRule, /overflow:visible/, "the V2 inspector delegates scrolling to the unchanged outer right dock");
 
 const panelRule = cssRule(".cm-v2-panel");
 assert.match(panelRule, /flex:1 0 auto;min-width:0;overflow:visible;display:flex;flex-direction:column/, "the compact timeline panel does not require a vertical scroll owner");
@@ -19,7 +19,7 @@ assert.match(scrollRule, /overflow-x:auto;overflow-y:hidden/, "the dedicated tim
 
 const mountedScrollRule = cssRule(".cm-bgr-workspace-timeline .cm-v2-timeline-scroll");
 assert.match(mountedScrollRule, /flex:0 0 auto;min-height:0/, "timeline lane content keeps its compact authored height");
-assert.match(layoutSource, /data-timeline-mode="v2"[\s\S]*?grid-template-rows: minmax\(0, 1fr\) 149px;/, "V2 mode retains its exact compact timeline band");
+assert.match(layoutSource, /data-timeline-mode="v2"[\s\S]*?\.cm-bgr-workspace-center[\s\S]*?grid-template-rows: minmax\(0, 1fr\) 149px;/, "V2 mode retains its exact compact timeline band in the center");
 assert.match(layoutSource, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-y: hidden;/, "the standard four-role timeline has no vertical scroll dependency");
 
 const timelineRule = cssRule(".cm-v2-timeline");
@@ -41,9 +41,8 @@ assert.match(source, /cm-v2-segment-handle left[\s\S]*?beginV2SegmentDrag\(e,tra
 assert.match(source, /cm-v2-segment-handle right[\s\S]*?beginV2SegmentDrag\(e,track\.id,segment\.id,"resize-right",scale\)/, "right resize handles retain their edit event wiring");
 
 const timelineMount = source.indexOf("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))");
-const inspectorCreation = source.indexOf('const inspector=el("div","cm-v2-workspace")', timelineMount);
-const inspectorAppend = source.indexOf("inspector.appendChild(this.renderV2Inspector(v2Scene,projection.bounds))", inspectorCreation);
-assert.ok(timelineMount >= 0 && inspectorCreation > timelineMount && inspectorAppend > inspectorCreation, "timeline and inspector render from one Lab owner into their dedicated regions");
+const leftComposition = source.indexOf("this.root.append(this.renderV2Toolbar()", timelineMount);
+assert.ok(timelineMount >= 0 && leftComposition > timelineMount, "timeline and left-side tools render from one Lab owner into their dedicated regions");
 
 const timelineWidth = source.indexOf("timeline.style.width=`${widthPx}px`");
 const horizontalViewport = source.indexOf("scroll.appendChild(timeline)", timelineWidth);

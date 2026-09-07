@@ -20,7 +20,7 @@ const ui = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 assert.match(ui, /this\.workspace\.viewport\.getBoundingClientRect\(\)/, "DEV geometry is read from the center workspace region");
 assert.match(ui, /new ResizeObserver\(\(\) => this\.notifyPresentationChange\(\)\)/, "workspace geometry changes request presentation synchronization without polling");
 assert.match(ui, /if \(changed\) this\.notifyPresentationChange\(\)/, "GAME/DEV changes request presentation synchronization");
-assert.match(ui, /this\.workspace\.timeline\.appendChild\(disabledTimeline\)/, "non-V2 scenes retain a disabled timeline surface");
+assert.doesNotMatch(ui, /Timeline unavailable for this scene format/, "non-V2 scenes do not reserve or render a disabled timeline band");
 assert.equal(ui.match(/this\.workspace\.timeline\.appendChild\(this\.renderV2Timeline\(projection\)\)/g)?.length, 1, "V2 scenes keep exactly one timeline renderer");
 
 console.log("Game presentation geometry smoke passed");
