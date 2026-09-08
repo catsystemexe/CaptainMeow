@@ -3,6 +3,33 @@ import { readFileSync } from "node:fs";
 import { getHudWeaponLevels } from "./HUDArcade";
 
 const hudSource = readFileSync(new URL("./HUDArcade.ts", import.meta.url), "utf8");
+for (const obsoleteOuterScaling of [
+  "scaleHud",
+  "window.innerWidth / 1280",
+  "window.innerHeight / 720",
+  "layer.style.transform =",
+]) {
+  assert(!hudSource.includes(obsoleteOuterScaling), `${obsoleteOuterScaling} outer scaling is removed`);
+}
+for (const rectAssignment of ["left = `${x}px`", "top = `${y}px`", "width = `${w}px`", "height = `${h}px`"]) {
+  assert(hudSource.includes(`refs.layer.style.${rectAssignment}`), `setRect assigns ${rectAssignment}`);
+}
+for (const sizeConstant of [
+  "const EDGE_INSET_X = 7",
+  "const EDGE_INSET_Y = 6",
+  "const LABEL_FONT_SIZE = 10",
+  "const WEAPON_TEXT_SIZE = 10",
+  "width:14px;height:11px",
+  "font-size:19px",
+  "font-size:13px",
+  "width:17px;height:9px",
+  "width:29px;height:4px",
+  "height:19px",
+  "height:14px",
+  "font-size:9px",
+]) {
+  assert(hudSource.includes(sizeConstant), `${sizeConstant} approved HUD sizing remains present`);
+}
 for (const frameAsset of ["energy_icon.png", "score_icon.png", "wave_icon.png", "w_icon_box.png"]) {
   assert(!hudSource.includes(frameAsset), `${frameAsset} is not referenced by the active HUD`);
 }

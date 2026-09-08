@@ -204,16 +204,6 @@ export function createHUDArcade(root: HTMLElement) {
     `font-family:${LABEL_FONT};text-shadow:0 0 6px rgba(0,255,238,0.35),0 2px 0 rgba(0,0,0,0.7);`;
   root.appendChild(layer);
 
-  layer.style.transformOrigin = "top left";
-  function scaleHud() {
-    const scaleX = window.innerWidth / 1280;
-    const scaleY = window.innerHeight / 720;
-    const scale = Math.min(scaleX, scaleY, 1.0);
-    layer.style.transform = `scale(${scale})`;
-  }
-  window.addEventListener("resize", scaleHud);
-  scaleHud();
-
   // ---- HUD blocks container (toggled by mode) ----
   const panel = mkChild(layer, "hudPanel", "position:absolute;inset:0;z-index:3;");
 
