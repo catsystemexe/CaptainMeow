@@ -1,0 +1,26 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createDefaultHudFxLabState, HUD_FX_LAB_STORAGE_KEY, loadHudFxLabState, normalizeHudFxLabState, saveHudFxLabState, selectHudFxEvent, toggleHudFx, updateHudFxIntensity } from "./HudFxLabState";
+
+const defaults = createDefaultHudFxLabState();
+assert.equal(defaults.selectedEvent, "score");
+assert.equal(defaults.events.score.pop.enabled, false);
+assert.equal(defaults.events.bomb.snap.intensity, 0.5);
+assert.equal(selectHudFxEvent(defaults, "stale").selectedEvent, "score");
+const toggled = toggleHudFx(selectHudFxEvent(defaults, "hit"), "shake");
+assert.equal(toggled.events.hit.shake.enabled, true);
+assert.equal(toggled.events.score.shake.enabled, false);
+assert.equal(updateHudFxIntensity(toggled, "shake", 4).events.hit.shake.intensity, 1);
+assert.equal(updateHudFxIntensity(toggled, "shake", -2).events.hit.shake.intensity, 0);
+const values = new Map<string, string>();
+const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
+saveHudFxLabState(storage, toggled);
+assert.deepEqual(loadHudFxLabState(storage), toggled);
+values.set(HUD_FX_LAB_STORAGE_KEY, "{bad json");
+assert.deepEqual(loadHudFxLabState(storage), defaults);
+assert.deepEqual(normalizeHudFxLabState({ selectedEvent: "wave", events: { wave: { pop: { enabled: true, intensity: 9 }, future: {} }, future: {} } }).events.wave.pop, { enabled: true, intensity: 1 });
+assert.deepEqual(createDefaultHudFxLabState(), defaults, "reset produces complete defaults");
+const uiSource = readFileSync(new URL("./HudFxLabUI.ts", import.meta.url), "utf8");
+assert.match(uiSource, /slider\.addEventListener\("input", \(\) => commitWithoutRender\(/, "slider input persists without replacing the actively dragged control");
+assert.match(uiSource, /const commitAndRender = .*commitWithoutRender\(next\); render\(\);/, "structural controls still persist and rerender");
+console.log("HudFxLab state smoke passed");
