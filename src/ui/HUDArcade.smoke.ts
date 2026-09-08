@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
-import { getHudWeaponLevels } from "./HUDArcade";
+import { createHudScorePopController, getHudWeaponLevels, isHudScoreIncrease } from "./HUDArcade";
 
 const hudSource = readFileSync(new URL("./HUDArcade.ts", import.meta.url), "utf8");
 for (const obsoleteOuterScaling of [
@@ -43,6 +43,30 @@ for (const label of ["W1", "W2", "B"]) {
 assert(hudSource.includes("Array.from({ length: 6 }"), "six energy segments are constructed once");
 assert(hudSource.includes("refs.energySegments.length"), "persistent energy segments are updated individually");
 assert(!hudSource.includes("refs.energy.innerHTML"), "energy updates do not rebuild segment markup");
+assert.equal(isHudScoreIncrease(undefined, 100), false, "first score establishes a baseline");
+assert.equal(isHudScoreIncrease(100, 100), false, "unchanged score does not trigger");
+assert.equal(isHudScoreIncrease(100, 110), true, "score increase triggers");
+assert.equal(isHudScoreIncrease(110, 0), false, "score reset does not trigger");
+
+{
+  const animations: Array<{ cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = [];
+  const scoreNode = {
+    animate: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
+      const animation = { cancelCalls: 0, keyframes, options, cancel() { this.cancelCalls++; } };
+      animations.push(animation);
+      return animation as unknown as Animation;
+    },
+  };
+  const pop = createHudScorePopController(scoreNode);
+  pop.trigger(0.5);
+  pop.trigger(1);
+  assert.equal(animations.length, 2, "retrigger starts a fresh POP immediately");
+  assert.equal(animations[0].cancelCalls, 1, "retrigger cancels the prior POP");
+  assert.equal(animations[1].keyframes.at(-1)?.transform, "scale(1, 1)", "POP settles to its transform baseline");
+  assert.equal(animations[1].keyframes.at(-1)?.filter, "brightness(1)", "POP settles to its brightness baseline");
+}
+assert.match(hudSource, /score\.style\.transformOrigin = "right center"/, "stable score node owns the POP origin");
+assert.match(hudSource, /loadHudFxLabState\(localStorage\)\.events\.score\.pop/, "real score events read SCORE POP independent of editor selection");
 
 {
   const levels = getHudWeaponLevels({

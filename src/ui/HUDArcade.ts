@@ -7,6 +7,9 @@
 // overlay + glow here instead. Truly compositing the HUD under PostFX would
 // require rendering it into the WebGL pipeline (out of scope for this pass).
 
+import { loadHudFxLabState } from "../dev/HudFxLabState";
+import { setHudFxPreviewHandler } from "../dev/HudFxPreviewBridge";
+
 type HudRefs = {
   layer: HTMLDivElement;
   panel: HTMLDivElement;
@@ -59,6 +62,37 @@ const WEAPON_TEXT_SIZE = 10;
 const COL_CYAN = "#00ffee";
 
 export type HudWeaponLevels = { w1Level: number; w2Level: number; w1Label: string; w2Label: string };
+
+export function isHudScoreIncrease(previousScore: number | undefined, currentScore: number): boolean {
+  return previousScore !== undefined && currentScore > previousScore;
+}
+
+export function createHudScorePopController(scoreNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      activeAnimation?.cancel();
+      activeAnimation = scoreNode.animate([
+        { transform: "scale(1, 1)", filter: "brightness(1)", textShadow: `0 0 8px ${COL_CYAN}`, offset: 0 },
+        {
+          transform: `scale(${1 + 0.4 * amount}, ${1 + 0.25 * amount})`,
+          filter: `brightness(${1 + 0.8 * amount})`,
+          textShadow: `0 0 ${8 + 10 * amount}px ${COL_CYAN}`,
+          offset: 0.3,
+        },
+        {
+          transform: `scale(${1 - 0.05 * amount}, ${1 + 0.08 * amount})`,
+          filter: `brightness(${1 + 0.15 * amount})`,
+          textShadow: `0 0 ${8 + 2 * amount}px ${COL_CYAN}`,
+          offset: 0.6,
+        },
+        { transform: "scale(1, 1)", filter: "brightness(1)", textShadow: `0 0 8px ${COL_CYAN}`, offset: 1 },
+      ], { duration: 140 + 140 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
 
 function readHudLevel(slot: WeaponSlotHudLike | undefined): number {
   const n = Number(slot?.level ?? 1);
@@ -178,6 +212,7 @@ function drawW2(
 export function createHUDArcade(root: HTMLElement) {
   let mode: HudMode = "PLAY";
   let iconPhase = 0;
+  let previousScore: number | undefined;
 
   // one-time keyframes/styles for the CRT-ish HUD overlay + rainbow cooldown
   if (!document.getElementById("hudArcadeStyles")) {
@@ -246,6 +281,11 @@ export function createHUDArcade(root: HTMLElement) {
       `color:#ffffff;text-shadow:0 0 8px ${COL_CYAN};`,
   );
   score.className = "hud-value hud-score-value";
+  score.style.transformOrigin = "right center";
+  const scorePop = createHudScorePopController(score);
+  setHudFxPreviewHandler((request) => {
+    if (request.eventId === "score" && request.effectId === "pop") scorePop.trigger(request.intensity);
+  });
 
   // ===== WAVE block (top-center) =====
   const waveBlock = mkChild(
@@ -419,7 +459,13 @@ export function createHUDArcade(root: HTMLElement) {
 
       // wave / score numbers drawn into their pre-styled overlay divs
       refs.wave.textContent = waveText ?? String((s.wave ?? 0) | 0).padStart(2, "0");
-      refs.score.textContent = String(Math.floor(s.score ?? 0)).padStart(6, "0");
+      const currentScore = Number(s.score ?? 0);
+      refs.score.textContent = String(Math.floor(currentScore)).padStart(6, "0");
+      if (isHudScoreIncrease(previousScore, currentScore)) {
+        const pop = loadHudFxLabState(localStorage).events.score.pop;
+        if (pop.enabled) scorePop.trigger(pop.intensity);
+      }
+      previousScore = currentScore;
 
       // Energy segments are persistent DOM primitives; updates only change state.
       const energyVal = p.energy ?? 0;
