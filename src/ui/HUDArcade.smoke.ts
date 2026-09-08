@@ -1,5 +1,21 @@
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
 import { getHudWeaponLevels } from "./HUDArcade";
+
+const hudSource = readFileSync(new URL("./HUDArcade.ts", import.meta.url), "utf8");
+for (const frameAsset of ["energy_icon.png", "score_icon.png", "wave_icon.png", "w_icon_box.png"]) {
+  assert(!hudSource.includes(frameAsset), `${frameAsset} is not referenced by the active HUD`);
+}
+assert(!hudSource.includes("function mkFrame"), "the obsolete frame helper is removed");
+for (const label of ['"ENERGY"', '"WAVE"', '"SCORE"']) {
+  assert(hudSource.includes(`textContent = ${label}`), `${label} is an explicit DOM label`);
+}
+for (const label of ["W1", "W2", "B"]) {
+  assert(hudSource.includes(`, "${label}");`), `${label} is an explicit weapon-group label`);
+}
+assert(hudSource.includes("Array.from({ length: 6 }"), "six energy segments are constructed once");
+assert(hudSource.includes("refs.energySegments.length"), "persistent energy segments are updated individually");
+assert(!hudSource.includes("refs.energy.innerHTML"), "energy updates do not rebuild segment markup");
 
 {
   const levels = getHudWeaponLevels({

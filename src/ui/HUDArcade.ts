@@ -11,9 +11,9 @@ type HudRefs = {
   layer: HTMLDivElement;
   panel: HTMLDivElement;
   lives: HTMLDivElement;
+  energySegments: HTMLDivElement[];
   wave: HTMLDivElement;
   score: HTMLDivElement;
-  energy: HTMLDivElement;
   w1: HTMLCanvasElement;
   w2: HTMLCanvasElement;
   w1Level: HTMLDivElement;
@@ -211,75 +211,85 @@ export function createHUDArcade(root: HTMLElement) {
   scaleHud();
 
   // ---- HUD blocks container (toggled by mode) ----
-  // Each block = a PNG frame (defines the box) with dynamic content overlaid
-  // absolutely inside it. Pixel offsets below are estimates, tuned to the art.
   const panel = mkChild(layer, "hudPanel", "position:absolute;inset:0;z-index:3;");
-
-  // A PNG-framed container: the <img> sets the size (height fixed, width auto
-  // from the PNG's intrinsic ratio); overlays position against this box.
-  function mkFrame(parent: HTMLElement, id: string, src: string, heightPx: number): HTMLDivElement {
-    const frame = mkChild(parent, id, "position:relative;display:inline-block;line-height:0;");
-    const img = document.createElement("img");
-    img.src = src;
-    img.style.cssText =
-      `height:${heightPx}px;width:auto;display:block;filter:drop-shadow(0 0 4px ${COL_CYAN});`;
-    img.onerror = () => { img.style.display = "none"; };
-    frame.appendChild(img);
-    return frame;
-  }
 
   // ===== ENERGY block (top-left) =====
   const energyBlock = mkChild(panel, "hudEnergyBlock", "position:absolute;left:10px;top:8px;");
-  const energyFrame = mkFrame(energyBlock, "hudEnergyFrame", "/ui/energy_icon.png", 66);
+  energyBlock.className = "hud-block hud-energy-block";
+  const energyLabel = mkChild(energyBlock, "hudEnergyLabel", `font-size:8px;letter-spacing:1.5px;color:${COL_CYAN};`);
+  energyLabel.className = "hud-label hud-energy-label";
+  energyLabel.textContent = "ENERGY";
   const energy = mkChild(
-    energyFrame,
+    energyBlock,
     "hudEnergy",
-    "position:absolute;left:9px;bottom:19px;display:flex;gap:2px;line-height:normal;",
+    "display:flex;gap:2px;margin-top:3px;line-height:normal;",
   );
-  // lives below the energy frame (outside the box)
+  energy.className = "hud-energy-segments";
+  const energySegments = Array.from({ length: 6 }, (_, index) => {
+    const segment = mkChild(energy, `hudEnergySegment${index + 1}`, "width:12px;height:9px;border:1px solid rgba(0,255,238,0.4);");
+    segment.className = "hud-energy-segment";
+    segment.dataset.segment = String(index + 1);
+    return segment;
+  });
   const lives = mkChild(
     energyBlock,
     "hudLives",
-    "display:flex;gap:4px;margin-top:2px;margin-left:18px;",
+    "display:flex;gap:4px;margin-top:5px;",
   );
+  lives.className = "hud-lives";
 
   // ===== SCORE block (top-right) =====
-  const scoreBlock = mkChild(panel, "hudScoreBlock", "position:absolute;right:20px;top:8px;");
-  const scoreFrame = mkFrame(scoreBlock, "hudScoreFrame", "/ui/score_icon.png", 66);
+  const scoreBlock = mkChild(panel, "hudScoreBlock", "position:absolute;right:20px;top:8px;text-align:right;");
+  scoreBlock.className = "hud-block hud-score-block";
+  const scoreLabel = mkChild(scoreBlock, "hudScoreLabel", `font-size:8px;letter-spacing:1.5px;color:${COL_CYAN};`);
+  scoreLabel.className = "hud-label hud-score-label";
+  scoreLabel.textContent = "SCORE";
   const score = mkChild(
-    scoreFrame,
+    scoreBlock,
     "hudScore",
-    "position:absolute;right:12px;bottom:16px;line-height:normal;" +
+    "margin-top:2px;line-height:normal;" +
       "font-family:'Share Tech Mono',monospace;font-size:16px;letter-spacing:2px;" +
       `color:#ffffff;text-shadow:0 0 8px ${COL_CYAN};`,
   );
+  score.className = "hud-value hud-score-value";
 
   // ===== WAVE block (top-center) =====
   const waveBlock = mkChild(
     panel,
     "hudWaveBlock",
-    "position:absolute;left:50%;top:8px;transform:translateX(-50%);",
+    "position:absolute;left:50%;top:8px;transform:translateX(-50%);text-align:center;",
   );
-  const waveFrame = mkFrame(waveBlock, "hudWaveFrame", "/ui/wave_icon.png", 34);
+  waveBlock.className = "hud-block hud-wave-block";
+  const waveLabel = mkChild(waveBlock, "hudWaveLabel", `font-size:8px;letter-spacing:1.5px;color:${COL_CYAN};`);
+  waveLabel.className = "hud-label hud-wave-label";
+  waveLabel.textContent = "WAVE";
   const wave = mkChild(
-    waveFrame,
+    waveBlock,
     "hudWave",
-    "position:absolute;right:14px;top:50%;transform:translateY(-50%);line-height:normal;" +
+    "margin-top:2px;line-height:normal;" +
       `font-family:${LABEL_FONT};font-size:11px;font-weight:700;` +
       `color:#ffffff;text-shadow:0 0 6px ${COL_CYAN};`,
   );
+  wave.className = "hud-value hud-wave-value";
 
   // ===== WEAPON block (bottom-left) =====
-  const weaponBlock = mkChild(panel, "hudWeaponBlock", "position:absolute;left:10px;bottom:10px;");
-  const weaponFrame = mkFrame(weaponBlock, "hudWeaponFrame", "/ui/w_icon_box.png", 99);
+  const weaponBlock = mkChild(panel, "hudWeaponBlock", "position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:12px;");
+  weaponBlock.className = "hud-weapon-block";
 
-  // W1/W2 icon canvases positioned to the right of the PNG's W1/W2 labels
-  function mkIconCanvas(id: string, leftPx: number, topPx: number): HTMLCanvasElement {
-    const wrap = mkChild(
-      weaponFrame,
-      id + "Wrap",
-      `position:absolute;left:${leftPx}px;top:${topPx}px;line-height:0;`,
-    );
+  function mkWeaponGroup(id: string, className: string, labelText: string): HTMLDivElement {
+    const group = mkChild(weaponBlock, id, "display:flex;align-items:center;gap:5px;line-height:normal;");
+    group.className = className;
+    const label = mkChild(group, `${id}Label`, `font-size:8px;font-weight:700;color:${COL_CYAN};`);
+    label.className = "hud-weapon-label";
+    label.textContent = labelText;
+    return group;
+  }
+  const w1Group = mkWeaponGroup("hudW1Group", "hud-weapon-group hud-w1-group", "W1");
+  const w2Group = mkWeaponGroup("hudW2Group", "hud-weapon-group hud-w2-group", "W2");
+  const bombGroup = mkWeaponGroup("hudBombGroup", "hud-weapon-group hud-bomb-group", "B");
+
+  function mkIconCanvas(parent: HTMLElement, id: string): HTMLCanvasElement {
+    const wrap = mkChild(parent, id + "Wrap", "line-height:0;");
     const c = document.createElement("canvas");
     c.id = id;
     c.width = 28;
@@ -288,34 +298,34 @@ export function createHUDArcade(root: HTMLElement) {
     wrap.appendChild(c);
     return c;
   }
-  const w1 = mkIconCanvas("hudW1", 45, 28);
-  const w2 = mkIconCanvas("hudW2", 45, 50);
+  const w1 = mkIconCanvas(w1Group, "hudW1");
+  const w2 = mkIconCanvas(w2Group, "hudW2");
 
   const weaponLevelCss =
-    "position:absolute;left:64px;line-height:normal;" +
+    "line-height:normal;white-space:nowrap;" +
     "font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;" +
     `color:#ffffff;text-shadow:0 0 5px ${COL_CYAN};`;
-  const w1Level = mkChild(weaponFrame, "hudW1Level", `${weaponLevelCss}top:27px;`);
-  const w2Level = mkChild(weaponFrame, "hudW2Level", `${weaponLevelCss}top:49px;`);
+  const w1Level = mkChild(w1Group, "hudW1Level", weaponLevelCss);
+  const w2Level = mkChild(w2Group, "hudW2Level", weaponLevelCss);
 
-  // W2 cooldown bar — overlays the "W2" label inside the PNG frame
   const cdTrack = mkChild(
-    weaponFrame,
+    w2Group,
     "hudCdTrack",
-    "position:absolute;left:14px;top:54px;width:24px;height:3px;" +
+    "width:24px;height:3px;" +
       "background:rgba(255,255,255,0.12);border-radius:1px;overflow:hidden;",
   );
+  cdTrack.className = "hud-cooldown-track";
   const cdFill = mkChild(
     cdTrack,
     "hudCdFill",
     `height:100%;width:0%;background:${COL_CYAN};box-shadow:0 0 4px ${COL_CYAN};transition:width 0.1s linear;`,
   );
+  cdFill.className = "hud-cooldown-fill";
 
-  // bomb row inside the weapon frame
   const bomb = mkChild(
-    weaponFrame,
+    bombGroup,
     "hudBomb",
-    "position:absolute;left:45px;top:73px;display:flex;align-items:center;gap:3px;line-height:normal;",
+    "display:flex;align-items:center;gap:3px;line-height:normal;",
   );
 
   // ---- CRT scanline overlay over the HUD ----
@@ -349,7 +359,7 @@ export function createHUDArcade(root: HTMLElement) {
   gameOver.textContent = "GAME OVER\nTry again? Y/N";
 
   const refs: HudRefs = {
-    layer, panel, lives, wave, score, energy, w1, w2, w1Level, w2Level, bomb, cdFill, pause, gameOver, title,
+    layer, panel, lives, energySegments, wave, score, w1, w2, w1Level, w2Level, bomb, cdFill, pause, gameOver, title,
   };
 
   function applyMode() {
@@ -417,22 +427,19 @@ export function createHUDArcade(root: HTMLElement) {
       refs.wave.textContent = waveText ?? String((s.wave ?? 0) | 0).padStart(2, "0");
       refs.score.textContent = String(Math.floor(s.score ?? 0)).padStart(6, "0");
 
-      // energy: segmented bar overlaid inside the frame
+      // Energy segments are persistent DOM primitives; updates only change state.
       const energyVal = p.energy ?? 0;
       const energyMax = p.energyMax ?? 5;
       const energyRatio = energyMax > 0 ? energyVal / energyMax : 0;
       const totalSegs = 6;
       const filledSegs = Math.round(energyRatio * totalSegs);
-      let segsHtml = "";
-      for (let i = 0; i < totalSegs; i++) {
+      for (let i = 0; i < refs.energySegments.length; i++) {
         const filled = i < filledSegs;
-        segsHtml +=
-          `<div style="width:12px;height:9px;` +
-          `background:${filled ? "#00ffee" : "rgba(0,255,238,0.12)"};` +
-          `border:1px solid rgba(0,255,238,0.4);` +
-          `box-shadow:${filled ? "0 0 4px #00ffee" : "none"};"></div>`;
+        const segment = refs.energySegments[i];
+        segment.dataset.filled = String(filled);
+        segment.style.background = filled ? COL_CYAN : "rgba(0,255,238,0.12)";
+        segment.style.boxShadow = filled ? `0 0 4px ${COL_CYAN}` : "none";
       }
-      refs.energy.innerHTML = segsHtml;
 
       // weapon icons (animated)
       iconPhase += 0.15;
