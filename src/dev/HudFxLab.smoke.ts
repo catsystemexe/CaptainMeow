@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createDefaultHudFxLabState, HUD_FX_LAB_STORAGE_KEY, loadHudFxLabState, normalizeHudFxLabState, saveHudFxLabState, selectHudFxEvent, toggleHudFx, updateHudFxIntensity } from "./HudFxLabState";
 
 const defaults = createDefaultHudFxLabState();
@@ -19,4 +20,7 @@ values.set(HUD_FX_LAB_STORAGE_KEY, "{bad json");
 assert.deepEqual(loadHudFxLabState(storage), defaults);
 assert.deepEqual(normalizeHudFxLabState({ selectedEvent: "wave", events: { wave: { pop: { enabled: true, intensity: 9 }, future: {} }, future: {} } }).events.wave.pop, { enabled: true, intensity: 1 });
 assert.deepEqual(createDefaultHudFxLabState(), defaults, "reset produces complete defaults");
+const uiSource = readFileSync(new URL("./HudFxLabUI.ts", import.meta.url), "utf8");
+assert.match(uiSource, /slider\.addEventListener\("input", \(\) => commitWithoutRender\(/, "slider input persists without replacing the actively dragged control");
+assert.match(uiSource, /const commitAndRender = .*commitWithoutRender\(next\); render\(\);/, "structural controls still persist and rerender");
 console.log("HudFxLab state smoke passed");
