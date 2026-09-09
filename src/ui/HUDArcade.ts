@@ -148,15 +148,15 @@ export function createHudEnergyFlashController(energyNode: Pick<HTMLElement, "an
         ? energyNode.animate([
           { filter: baseline, offset: 0 },
           {
-            filter: `brightness(${1 + 0.85 * amount}) drop-shadow(0 0 ${6 * amount}px rgba(150,255,220,${0.75 * amount}))`,
-            offset: 0.25,
+            filter: `brightness(${1 + 1.8 * amount}) saturate(${1 + 0.6 * amount}) drop-shadow(0 0 ${4 * amount}px rgba(235,255,248,${amount})) drop-shadow(0 0 ${11 * amount}px rgba(80,255,225,${0.85 * amount}))`,
+            offset: 0.2,
           },
           {
-            filter: `brightness(${1 + 0.2 * amount}) drop-shadow(0 0 ${2.5 * amount}px rgba(80,255,238,${0.35 * amount}))`,
-            offset: 0.6,
+            filter: `brightness(${1 + 0.5 * amount}) saturate(${1 + 0.3 * amount}) drop-shadow(0 0 ${6 * amount}px rgba(80,255,238,${0.65 * amount}))`,
+            offset: 0.53,
           },
           { filter: baseline, offset: 1 },
-        ], { duration: 120 + 80 * amount, easing: "ease-out" })
+        ], { duration: 140 + 110 * amount, easing: "ease-out" })
         : energyNode.animate([
           { filter: baseline, offset: 0 },
           {

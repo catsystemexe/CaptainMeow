@@ -128,14 +128,22 @@ assert.match(hudSource, /createHudEnergyShakeController\(energy\)/, "stable hudE
   flash.trigger(2, "heal");
   assert.equal(animations[2].cancelCalls, 1, "cross-event FLASH cancels the prior filter animation");
   assert.equal(animations[3].cancelCalls, 1, "HEAL FLASH retrigger cancels the prior filter animation");
-  assert.equal(animations[3].keyframes[1].filter, "brightness(1) drop-shadow(0 0 0px rgba(150,255,220,0))", "HEAL FLASH intensity clamps to zero");
-  assert.equal(animations[4].options.duration, 200, "HEAL FLASH maximum duration remains bounded");
+  assert.equal(animations[3].keyframes[1].filter, "brightness(1) saturate(1) drop-shadow(0 0 0px rgba(235,255,248,0)) drop-shadow(0 0 0px rgba(80,255,225,0))", "HEAL FLASH intensity clamps to an effectively neutral ignition");
+  assert.equal(animations[3].options.duration, 140, "HEAL FLASH minimum duration remains bounded");
+  assert.equal(animations[4].keyframes[1].filter, "brightness(2.8) saturate(1.6) drop-shadow(0 0 4px rgba(235,255,248,1)) drop-shadow(0 0 11px rgba(80,255,225,0.85))", "HEAL FLASH reaches the stronger maximum ignition");
+  assert.equal(animations[4].keyframes[1].offset, 0.2, "HEAL FLASH ignition timing stays early");
+  assert.equal(animations[4].keyframes[2].filter, "brightness(1.5) saturate(1.3) drop-shadow(0 0 6px rgba(80,255,238,0.65))", "HEAL FLASH retains a visible secondary pulse");
+  assert.equal(animations[4].keyframes[2].offset, 0.53, "HEAL FLASH secondary timing stays near the midpoint");
+  assert.equal(animations[4].options.duration, 250, "HEAL FLASH maximum duration remains bounded");
   assert.equal(animations[4].keyframes.at(-1)?.filter, "brightness(1) drop-shadow(0 0 0px rgba(255,255,255,0))", "HEAL FLASH settles exactly to its filter baseline");
   assert(animations[4].keyframes.every((frame) => frame.transform === undefined), "HEAL FLASH keyframes are filter-only");
   assert.notDeepEqual(animations[4].keyframes.map((frame) => frame.filter), firstEnvelope, "HEAL FLASH palette and envelope differ from HIT FLASH");
   const healEnvelope = animations[4].keyframes.map((frame) => frame.filter);
   flash.trigger(1, "heal");
   assert.deepEqual(animations[5].keyframes.map((frame) => frame.filter), healEnvelope, "HEAL FLASH keyframes are deterministic");
+  flash.trigger(0.5, "heal");
+  assert.equal(animations[6].keyframes[1].filter, "brightness(1.9) saturate(1.3) drop-shadow(0 0 2px rgba(235,255,248,0.5)) drop-shadow(0 0 5.5px rgba(80,255,225,0.425))", "HEAL FLASH intensity uses direct scaling at the midpoint");
+  assert.equal(animations[6].options.duration, 195, "HEAL FLASH duration uses direct scaling at the midpoint");
 }
 assert.match(hudSource, /createHudEnergyFlashController\(energy\)/, "stable hudEnergy node owns FLASH");
 assert.match(hudSource, /const hit = loadHudFxLabState\(localStorage\)\.events\.hit;/, "real HIT loads one configuration snapshot independent of editor selection");
