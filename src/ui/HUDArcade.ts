@@ -7,8 +7,9 @@
 // overlay + glow here instead. Truly compositing the HUD under PostFX would
 // require rendering it into the WebGL pipeline (out of scope for this pass).
 
-import { loadHudFxLabState } from "../dev/HudFxLabState";
+import { HUD_FX_EFFECTS, loadHudFxLabState, type HudFxEffectId, type HudFxEventId, type HudFxLabState } from "../dev/HudFxLabState";
 import { setHudFxPreviewHandler } from "../dev/HudFxPreviewBridge";
+import { createGenericHudFxController } from "./HudGenericFx";
 
 type HudRefs = {
   layer: HTMLDivElement;
@@ -603,16 +604,51 @@ export function createHUDArcade(root: HTMLElement) {
   const weaponSnap = createHudWeaponSnapController({ w1: w1Group, w2: w2Group });
   const bombSnap = createHudBombSnapController(bombGroup);
   const bombFlash = createHudBombFlashController(bombGroup);
+  const generic = {
+    score: createGenericHudFxController(score),
+    energy: createGenericHudFxController(energy),
+    wave: createGenericHudFxController(wave),
+    w1: createGenericHudFxController(w1Group),
+    w2: createGenericHudFxController(w2Group),
+    bomb: createGenericHudFxController(bombGroup),
+  };
+  type TargetId = keyof typeof generic;
+  const targetsFor = (eventId: HudFxEventId, weaponTarget: HudWeaponSnapTarget = "both"): TargetId[] => {
+    if (eventId === "score") return ["score"];
+    if (eventId === "hit" || eventId === "heal") return ["energy"];
+    if (eventId === "wave") return ["wave"];
+    if (eventId === "bomb") return ["bomb"];
+    return weaponTarget === "both" ? ["w1", "w2"] : [weaponTarget];
+  };
+  const isSpecialized = (eventId: HudFxEventId, effectId: HudFxEffectId): boolean =>
+    (eventId === "score" && effectId === "pop")
+    || (eventId === "hit" && (effectId === "shake" || effectId === "flash"))
+    || (eventId === "heal" && effectId === "flash")
+    || (eventId === "wave" && (effectId === "pop" || effectId === "flash"))
+    || (eventId === "weapon" && effectId === "snap")
+    || (eventId === "bomb" && (effectId === "snap" || effectId === "flash"));
+  const triggerSpecialized = (eventId: HudFxEventId, effectId: HudFxEffectId, intensity: number, weaponTarget: HudWeaponSnapTarget): void => {
+    if (eventId === "score" && effectId === "pop") scorePop.trigger(intensity);
+    else if (eventId === "hit" && effectId === "shake") energyShake.trigger(intensity);
+    else if (eventId === "hit" && effectId === "flash") energyFlash.trigger(intensity);
+    else if (eventId === "heal" && effectId === "flash") energyFlash.trigger(intensity, "heal");
+    else if (eventId === "wave" && effectId === "pop") wavePop.trigger(intensity);
+    else if (eventId === "wave" && effectId === "flash") waveFlash.trigger(intensity);
+    else if (eventId === "weapon" && effectId === "snap") weaponSnap.trigger(intensity, weaponTarget);
+    else if (eventId === "bomb" && effectId === "snap") bombSnap.trigger(intensity);
+    else if (eventId === "bomb" && effectId === "flash") bombFlash.trigger(intensity);
+  };
+  const dispatchHudFx = (eventId: HudFxEventId, settings: HudFxLabState["events"][HudFxEventId], weaponTarget: HudWeaponSnapTarget = "both"): void => {
+    for (const effectId of HUD_FX_EFFECTS) {
+      const setting = settings[effectId];
+      if (!setting.enabled) continue;
+      if (isSpecialized(eventId, effectId)) triggerSpecialized(eventId, effectId, setting.intensity, weaponTarget);
+      else for (const target of targetsFor(eventId, weaponTarget)) generic[target].trigger(effectId, setting.intensity);
+    }
+  };
   setHudFxPreviewHandler((request) => {
-    if (request.eventId === "score" && request.effectId === "pop") scorePop.trigger(request.intensity);
-    if (request.eventId === "hit" && request.effectId === "shake") energyShake.trigger(request.intensity);
-    if (request.eventId === "hit" && request.effectId === "flash") energyFlash.trigger(request.intensity);
-    if (request.eventId === "heal" && request.effectId === "flash") energyFlash.trigger(request.intensity, "heal");
-    if (request.eventId === "weapon" && request.effectId === "snap") weaponSnap.trigger(request.intensity, "both");
-    if (request.eventId === "bomb" && request.effectId === "snap") bombSnap.trigger(request.intensity);
-    if (request.eventId === "bomb" && request.effectId === "flash") bombFlash.trigger(request.intensity);
-    if (request.eventId === "wave" && request.effectId === "pop") wavePop.trigger(request.intensity);
-    if (request.eventId === "wave" && request.effectId === "flash") waveFlash.trigger(request.intensity);
+    const previewSettings = Object.fromEntries(HUD_FX_EFFECTS.map((id) => [id, { enabled: id === request.effectId, intensity: request.intensity }])) as HudFxLabState["events"][HudFxEventId];
+    dispatchHudFx(request.eventId, previewSettings);
   });
 
   function mkIconCanvas(parent: HTMLElement, id: string): HTMLCanvasElement {
@@ -757,15 +793,15 @@ export function createHUDArcade(root: HTMLElement) {
       refs.wave.textContent = waveText ?? String((s.wave ?? 0) | 0).padStart(2, "0");
       if (isHudWaveIncrease(previousWave, currentWave)) {
         const waveFx = loadHudFxLabState(localStorage).events.wave;
-        triggerHudWaveEffects(waveFx, wavePop, waveFlash);
+        dispatchHudFx("wave", waveFx);
       }
       previousWave = currentWave;
       const currentScore = Number(s.score ?? 0);
       refs.score.textContent = String(Math.floor(currentScore)).padStart(6, "0");
       const scoreReset = previousScore !== undefined && currentScore < previousScore;
       if (isHudScoreIncrease(previousScore, currentScore)) {
-        const pop = loadHudFxLabState(localStorage).events.score.pop;
-        if (pop.enabled) scorePop.trigger(pop.intensity);
+        const scoreFx = loadHudFxLabState(localStorage).events.score;
+        dispatchHudFx("score", scoreFx);
       }
       previousScore = currentScore;
 
@@ -784,13 +820,13 @@ export function createHUDArcade(root: HTMLElement) {
       }
       if (isHudEnergyDecrease(previousEnergy, energyVal)) {
         const hit = loadHudFxLabState(localStorage).events.hit;
-        triggerHudHitEffects(hit, energyShake, energyFlash);
+        dispatchHudFx("hit", hit);
       } else if (isHudEnergyHeal(previousEnergy, energyVal, {
         scoreReset,
         livesChanged,
       })) {
-        const flash = loadHudFxLabState(localStorage).events.heal.flash;
-        if (flash.enabled) energyFlash.trigger(flash.intensity, "heal");
+        const heal = loadHudFxLabState(localStorage).events.heal;
+        dispatchHudFx("heal", heal);
       }
       previousEnergy = energyVal;
       previousLives = currentLives;
@@ -811,11 +847,9 @@ export function createHUDArcade(root: HTMLElement) {
 
       const changedWeaponSlots = detectHudWeaponChanges(previousWeaponSnapshot, currentWeaponSnapshot);
       if (changedWeaponSlots.w1 || changedWeaponSlots.w2) {
-        const snap = loadHudFxLabState(localStorage).events.weapon.snap;
-        if (snap.enabled) {
-          const target = changedWeaponSlots.w1 && changedWeaponSlots.w2 ? "both" : changedWeaponSlots.w1 ? "w1" : "w2";
-          weaponSnap.trigger(snap.intensity, target);
-        }
+        const weaponFx = loadHudFxLabState(localStorage).events.weapon;
+        const target = changedWeaponSlots.w1 && changedWeaponSlots.w2 ? "both" : changedWeaponSlots.w1 ? "w1" : "w2";
+        dispatchHudFx("weapon", weaponFx, target);
       }
       previousWeaponSnapshot = currentWeaponSnapshot;
 
@@ -829,7 +863,7 @@ export function createHUDArcade(root: HTMLElement) {
         `text-shadow:0 0 4px #ff6600;">×${b}</span>`;
       if (isHudBombChange(previousBombs, b, { scoreReset, livesChanged })) {
         const bomb = loadHudFxLabState(localStorage).events.bomb;
-        triggerHudBombEffects(bomb, bombSnap, bombFlash);
+        dispatchHudFx("bomb", bomb);
       }
       previousBombs = b;
 

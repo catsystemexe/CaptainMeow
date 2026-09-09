@@ -1,37 +1,14 @@
-import { createDefaultHudFxLabState, HUD_FX_EFFECTS, HUD_FX_EVENTS, loadHudFxLabState, saveHudFxLabState, selectHudFxEvent, toggleHudFx, updateHudFxIntensity, type HudFxLabState } from "./HudFxLabState";
+import { createDefaultHudFxLabState, HUD_FX_EFFECTS, HUD_FX_EVENTS, HUD_FX_SLOT_IDS, loadHudFxLabState, loadHudFxSlot, loadHudFxSlots, saveHudFxLabState, saveHudFxSlot, selectHudFxEvent, toggleHudFx, updateHudFxIntensity, type HudFxLabState } from "./HudFxLabState";
 import { requestHudFxPreview, type HudFxPreviewRequest } from "./HudFxPreviewBridge";
 
 const labelForEvent = (id: string) => id === "weapon" ? "WPN" : id.toUpperCase();
 
 export function getHudFxTestRequests(state: HudFxLabState): HudFxPreviewRequest[] {
-  if (state.selectedEvent === "score" && state.events.score.pop.enabled) {
-    return [{ eventId: "score", effectId: "pop", intensity: state.events.score.pop.intensity }];
-  }
-  if (state.selectedEvent === "hit") {
-    const requests: HudFxPreviewRequest[] = [];
-    if (state.events.hit.shake.enabled) requests.push({ eventId: "hit", effectId: "shake", intensity: state.events.hit.shake.intensity });
-    if (state.events.hit.flash.enabled) requests.push({ eventId: "hit", effectId: "flash", intensity: state.events.hit.flash.intensity });
-    return requests;
-  }
-  if (state.selectedEvent === "heal" && state.events.heal.flash.enabled) {
-    return [{ eventId: "heal", effectId: "flash", intensity: state.events.heal.flash.intensity }];
-  }
-  if (state.selectedEvent === "wave") {
-    const requests: HudFxPreviewRequest[] = [];
-    if (state.events.wave.pop.enabled) requests.push({ eventId: "wave", effectId: "pop", intensity: state.events.wave.pop.intensity });
-    if (state.events.wave.flash.enabled) requests.push({ eventId: "wave", effectId: "flash", intensity: state.events.wave.flash.intensity });
-    return requests;
-  }
-  if (state.selectedEvent === "weapon" && state.events.weapon.snap.enabled) {
-    return [{ eventId: "weapon", effectId: "snap", intensity: state.events.weapon.snap.intensity }];
-  }
-  if (state.selectedEvent === "bomb") {
-    const requests: HudFxPreviewRequest[] = [];
-    if (state.events.bomb.snap.enabled) requests.push({ eventId: "bomb", effectId: "snap", intensity: state.events.bomb.snap.intensity });
-    if (state.events.bomb.flash.enabled) requests.push({ eventId: "bomb", effectId: "flash", intensity: state.events.bomb.flash.intensity });
-    return requests;
-  }
-  return [];
+  const eventId = state.selectedEvent;
+  return HUD_FX_EFFECTS.flatMap((effectId) => {
+    const setting = state.events[eventId][effectId];
+    return setting.enabled ? [{ eventId, effectId, intensity: setting.intensity }] : [];
+  });
 }
 
 export function getHudFxTestRequest(state: HudFxLabState): HudFxPreviewRequest | undefined {
@@ -54,6 +31,17 @@ export function createHudFxLabUI(storage: Storage = localStorage, documentRef: D
   const render = () => {
     root.replaceChildren();
     const title = documentRef.createElement("h3"); title.textContent = "HUD Lab";
+    const active = documentRef.createElement("div"); active.className = "cm-dev-label"; active.textContent = "ACTIVE: LAST";
+    const slots = loadHudFxSlots(storage);
+    const slotRows = documentRef.createElement("div"); slotRows.className = "cm-hud-fx-slots";
+    for (const id of HUD_FX_SLOT_IDS) {
+      const row = documentRef.createElement("div"); row.className = "cm-hud-fx-slot";
+      const label = documentRef.createElement("span"); label.textContent = id;
+      const load = choice("LOAD", false, () => commitAndRender(loadHudFxSlot(state, loadHudFxSlots(storage), id)));
+      load.disabled = slots[id] === null;
+      const save = choice("SAVE", false, () => { saveHudFxSlot(storage, id, state); render(); });
+      row.append(label, load, save); slotRows.appendChild(row);
+    }
     const eventLabel = documentRef.createElement("div"); eventLabel.className = "cm-dev-label"; eventLabel.textContent = "event:";
     const events = documentRef.createElement("div"); events.className = "cm-hud-fx-events";
     for (const id of HUD_FX_EVENTS) events.appendChild(choice(labelForEvent(id), state.selectedEvent === id, () => commitAndRender(selectHudFxEvent(state, id))));
@@ -61,25 +49,13 @@ export function createHudFxLabUI(storage: Storage = localStorage, documentRef: D
     const test = documentRef.createElement("button"); test.type = "button"; test.textContent = "TEST"; test.disabled = testRequests.length === 0;
     const testDescription = testRequests.length > 0
       ? `Preview ${labelForEvent(state.selectedEvent)} ${testRequests.map((request) => request.effectId.toUpperCase()).join(" + ")}`
-      : state.selectedEvent === "score"
-        ? "Enable SCORE POP to preview it"
-        : state.selectedEvent === "hit"
-          ? "Enable HIT SHAKE or FLASH to preview it"
-          : state.selectedEvent === "heal"
-            ? "Enable HEAL FLASH to preview it"
-          : state.selectedEvent === "weapon"
-            ? "Enable WPN SNAP to preview it"
-          : state.selectedEvent === "bomb"
-            ? "Enable BOMB SNAP or FLASH to preview it"
-          : state.selectedEvent === "wave"
-            ? "Enable WAVE POP or FLASH to preview it"
-          : `${labelForEvent(state.selectedEvent)} runtime preview is not supported`;
+      : `Enable an FX to preview ${labelForEvent(state.selectedEvent)}`;
     test.title = testDescription; test.setAttribute("aria-label", testDescription);
     if (testRequests.length > 0) test.addEventListener("click", () => {
       for (const request of getHudFxTestRequests(state)) requestHudFxPreview(request);
     });
     const fxLabel = documentRef.createElement("div"); fxLabel.className = "cm-dev-label"; fxLabel.textContent = "fx:";
-    root.append(title, eventLabel, events, test, fxLabel);
+    root.append(title, active, slotRows, eventLabel, events, test, fxLabel);
     for (const id of HUD_FX_EFFECTS) {
       const setting = state.events[state.selectedEvent][id];
       const row = documentRef.createElement("div"); row.className = "cm-hud-fx-row";
