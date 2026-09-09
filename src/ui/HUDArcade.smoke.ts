@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
-import { createHudEnergyFlashController, createHudEnergyShakeController, createHudScorePopController, getHudWeaponLevels, isHudEnergyDecrease, isHudScoreIncrease, triggerHudHitEffects } from "./HUDArcade";
+import { createHudEnergyFlashController, createHudEnergyShakeController, createHudScorePopController, getHudWeaponLevels, isHudEnergyDecrease, isHudEnergyHeal, isHudScoreIncrease, triggerHudHitEffects } from "./HUDArcade";
 
 const hudSource = readFileSync(new URL("./HUDArcade.ts", import.meta.url), "utf8");
 for (const obsoleteOuterScaling of [
@@ -51,6 +51,14 @@ assert.equal(isHudEnergyDecrease(undefined, 5), false, "first energy establishes
 assert.equal(isHudEnergyDecrease(5, 5), false, "unchanged energy does not trigger");
 assert.equal(isHudEnergyDecrease(5, 4), true, "energy decrease triggers HIT");
 assert.equal(isHudEnergyDecrease(4, 5), false, "energy increase does not trigger HIT");
+assert.equal(isHudEnergyHeal(undefined, 3), false, "first energy establishes a HEAL baseline");
+assert.equal(isHudEnergyHeal(3, 3), false, "unchanged energy does not trigger HEAL");
+assert.equal(isHudEnergyHeal(4, 3), false, "energy decrease does not trigger HEAL");
+assert.equal(isHudEnergyHeal(3, 4), true, "normal energy pickup triggers HEAL");
+assert.equal(isHudEnergyHeal(4, 5), true, "positive-to-higher energy triggers HEAL");
+assert.equal(isHudEnergyHeal(0, 5), false, "respawn restoration from zero does not trigger HEAL");
+assert.equal(isHudEnergyHeal(3, 5, { scoreReset: true }), false, "score reset suppresses HEAL");
+assert.equal(isHudEnergyHeal(3, 5, { livesChanged: true }), false, "lives transition suppresses HEAL");
 
 {
   const animations: Array<{ cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = [];
@@ -116,9 +124,26 @@ assert.match(hudSource, /createHudEnergyShakeController\(energy\)/, "stable hudE
   const firstEnvelope = animations[1].keyframes.map((frame) => frame.filter);
   flash.trigger(1);
   assert.deepEqual(animations[2].keyframes.map((frame) => frame.filter), firstEnvelope, "FLASH keyframes are deterministic");
+  flash.trigger(-1, "heal");
+  flash.trigger(2, "heal");
+  assert.equal(animations[2].cancelCalls, 1, "cross-event FLASH cancels the prior filter animation");
+  assert.equal(animations[3].cancelCalls, 1, "HEAL FLASH retrigger cancels the prior filter animation");
+  assert.equal(animations[3].keyframes[1].filter, "brightness(1) drop-shadow(0 0 0px rgba(150,255,220,0))", "HEAL FLASH intensity clamps to zero");
+  assert.equal(animations[4].options.duration, 200, "HEAL FLASH maximum duration remains bounded");
+  assert.equal(animations[4].keyframes.at(-1)?.filter, "brightness(1) drop-shadow(0 0 0px rgba(255,255,255,0))", "HEAL FLASH settles exactly to its filter baseline");
+  assert(animations[4].keyframes.every((frame) => frame.transform === undefined), "HEAL FLASH keyframes are filter-only");
+  assert.notDeepEqual(animations[4].keyframes.map((frame) => frame.filter), firstEnvelope, "HEAL FLASH palette and envelope differ from HIT FLASH");
+  const healEnvelope = animations[4].keyframes.map((frame) => frame.filter);
+  flash.trigger(1, "heal");
+  assert.deepEqual(animations[5].keyframes.map((frame) => frame.filter), healEnvelope, "HEAL FLASH keyframes are deterministic");
 }
 assert.match(hudSource, /createHudEnergyFlashController\(energy\)/, "stable hudEnergy node owns FLASH");
 assert.match(hudSource, /const hit = loadHudFxLabState\(localStorage\)\.events\.hit;/, "real HIT loads one configuration snapshot independent of editor selection");
+assert.match(hudSource, /const flash = loadHudFxLabState\(localStorage\)\.events\.heal\.flash;/, "real HEAL reads HEAL FLASH independent of editor selection");
+assert.match(hudSource, /isHudEnergyHeal\(previousEnergy, energyVal,[\s\S]*?loadHudFxLabState\(localStorage\)\.events\.heal\.flash/, "HEAL configuration is loaded only after a legitimate HEAL is detected");
+assert(hudSource.indexOf("segment.style.boxShadow") < hudSource.indexOf("if (isHudEnergyDecrease(previousEnergy, energyVal))"), "energy segment DOM state updates before HIT or HEAL dispatch");
+assert.match(hudSource, /energyFlash\.trigger\(flash\.intensity, "heal"\)/, "real HEAL dispatches the HEAL FLASH variant");
+assert(!hudSource.includes("player.energy ="), "HUD reactions do not mutate gameplay energy");
 
 {
   const calls: string[] = [];

@@ -13,6 +13,9 @@ export function getHudFxTestRequests(state: HudFxLabState): HudFxPreviewRequest[
     if (state.events.hit.flash.enabled) requests.push({ eventId: "hit", effectId: "flash", intensity: state.events.hit.flash.intensity });
     return requests;
   }
+  if (state.selectedEvent === "heal" && state.events.heal.flash.enabled) {
+    return [{ eventId: "heal", effectId: "flash", intensity: state.events.heal.flash.intensity }];
+  }
   return [];
 }
 
@@ -47,6 +50,8 @@ export function createHudFxLabUI(storage: Storage = localStorage, documentRef: D
         ? "Enable SCORE POP to preview it"
         : state.selectedEvent === "hit"
           ? "Enable HIT SHAKE or FLASH to preview it"
+          : state.selectedEvent === "heal"
+            ? "Enable HEAL FLASH to preview it"
           : `${labelForEvent(state.selectedEvent)} runtime preview is not supported`;
     test.title = testDescription; test.setAttribute("aria-label", testDescription);
     if (testRequests.length > 0) test.addEventListener("click", () => {

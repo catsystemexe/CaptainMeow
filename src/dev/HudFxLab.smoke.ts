@@ -37,6 +37,15 @@ assert.deepEqual(getHudFxTestRequests(hitBothEnabled), [
   { eventId: "hit", effectId: "flash", intensity: 0.5 },
 ], "implemented HIT requests preserve independent intensities");
 assert.deepEqual(getHudFxTestRequests(toggleHudFx(hitSelected, "ghost")), [], "an unimplemented HIT effect does not enable TEST");
+const healSelected = selectHudFxEvent(defaults, "heal");
+const healFlashEnabled = updateHudFxIntensity(toggleHudFx(healSelected, "flash"), "flash", 0.64);
+assert.deepEqual(getHudFxTestRequests(healFlashEnabled), [
+  { eventId: "heal", effectId: "flash", intensity: 0.64 },
+], "enabled HEAL FLASH produces one preview at its current intensity");
+assert.deepEqual(getHudFxTestRequests(toggleHudFx(healSelected, "pop")), [], "an unimplemented HEAL effect does not enable TEST");
+assert.deepEqual(getHudFxTestRequests(toggleHudFx(healFlashEnabled, "ghost")), [
+  { eventId: "heal", effectId: "flash", intensity: 0.64 },
+], "unimplemented HEAL effects do not add preview requests");
 assert.equal(getHudFxTestRequest(selectHudFxEvent(scorePopEnabled, "wave")), undefined, "unsupported events keep TEST disabled");
 assert.equal(getHudFxTestRequest(defaults), undefined, "disabled SCORE POP keeps TEST disabled");
 const previewRequests: unknown[] = [];
@@ -52,6 +61,12 @@ assert(hitPreview);
 requestHudFxPreview(hitPreview);
 assert.equal(JSON.stringify(hitShakeEnabled), hitSnapshot, "HIT preview does not mutate configuration or gameplay state");
 assert.deepEqual(previewRequests.at(-1), { eventId: "hit", effectId: "shake", intensity: 0.73 });
+const healSnapshot = JSON.stringify(healFlashEnabled);
+const healPreview = getHudFxTestRequest(healFlashEnabled);
+assert(healPreview);
+requestHudFxPreview(healPreview);
+assert.equal(JSON.stringify(healFlashEnabled), healSnapshot, "HEAL preview does not mutate configuration or gameplay state");
+assert.deepEqual(previewRequests.at(-1), { eventId: "heal", effectId: "flash", intensity: 0.64 });
 setHudFxPreviewHandler(undefined);
 
 class FakeElement {
@@ -124,6 +139,19 @@ const disabledHitUi = createHudFxLabUI(uiStorage, documentStub) as unknown as Fa
 const disabledHitTest = disabledHitUi.children[3];
 assert.equal(disabledHitTest.disabled, true, "disabled HIT SHAKE disables TEST");
 assert.equal(disabledHitTest.title, "Enable HIT SHAKE or FLASH to preview it");
+
+saveHudFxLabState(uiStorage, healFlashEnabled);
+const healUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+const healTest = healUi.children[3];
+assert.equal(healTest.disabled, false, "enabled HEAL FLASH enables TEST");
+assert.equal(healTest.title, "Preview HEAL FLASH");
+assert.equal(healTest.attributes.get("aria-label"), "Preview HEAL FLASH");
+
+saveHudFxLabState(uiStorage, healSelected);
+const disabledHealUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+const disabledHealTest = disabledHealUi.children[3];
+assert.equal(disabledHealTest.disabled, true, "disabled HEAL FLASH keeps TEST disabled");
+assert.equal(disabledHealTest.title, "Enable HEAL FLASH to preview it");
 
 const uiSource = readFileSync(new URL("./HudFxLabUI.ts", import.meta.url), "utf8");
 assert.match(uiSource, /const commitAndRender = .*commitWithoutRender\(next\); render\(\);/, "structural controls still persist and rerender");
