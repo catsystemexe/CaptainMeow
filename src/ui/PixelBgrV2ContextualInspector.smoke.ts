@@ -8,15 +8,16 @@ assert.equal(source.match(/dataset\.inspector="selection"/g)?.length,1,"one cont
 assert.match(source,/if\(this\.selectedV2Object\(\)\)\{inspector\.append\(this\.inspectorHeading\("OBJECT"[\s\S]*?this\.renderV2ObjectInspector\(\)/,"object selection renders the existing object editor in the contextual inspector");
 assert.match(source,/if\(this\.selectedV2Segment\(\)\)\{inspector\.append\(this\.inspectorHeading\("SEGMENT"[\s\S]*?this\.renderV2SegmentInspector\(\)/,"segment selection renders the existing segment editor in the contextual inspector");
 assert.match(source,/if\(track\)\{inspector\.append\(this\.inspectorHeading\("TRACK"[\s\S]*?this\.renderV2TrackInspector\(track\)/,"track-only selection renders track details");
-assert.match(source,/inspector\.append\(this\.inspectorHeading\("SCENE"[\s\S]*?scene\.tracks\.length/,"no item selection renders useful scene status");
+assert.match(source,/inspector\.append\(this\.inspectorHeading\("SCENE",""\),this\.renderPreview\(\[\],bounds\)\)/,"no item selection renders useful scene preview controls");
 
 assert.match(source,/selectV2Track\(trackId:string,render=true\):void \{this\.v2SelectedTrackId=trackId;this\.v2SelectedSegmentId="";this\.v2SelectedObjectId=""/,"track selection clears item selection");
-assert.match(source,/button\(lane\.label,\(\)=>this\.selectV2Track\(track\.id\)\)/,"single-track timeline lane reaches contextual track-only selection");
+assert.match(source,/button\(lane\.label,\(\)=>this\.selectV2Track\(labelTrack\.id\)\)/,"single-track timeline lane reaches contextual track-only selection");
 assert.match(source,/trackSelect\.onchange=\(\)=>this\.selectV2Track\(trackSelect\.value\)/,"multi-track timeline selector reaches contextual track-only selection");
 assert.match(source,/selectV2Segment\(trackId:string,segmentId:string,render=true\):void \{this\.v2SelectedTrackId=trackId;this\.v2SelectedSegmentId=segmentId;this\.v2SelectedObjectId=""/,"segment selection clears object selection");
 assert.match(source,/selectV2Object\(trackId:string,objectId:string,render=true\):void \{this\.v2SelectedTrackId=trackId;this\.v2SelectedSegmentId="";this\.v2SelectedObjectId=objectId/,"object selection clears segment selection");
 assert.equal(source.match(/private v2SelectedSegmentId/g)?.length,1,"selection remains owned by the existing Lab state");
 assert.equal(source.match(/private v2SelectedObjectId/g)?.length,1,"no duplicate object selection model is introduced");
+for(const method of ["selectV2Track","selectV2Segment","selectV2Object"]){const start=source.indexOf(`private ${method}`);const end=source.indexOf("\n  private ",start+10);assert.doesNotMatch(source.slice(start,end),/v2SelectedEventId/,`${method} preserves independent Event selection`);}
 
 assert(source.includes("this.workspace.left.insertBefore(this.root, this.workspace.gutter)"),"the Lab-owned inspector state remains mounted transitionally within the left BGR Lab");
 assert(source.includes("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))"),"the timeline remains mounted in workspace.timeline");
