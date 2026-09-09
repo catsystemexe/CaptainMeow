@@ -4,9 +4,13 @@ import { requestHudFxPreview, type HudFxPreviewRequest } from "./HudFxPreviewBri
 const labelForEvent = (id: string) => id === "weapon" ? "WPN" : id.toUpperCase();
 
 export function getHudFxTestRequest(state: HudFxLabState): HudFxPreviewRequest | undefined {
-  const pop = state.events.score.pop;
-  if (state.selectedEvent !== "score" || !pop.enabled) return undefined;
-  return { eventId: "score", effectId: "pop", intensity: pop.intensity };
+  if (state.selectedEvent === "score" && state.events.score.pop.enabled) {
+    return { eventId: "score", effectId: "pop", intensity: state.events.score.pop.intensity };
+  }
+  if (state.selectedEvent === "hit" && state.events.hit.shake.enabled) {
+    return { eventId: "hit", effectId: "shake", intensity: state.events.hit.shake.intensity };
+  }
+  return undefined;
 }
 
 export function createHudFxLabUI(storage: Storage = localStorage, documentRef: Document = document): HTMLElement {
@@ -31,10 +35,12 @@ export function createHudFxLabUI(storage: Storage = localStorage, documentRef: D
     const testRequest = getHudFxTestRequest(state);
     const test = documentRef.createElement("button"); test.type = "button"; test.textContent = "TEST"; test.disabled = !testRequest;
     const testDescription = testRequest
-      ? "Preview SCORE POP"
+      ? `Preview ${labelForEvent(testRequest.eventId)} ${testRequest.effectId.toUpperCase()}`
       : state.selectedEvent === "score"
         ? "Enable SCORE POP to preview it"
-        : `${labelForEvent(state.selectedEvent)} runtime preview is not supported`;
+        : state.selectedEvent === "hit"
+          ? "Enable HIT SHAKE to preview it"
+          : `${labelForEvent(state.selectedEvent)} runtime preview is not supported`;
     test.title = testDescription; test.setAttribute("aria-label", testDescription);
     if (testRequest) test.addEventListener("click", () => requestHudFxPreview(getHudFxTestRequest(state) ?? testRequest));
     const fxLabel = documentRef.createElement("div"); fxLabel.className = "cm-dev-label"; fxLabel.textContent = "fx:";

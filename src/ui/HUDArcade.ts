@@ -67,6 +67,10 @@ export function isHudScoreIncrease(previousScore: number | undefined, currentSco
   return previousScore !== undefined && currentScore > previousScore;
 }
 
+export function isHudEnergyDecrease(previousEnergy: number | undefined, currentEnergy: number): boolean {
+  return previousEnergy !== undefined && currentEnergy < previousEnergy;
+}
+
 export function createHudScorePopController(scoreNode: Pick<HTMLElement, "animate">) {
   let activeAnimation: Animation | undefined;
   return {
@@ -89,6 +93,28 @@ export function createHudScorePopController(scoreNode: Pick<HTMLElement, "animat
         },
         { transform: "scale(1, 1)", filter: "brightness(1)", textShadow: `0 0 8px ${COL_CYAN}`, offset: 1 },
       ], { duration: 140 + 140 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+export function createHudEnergyShakeController(energyNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      const x = 6 * amount;
+      const y = 3 * amount;
+      activeAnimation?.cancel();
+      activeAnimation = energyNode.animate([
+        { transform: "translate(0px, 0px)", offset: 0 },
+        { transform: `translate(${-x}px, ${y}px)`, offset: 0.15 },
+        { transform: `translate(${x}px, ${-y}px)`, offset: 0.3 },
+        { transform: `translate(${-0.7 * x}px, ${-0.5 * y}px)`, offset: 0.45 },
+        { transform: `translate(${0.6 * x}px, ${0.5 * y}px)`, offset: 0.6 },
+        { transform: `translate(${-0.25 * x}px, 0px)`, offset: 0.78 },
+        { transform: "translate(0px, 0px)", offset: 1 },
+      ], { duration: 120 + 100 * amount, easing: "ease-out" });
       return activeAnimation;
     },
   };
@@ -213,6 +239,7 @@ export function createHUDArcade(root: HTMLElement) {
   let mode: HudMode = "PLAY";
   let iconPhase = 0;
   let previousScore: number | undefined;
+  let previousEnergy: number | undefined;
 
   // one-time keyframes/styles for the CRT-ish HUD overlay + rainbow cooldown
   if (!document.getElementById("hudArcadeStyles")) {
@@ -260,6 +287,7 @@ export function createHUDArcade(root: HTMLElement) {
     segment.dataset.segment = String(index + 1);
     return segment;
   });
+  const energyShake = createHudEnergyShakeController(energy);
   const lives = mkChild(
     energyBlock,
     "hudLives",
@@ -285,6 +313,7 @@ export function createHUDArcade(root: HTMLElement) {
   const scorePop = createHudScorePopController(score);
   setHudFxPreviewHandler((request) => {
     if (request.eventId === "score" && request.effectId === "pop") scorePop.trigger(request.intensity);
+    if (request.eventId === "hit" && request.effectId === "shake") energyShake.trigger(request.intensity);
   });
 
   // ===== WAVE block (top-center) =====
@@ -480,6 +509,11 @@ export function createHUDArcade(root: HTMLElement) {
         segment.style.background = filled ? COL_CYAN : "rgba(0,255,238,0.12)";
         segment.style.boxShadow = filled ? `0 0 4px ${COL_CYAN}` : "none";
       }
+      if (isHudEnergyDecrease(previousEnergy, energyVal)) {
+        const shake = loadHudFxLabState(localStorage).events.hit.shake;
+        if (shake.enabled) energyShake.trigger(shake.intensity);
+      }
+      previousEnergy = energyVal;
 
       // weapon icons (animated)
       iconPhase += 0.15;
