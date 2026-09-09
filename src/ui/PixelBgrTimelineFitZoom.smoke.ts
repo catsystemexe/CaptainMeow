@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import { fitV2TimelineZoom, PIXEL_BGR_TIMELINE_ZOOM_LEVELS } from "./PixelBgrLabUI";
+const scene={id:"unchanged"}; const playerX=417;
+const fit=fitV2TimelineZoom({startX:0,endX:4_000},800);
+assert(PIXEL_BGR_TIMELINE_ZOOM_LEVELS.includes(fit));
+assert.equal(fit,0.2);
+assert.equal(playerX,417,"fit preserves Player X");
+assert.deepEqual(scene,{id:"unchanged"},"fit does not mutate scene data");
+assert.equal(fitV2TimelineZoom({startX:0,endX:100},800),2,"fit clamps to the largest existing level");
+console.log("PixelBgrTimelineFitZoom.smoke: PASS");

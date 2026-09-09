@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
+const toolbar=source.slice(source.indexOf("private renderV2Toolbar"),source.indexOf("private renderLeftTools"));
+for(const label of ["Open scene","Save scene","Duplicate scene","Close Scene Lab","Delete scene"])assert(toolbar.includes(label));
+assert(toolbar.indexOf("Open scene")<toolbar.indexOf("Save scene")&&toolbar.indexOf("Save scene")<toolbar.indexOf("Duplicate scene")&&toolbar.indexOf("Duplicate scene")<toolbar.indexOf("Close Scene Lab")&&toolbar.indexOf("Close Scene Lab")<toolbar.indexOf("Delete scene"));
+assert(!toolbar.includes("Export scene")&&!toolbar.includes("Import scene"));
+assert.match(source,/cm-scene-delete\{[^}]*margin-left:12px[^}]*color:#ff5a67/);
+assert.match(source,/Delete saved scene\?[\s\S]*This removes the saved scene data\.[\s\S]*This action cannot be undone\.[\s\S]*Cancel[\s\S]*Delete/);
+assert.match(source,/clearSavedV2\(\):void \{clearBackgroundSceneV2\(localStorage\)[\s\S]*active scene unchanged/);
+assert.match(source,/Import JSON\.\.\.[\s\S]*Export JSON\.\.\./);
+console.log("PixelBgrSceneToolbarUX.smoke: PASS");
