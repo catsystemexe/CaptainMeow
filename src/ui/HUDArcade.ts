@@ -94,6 +94,22 @@ export function isHudEnergyHeal(
     && !resetContext.livesChanged;
 }
 
+export function normalizeHudBombCount(value: unknown): number {
+  const count = Number(value ?? 0);
+  return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+}
+
+export function isHudBombChange(
+  previousBombs: number | undefined,
+  currentBombs: number,
+  resetContext: HudEnergyResetContext = {},
+): boolean {
+  return previousBombs !== undefined
+    && currentBombs !== previousBombs
+    && !resetContext.scoreReset
+    && !resetContext.livesChanged;
+}
+
 export function createHudScorePopController(scoreNode: Pick<HTMLElement, "animate">) {
   let activeAnimation: Animation | undefined;
   return {
@@ -211,6 +227,48 @@ export function createHudWeaponSnapController(nodes: {
   };
 }
 
+export function createHudBombSnapController(bombNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      activeAnimation?.cancel();
+      activeAnimation = bombNode.animate([
+        { transform: "translateY(0px) scale(1, 1)", offset: 0 },
+        { transform: `translateY(${-3.5 * amount}px) scale(${1 + 0.22 * amount}, ${1 - 0.1 * amount})`, offset: 0.18 },
+        { transform: `translateY(${1.5 * amount}px) scale(${1 - 0.05 * amount}, ${1 + 0.1 * amount})`, offset: 0.4 },
+        { transform: `translateY(${-0.5 * amount}px) scale(${1 + 0.03 * amount}, 1)`, offset: 0.68 },
+        { transform: "translateY(0px) scale(1, 1)", offset: 1 },
+      ], { duration: 120 + 80 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+export function createHudBombFlashController(bombNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      const baseline = "brightness(1) saturate(1) drop-shadow(0 0 0px rgba(255,244,190,0)) drop-shadow(0 0 0px rgba(255,102,0,0))";
+      activeAnimation?.cancel();
+      activeAnimation = bombNode.animate([
+        { filter: baseline, offset: 0 },
+        {
+          filter: `brightness(${1 + 1.7 * amount}) saturate(${1 + 0.5 * amount}) drop-shadow(0 0 ${4 * amount}px rgba(255,244,190,${amount})) drop-shadow(0 0 ${10 * amount}px rgba(255,102,0,${0.9 * amount}))`,
+          offset: 0.2,
+        },
+        {
+          filter: `brightness(${1 + 0.5 * amount}) saturate(${1 + 0.2 * amount}) drop-shadow(0 0 ${6 * amount}px rgba(255,102,0,${0.7 * amount}))`,
+          offset: 0.52,
+        },
+        { filter: baseline, offset: 1 },
+      ], { duration: 140 + 100 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
 type HudEffectTrigger = { trigger(intensity: number): Animation };
 
 export function triggerHudHitEffects(
@@ -220,6 +278,15 @@ export function triggerHudHitEffects(
 ): void {
   if (hit.shake.enabled) energyShake.trigger(hit.shake.intensity);
   if (hit.flash.enabled) energyFlash.trigger(hit.flash.intensity);
+}
+
+export function triggerHudBombEffects(
+  bomb: ReturnType<typeof loadHudFxLabState>["events"]["bomb"],
+  bombSnap: HudEffectTrigger,
+  bombFlash: HudEffectTrigger,
+): void {
+  if (bomb.snap.enabled) bombSnap.trigger(bomb.snap.intensity);
+  if (bomb.flash.enabled) bombFlash.trigger(bomb.flash.intensity);
 }
 
 function readHudLevel(slot: WeaponSlotHudLike | undefined): number {
@@ -361,6 +428,7 @@ export function createHUDArcade(root: HTMLElement) {
   let previousScore: number | undefined;
   let previousEnergy: number | undefined;
   let previousLives: number | undefined;
+  let previousBombs: number | undefined;
   let previousWeaponSnapshot: HudWeaponPresentationSnapshot | undefined;
 
   // one-time keyframes/styles for the CRT-ish HUD overlay + rainbow cooldown
@@ -471,13 +539,18 @@ export function createHUDArcade(root: HTMLElement) {
   const bombGroup = mkWeaponGroup("hudBombGroup", "hud-weapon-group hud-bomb-group", "B");
   w1Group.style.transformOrigin = "center center";
   w2Group.style.transformOrigin = "center center";
+  bombGroup.style.transformOrigin = "center center";
   const weaponSnap = createHudWeaponSnapController({ w1: w1Group, w2: w2Group });
+  const bombSnap = createHudBombSnapController(bombGroup);
+  const bombFlash = createHudBombFlashController(bombGroup);
   setHudFxPreviewHandler((request) => {
     if (request.eventId === "score" && request.effectId === "pop") scorePop.trigger(request.intensity);
     if (request.eventId === "hit" && request.effectId === "shake") energyShake.trigger(request.intensity);
     if (request.eventId === "hit" && request.effectId === "flash") energyFlash.trigger(request.intensity);
     if (request.eventId === "heal" && request.effectId === "flash") energyFlash.trigger(request.intensity, "heal");
     if (request.eventId === "weapon" && request.effectId === "snap") weaponSnap.trigger(request.intensity, "both");
+    if (request.eventId === "bomb" && request.effectId === "snap") bombSnap.trigger(request.intensity);
+    if (request.eventId === "bomb" && request.effectId === "flash") bombFlash.trigger(request.intensity);
   });
 
   function mkIconCanvas(parent: HTMLElement, id: string): HTMLCanvasElement {
@@ -614,6 +687,7 @@ export function createHUDArcade(root: HTMLElement) {
 
     update: (p: PlayerLike, s: SessionLike, waveText?: string) => {
       const currentLives = (s.lives ?? 0) | 0;
+      const livesChanged = previousLives !== undefined && currentLives !== previousLives;
       renderLives(currentLives);
 
       // wave / score numbers drawn into their pre-styled overlay divs
@@ -645,7 +719,7 @@ export function createHUDArcade(root: HTMLElement) {
         triggerHudHitEffects(hit, energyShake, energyFlash);
       } else if (isHudEnergyHeal(previousEnergy, energyVal, {
         scoreReset,
-        livesChanged: previousLives !== undefined && currentLives !== previousLives,
+        livesChanged,
       })) {
         const flash = loadHudFxLabState(localStorage).events.heal.flash;
         if (flash.enabled) energyFlash.trigger(flash.intensity, "heal");
@@ -678,13 +752,18 @@ export function createHUDArcade(root: HTMLElement) {
       previousWeaponSnapshot = currentWeaponSnapshot;
 
       // bomb: PNG icon + count (icon degrades to count-only if PNG missing)
-      const b = Math.max(0, (p.bombs ?? 0) | 0);
+      const b = normalizeHudBombCount(p.bombs);
       refs.bomb.innerHTML =
         `<img src="/ui/icon-bomb.png" onerror="this.style.display='none'"
           style="height:14px;width:auto;display:block;filter:drop-shadow(0 0 2px #ff6600);` +
         `opacity:${b > 0 ? 1 : 0.25};">` +
         `<span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#ff6600;` +
         `text-shadow:0 0 4px #ff6600;">×${b}</span>`;
+      if (isHudBombChange(previousBombs, b, { scoreReset, livesChanged })) {
+        const bomb = loadHudFxLabState(localStorage).events.bomb;
+        triggerHudBombEffects(bomb, bombSnap, bombFlash);
+      }
+      previousBombs = b;
 
       // W2 cooldown bar
       const w2s = p.w2 ?? {};

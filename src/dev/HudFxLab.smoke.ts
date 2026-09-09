@@ -52,6 +52,17 @@ assert.deepEqual(getHudFxTestRequests(weaponSnapEnabled), [
   { eventId: "weapon", effectId: "snap", intensity: 0.82 },
 ], "enabled WPN SNAP produces one preview at its current intensity");
 assert.deepEqual(getHudFxTestRequests(toggleHudFx(weaponSelected, "ghost")), [], "an unimplemented WPN effect does not enable TEST");
+const bombSelected = selectHudFxEvent(defaults, "bomb");
+const bombSnapEnabled = updateHudFxIntensity(toggleHudFx(bombSelected, "snap"), "snap", 0.35);
+const bombFlashEnabled = updateHudFxIntensity(toggleHudFx(bombSelected, "flash"), "flash", 0.81);
+assert.deepEqual(getHudFxTestRequests(bombSnapEnabled), [{ eventId: "bomb", effectId: "snap", intensity: 0.35 }], "BOMB SNAP produces one preview");
+assert.deepEqual(getHudFxTestRequests(bombFlashEnabled), [{ eventId: "bomb", effectId: "flash", intensity: 0.81 }], "BOMB FLASH produces one preview");
+const bombBothEnabled = updateHudFxIntensity(toggleHudFx(bombSnapEnabled, "flash"), "flash", 0.81);
+assert.deepEqual(getHudFxTestRequests(bombBothEnabled), [
+  { eventId: "bomb", effectId: "snap", intensity: 0.35 },
+  { eventId: "bomb", effectId: "flash", intensity: 0.81 },
+], "BOMB previews use SNAP, FLASH order and preserve independent intensities");
+assert.deepEqual(getHudFxTestRequests(toggleHudFx(bombSelected, "ghost")), [], "an unimplemented BOMB effect does not enable TEST");
 assert.equal(getHudFxTestRequest(selectHudFxEvent(scorePopEnabled, "wave")), undefined, "unsupported events keep TEST disabled");
 assert.equal(getHudFxTestRequest(defaults), undefined, "disabled SCORE POP keeps TEST disabled");
 const previewRequests: unknown[] = [];
@@ -79,6 +90,10 @@ assert(weaponPreview);
 requestHudFxPreview(weaponPreview);
 assert.equal(JSON.stringify(weaponSnapEnabled), weaponSnapshot, "WPN preview does not mutate configuration or gameplay state");
 assert.deepEqual(previewRequests.at(-1), { eventId: "weapon", effectId: "snap", intensity: 0.82 });
+const bombSnapshot = JSON.stringify(bombBothEnabled);
+for (const bombPreview of getHudFxTestRequests(bombBothEnabled)) requestHudFxPreview(bombPreview);
+assert.equal(JSON.stringify(bombBothEnabled), bombSnapshot, "BOMB preview does not mutate configuration or gameplay state");
+assert.deepEqual(previewRequests.slice(-2), getHudFxTestRequests(bombBothEnabled));
 setHudFxPreviewHandler(undefined);
 
 class FakeElement {
@@ -177,6 +192,24 @@ const disabledWeaponUi = createHudFxLabUI(uiStorage, documentStub) as unknown as
 const disabledWeaponTest = disabledWeaponUi.children[3];
 assert.equal(disabledWeaponTest.disabled, true, "disabled WPN SNAP keeps TEST disabled");
 assert.equal(disabledWeaponTest.title, "Enable WPN SNAP to preview it");
+
+for (const [state, title] of [
+  [bombSnapEnabled, "Preview BOMB SNAP"],
+  [bombFlashEnabled, "Preview BOMB FLASH"],
+  [bombBothEnabled, "Preview BOMB SNAP + FLASH"],
+] as const) {
+  saveHudFxLabState(uiStorage, state);
+  const bombUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+  const bombTest = bombUi.children[3];
+  assert.equal(bombTest.disabled, false, `${title} is enabled`);
+  assert.equal(bombTest.title, title);
+  assert.equal(bombTest.attributes.get("aria-label"), title);
+}
+saveHudFxLabState(uiStorage, bombSelected);
+const disabledBombUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+const disabledBombTest = disabledBombUi.children[3];
+assert.equal(disabledBombTest.disabled, true, "disabled BOMB effects keep TEST disabled");
+assert.equal(disabledBombTest.title, "Enable BOMB SNAP or FLASH to preview it");
 
 const uiSource = readFileSync(new URL("./HudFxLabUI.ts", import.meta.url), "utf8");
 assert.match(uiSource, /const commitAndRender = .*commitWithoutRender\(next\); render\(\);/, "structural controls still persist and rerender");
