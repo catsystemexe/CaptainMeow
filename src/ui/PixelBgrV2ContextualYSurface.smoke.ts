@@ -10,6 +10,7 @@ const object=updateV2Object(scene,"mid","rock",{y:13});assert(object.ok);if(obje
 const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
 assert.match(source,/panel\.append\(this\.renderV2YRail\(\),this\.renderV2ContextualYSurface\(\)\)/,"Y controls mount in timeline panel");
 assert.doesNotMatch(source,/workspace\.left\.appendChild\(this\.renderV2YRail/);
-assert.match(source,/value:segment\.segment\.offsetY[\s\S]*?\{offsetY:value\}/);assert.match(source,/value:object!\.object\.y[\s\S]*?\{y:value\}/);
-assert.match(source,/displayValue:Math\.round\(segment\.segment\.offsetY\)/);assert.match(source,/displayValue:Math\.round\(object!\.object\.y\)/);
+assert.match(source,/const value=segment\?\.segment\.offsetY\?\?object!\.object\.y/);
+assert.match(source,/readout\.textContent=`Y \${Math\.round\(value\)}`/);
+assert.doesNotMatch(source.slice(source.indexOf("private renderV2ContextualYSurface"),source.indexOf("private renderV2YRail")),/numericStepper|cm-pixel-stepper/,"no permanent Y stepper remains beside the timeline");
 console.log("[SMOKE] PixelBgrV2ContextualYSurface OK ✅");

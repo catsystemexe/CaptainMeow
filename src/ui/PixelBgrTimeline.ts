@@ -14,7 +14,7 @@ const MIN_SPAN = 1;
 const PADDING = 120;
 export const DEFAULT_CHUNK_TIMELINE_SNAP_PX = 16;
 export const MIN_CHUNK_TIMELINE_LENGTH = 64;
-export const PIXEL_BGR_TIMELINE_ZOOM_LEVELS = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2] as const;
+export const PIXEL_BGR_TIMELINE_ZOOM_LEVELS = [0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2] as const;
 
 /** The rendered camera interval, derived from the gameplay world's scroll authority. */
 export function timelineViewportRange(scrollX: number, viewportWorldWidth: number): TimelineViewportRange {

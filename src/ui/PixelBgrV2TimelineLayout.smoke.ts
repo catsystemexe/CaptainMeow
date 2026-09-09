@@ -39,7 +39,8 @@ assert.match(cssRule(".cm-v2-lane-label"), /min-width:0;[\s\S]*height:23px/, "ca
 
 assert.match(source, /const rowHeight=27;[\s\S]*?const eventRowHeight=16;[\s\S]*?const headerHeight=20;[\s\S]*?projection\.lanes\.length\*rowHeight\+eventRowHeight/, "timeline height is one ruler plus the projected role lanes and compact Events lane");
 assert.equal(source.match(/el\("div","cm-cursor cm-v2-cursor"\)/g)?.length, 1, "one Player X cursor is rendered");
-assert.match(cssRule(".cm-v2-cursor"), /top:0;[\s\S]*bottom:0;[\s\S]*border-left:2px solid/, "Player X cursor spans ruler and every lane above authored content");
+assert.match(cssRule(".cm-v2-cursor"), /top:0;[\s\S]*bottom:0;[\s\S]*width:16px;[\s\S]*margin-left:-8px/, "Player X cursor spans every lane with a wide centered hit target");
+assert.match(source, /cm-v2-cursor::before\{[^}]*border-left:4px solid/, "Player X retains a prominent canonical-position visual line");
 
 assert.match(source, /cm-v2-segment-handle left[\s\S]*?beginV2SegmentDrag\(e,track\.id,segment\.id,"resize-left",scale\)/, "left resize handles retain their edit event wiring");
 assert.match(source, /cm-v2-segment-handle right[\s\S]*?beginV2SegmentDrag\(e,track\.id,segment\.id,"resize-right",scale\)/, "right resize handles retain their edit event wiring");
