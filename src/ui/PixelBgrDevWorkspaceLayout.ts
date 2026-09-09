@@ -166,6 +166,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 }
 
 .cm-bgr-workspace-left {
+  position: relative;
   box-sizing: border-box;
   padding-top: 36px;
   display: grid;
@@ -230,11 +231,11 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 }
 
 .cm-bgr-workspace-shell[data-timeline-mode="v2"] .cm-bgr-workspace-center {
-  grid-template-rows: minmax(0, 1fr) 149px;
+  grid-template-rows: minmax(0, 1fr) 176px;
 }
 
 .cm-bgr-workspace-shell[data-timeline-mode="v2"] .cm-bgr-workspace-left {
-  grid-template-rows: minmax(0, 1fr) 149px;
+  grid-template-rows: minmax(0, 1fr) 176px;
 }
 
 .cm-bgr-workspace-shell[data-timeline-mode="disabled"] .cm-bgr-workspace-center {

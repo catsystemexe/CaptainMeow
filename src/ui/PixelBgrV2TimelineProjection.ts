@@ -22,9 +22,11 @@ export interface V2ProjectedLane {
   id: string; label: string; role: Exclude<BackgroundTrackRole, "custom">;
   tracks: V2ProjectedTrack[];
 }
+export interface V2ProjectedEvent { id: string; type: "signal" | "level-end"; label: string; worldX: number; enabled: boolean }
 export interface V2TimelineProjection {
   sceneId: string;
   lanes: V2ProjectedLane[];
+  events: V2ProjectedEvent[];
   environmentLabels: string[];
   gameplay: { ranges: GameplayTimelineRange[]; markers: GameplayTimelineMarker[]; available: boolean };
   bounds: { startX: number; endX: number };
@@ -94,6 +96,8 @@ export function projectBackgroundV2Timeline(
   }
   for (const range of ranges) if (finite(range.startX) && finite(range.endX)) points.push(range.startX, range.endX);
   for (const marker of markers) if (finite(marker.x)) points.push(marker.x);
+  const events = (scene.events ?? []).map(event => ({ id: event.id, type: event.type, label: event.type === "signal" ? event.name : "END", worldX: event.worldX, enabled: event.enabled }));
+  for (const event of events) if (finite(event.worldX)) points.push(event.worldX);
 
   const environmentLabels = scene.environment.starfield
     ? [`Starfield · seed ${scene.environment.starfield.seed} · density ${scene.environment.starfield.density}`]
@@ -101,6 +105,7 @@ export function projectBackgroundV2Timeline(
   return {
     sceneId: scene.id,
     lanes,
+    events,
     environmentLabels,
     gameplay: { ranges, markers, available: ranges.length > 0 || markers.length > 0 },
     bounds: { startX: Math.min(0, ...points), endX: Math.max(0, ...points) },
