@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
-import { createHudEnergyFlashController, createHudEnergyShakeController, createHudScorePopController, getHudWeaponLevels, isHudEnergyDecrease, isHudEnergyHeal, isHudScoreIncrease, triggerHudHitEffects } from "./HUDArcade";
+import { createHudEnergyFlashController, createHudEnergyShakeController, createHudScorePopController, createHudWeaponSnapController, detectHudWeaponChanges, getHudWeaponLevels, getHudWeaponPresentationSnapshot, isHudEnergyDecrease, isHudEnergyHeal, isHudScoreIncrease, triggerHudHitEffects } from "./HUDArcade";
 
 const hudSource = readFileSync(new URL("./HUDArcade.ts", import.meta.url), "utf8");
 for (const obsoleteOuterScaling of [
@@ -152,6 +152,60 @@ assert.match(hudSource, /isHudEnergyHeal\(previousEnergy, energyVal,[\s\S]*?load
 assert(hudSource.indexOf("segment.style.boxShadow") < hudSource.indexOf("if (isHudEnergyDecrease(previousEnergy, energyVal))"), "energy segment DOM state updates before HIT or HEAL dispatch");
 assert.match(hudSource, /energyFlash\.trigger\(flash\.intensity, "heal"\)/, "real HEAL dispatches the HEAL FLASH variant");
 assert(!hudSource.includes("player.energy ="), "HUD reactions do not mutate gameplay energy");
+
+{
+  const baseline = getHudWeaponPresentationSnapshot({ weapons: { slots: {
+    w1: { weaponId: "w1.basic", level: 1 },
+    w2: { weaponId: "w2.laser", level: 2 },
+  } } });
+  assert.deepEqual(detectHudWeaponChanges(undefined, baseline), { w1: false, w2: false }, "first weapon snapshot only establishes a baseline");
+  assert.deepEqual(detectHudWeaponChanges(baseline, baseline), { w1: false, w2: false }, "unchanged weapon slots do not trigger");
+  assert.deepEqual(detectHudWeaponChanges(baseline, { ...baseline, w1: { ...baseline.w1, level: 2 } }), { w1: true, w2: false }, "W1 level increase targets W1 only");
+  assert.deepEqual(detectHudWeaponChanges(baseline, { ...baseline, w2: { ...baseline.w2, level: 3 } }), { w1: false, w2: true }, "W2 level increase targets W2 only");
+  assert.deepEqual(detectHudWeaponChanges(baseline, { ...baseline, w1: { ...baseline.w1, weaponId: "w1.spread" } }), { w1: true, w2: false }, "W1 weapon ID change targets W1 only");
+  assert.deepEqual(detectHudWeaponChanges(baseline, { ...baseline, w2: { ...baseline.w2, weaponId: "w2.alt" } }), { w1: false, w2: true }, "W2 weapon ID change targets W2 only");
+  assert.deepEqual(detectHudWeaponChanges(baseline, { w1: { ...baseline.w1, level: 1 }, w2: { ...baseline.w2, level: 1 } }), { w1: false, w2: false }, "level decrease alone is suppressed");
+  assert.deepEqual(detectHudWeaponChanges(baseline, {
+    w1: { ...baseline.w1, level: 2 },
+    w2: { ...baseline.w2, weaponId: "w2.alt" },
+  }), { w1: true, w2: true }, "material changes in both slots target both");
+}
+
+{
+  type RecordedAnimation = { slot: "w1" | "w2"; cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions; cancel(): void };
+  const animations: RecordedAnimation[] = [];
+  const node = (slot: "w1" | "w2") => ({
+    animate: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
+      const animation: RecordedAnimation = { slot, cancelCalls: 0, keyframes, options, cancel() { this.cancelCalls++; } };
+      animations.push(animation);
+      return animation as unknown as Animation;
+    },
+  });
+  const snap = createHudWeaponSnapController({ w1: node("w1"), w2: node("w2") });
+  snap.trigger(-1, "w1");
+  assert(animations[0].keyframes.every((frame) => frame.filter === undefined && frame.opacity === undefined), "SNAP keyframes use transform only");
+  assert(animations[0].keyframes.every((frame) => frame.transform === "translateY(0px) scale(1, 1)"), "zero SNAP intensity is effectively neutral");
+  snap.trigger(0.5, "w1");
+  assert.equal(animations[0].cancelCalls, 1, "W1 retrigger cancels the previous W1 SNAP");
+  assert.equal(animations[1].keyframes[1].transform, "translateY(-1.5px) scale(1.09, 0.96)", "midpoint SNAP intensity scales directly");
+  snap.trigger(2, "w1");
+  assert.equal(animations[2].keyframes[1].transform, "translateY(-3px) scale(1.18, 0.92)", "maximum SNAP has a strong mechanical kick");
+  assert.equal(animations[2].options.duration, 180, "maximum SNAP duration remains bounded");
+  assert.equal(animations[2].keyframes.at(-1)?.transform, "translateY(0px) scale(1, 1)", "SNAP settles to its exact transform baseline");
+  const maximumEnvelope = animations[2].keyframes.map((frame) => frame.transform);
+  snap.trigger(1, "w2");
+  assert.equal(animations[2].cancelCalls, 0, "W2 SNAP does not cancel an active W1 SNAP");
+  assert.deepEqual(animations[3].keyframes.map((frame) => frame.transform), maximumEnvelope, "SNAP keyframes are deterministic between slots");
+  snap.trigger(1, "both");
+  assert.deepEqual(animations.slice(-2).map((animation) => animation.slot), ["w1", "w2"], "both SNAP target animates both weapon groups");
+}
+assert.match(hudSource, /w1Group\.style\.transformOrigin = "center center"/, "W1 SNAP uses a stable local transform origin");
+assert.match(hudSource, /w2Group\.style\.transformOrigin = "center center"/, "W2 SNAP uses a stable local transform origin");
+assert(hudSource.indexOf("refs.w2Level.textContent") < hudSource.indexOf("const changedWeaponSlots = detectHudWeaponChanges"), "new weapon presentation renders before SNAP dispatch");
+assert.match(hudSource, /if \(changedWeaponSlots\.w1 \|\| changedWeaponSlots\.w2\) \{\s*const snap = loadHudFxLabState\(localStorage\)\.events\.weapon\.snap;/, "weapon configuration loads once and only after a legitimate transition");
+assert.match(hudSource, /weaponSnap\.trigger\(snap\.intensity, target\)/, "runtime SNAP targets only materially changed slots");
+assert.match(hudSource, /request\.eventId === "weapon" && request\.effectId === "snap"\) weaponSnap\.trigger\(request\.intensity, "both"\)/, "WPN SNAP preview targets both weapon groups");
+assert(!hudSource.includes("selectedEvent"), "runtime HUD reactions remain independent of editor selection");
 
 {
   const calls: string[] = [];

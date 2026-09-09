@@ -62,6 +62,12 @@ const WEAPON_TEXT_SIZE = 10;
 const COL_CYAN = "#00ffee";
 
 export type HudWeaponLevels = { w1Level: number; w2Level: number; w1Label: string; w2Label: string };
+export type HudWeaponPresentationSnapshot = {
+  w1: { weaponId: string; level: number };
+  w2: { weaponId: string; level: number };
+};
+export type HudWeaponChangedSlots = { w1: boolean; w2: boolean };
+export type HudWeaponSnapTarget = "w1" | "w2" | "both";
 
 export function isHudScoreIncrease(previousScore: number | undefined, currentScore: number): boolean {
   return previousScore !== undefined && currentScore > previousScore;
@@ -174,6 +180,37 @@ export function createHudEnergyFlashController(energyNode: Pick<HTMLElement, "an
   };
 }
 
+export function createHudWeaponSnapController(nodes: {
+  w1: Pick<HTMLElement, "animate">;
+  w2: Pick<HTMLElement, "animate">;
+}) {
+  let w1Animation: Animation | undefined;
+  let w2Animation: Animation | undefined;
+
+  const triggerSlot = (intensity: number, slot: "w1" | "w2"): Animation => {
+    const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+    const activeAnimation = slot === "w1" ? w1Animation : w2Animation;
+    activeAnimation?.cancel();
+    const animation = nodes[slot].animate([
+      { transform: "translateY(0px) scale(1, 1)", offset: 0 },
+      { transform: `translateY(${-3 * amount}px) scale(${1 + 0.18 * amount}, ${1 - 0.08 * amount})`, offset: 0.2 },
+      { transform: `translateY(${1.5 * amount}px) scale(${1 - 0.04 * amount}, ${1 + 0.08 * amount})`, offset: 0.42 },
+      { transform: `translateY(${-0.5 * amount}px) scale(${1 + 0.03 * amount}, 1)`, offset: 0.7 },
+      { transform: "translateY(0px) scale(1, 1)", offset: 1 },
+    ], { duration: 110 + 70 * amount, easing: "ease-out" });
+    if (slot === "w1") w1Animation = animation;
+    else w2Animation = animation;
+    return animation;
+  };
+
+  return {
+    trigger(intensity: number, target: HudWeaponSnapTarget): Animation[] {
+      if (target === "both") return [triggerSlot(intensity, "w1"), triggerSlot(intensity, "w2")];
+      return [triggerSlot(intensity, target)];
+    },
+  };
+}
+
 type HudEffectTrigger = { trigger(intensity: number): Animation };
 
 export function triggerHudHitEffects(
@@ -206,6 +243,24 @@ export function getHudWeaponLevels(p: Pick<PlayerLike, "weapons">): HudWeaponLev
     w2Level: readHudLevel(p.weapons?.slots?.w2),
     w1Label: readHudWeaponLabel(p.weapons?.slots?.w1, "BOLT"),
     w2Label: readHudWeaponLabel(p.weapons?.slots?.w2, "LASER"),
+  };
+}
+
+export function getHudWeaponPresentationSnapshot(p: Pick<PlayerLike, "weapons">): HudWeaponPresentationSnapshot {
+  return {
+    w1: { weaponId: String(p.weapons?.slots?.w1?.weaponId ?? ""), level: readHudLevel(p.weapons?.slots?.w1) },
+    w2: { weaponId: String(p.weapons?.slots?.w2?.weaponId ?? ""), level: readHudLevel(p.weapons?.slots?.w2) },
+  };
+}
+
+export function detectHudWeaponChanges(
+  previous: HudWeaponPresentationSnapshot | undefined,
+  current: HudWeaponPresentationSnapshot,
+): HudWeaponChangedSlots {
+  if (!previous) return { w1: false, w2: false };
+  return {
+    w1: current.w1.weaponId !== previous.w1.weaponId || current.w1.level > previous.w1.level,
+    w2: current.w2.weaponId !== previous.w2.weaponId || current.w2.level > previous.w2.level,
   };
 }
 
@@ -306,6 +361,7 @@ export function createHUDArcade(root: HTMLElement) {
   let previousScore: number | undefined;
   let previousEnergy: number | undefined;
   let previousLives: number | undefined;
+  let previousWeaponSnapshot: HudWeaponPresentationSnapshot | undefined;
 
   // one-time keyframes/styles for the CRT-ish HUD overlay + rainbow cooldown
   if (!document.getElementById("hudArcadeStyles")) {
@@ -378,12 +434,6 @@ export function createHUDArcade(root: HTMLElement) {
   score.className = "hud-value hud-score-value";
   score.style.transformOrigin = "right center";
   const scorePop = createHudScorePopController(score);
-  setHudFxPreviewHandler((request) => {
-    if (request.eventId === "score" && request.effectId === "pop") scorePop.trigger(request.intensity);
-    if (request.eventId === "hit" && request.effectId === "shake") energyShake.trigger(request.intensity);
-    if (request.eventId === "hit" && request.effectId === "flash") energyFlash.trigger(request.intensity);
-    if (request.eventId === "heal" && request.effectId === "flash") energyFlash.trigger(request.intensity, "heal");
-  });
 
   // ===== WAVE block (top-center) =====
   const waveBlock = mkChild(
@@ -419,6 +469,16 @@ export function createHUDArcade(root: HTMLElement) {
   const w1Group = mkWeaponGroup("hudW1Group", "hud-weapon-group hud-w1-group", "W1");
   const w2Group = mkWeaponGroup("hudW2Group", "hud-weapon-group hud-w2-group", "W2");
   const bombGroup = mkWeaponGroup("hudBombGroup", "hud-weapon-group hud-bomb-group", "B");
+  w1Group.style.transformOrigin = "center center";
+  w2Group.style.transformOrigin = "center center";
+  const weaponSnap = createHudWeaponSnapController({ w1: w1Group, w2: w2Group });
+  setHudFxPreviewHandler((request) => {
+    if (request.eventId === "score" && request.effectId === "pop") scorePop.trigger(request.intensity);
+    if (request.eventId === "hit" && request.effectId === "shake") energyShake.trigger(request.intensity);
+    if (request.eventId === "hit" && request.effectId === "flash") energyFlash.trigger(request.intensity);
+    if (request.eventId === "heal" && request.effectId === "flash") energyFlash.trigger(request.intensity, "heal");
+    if (request.eventId === "weapon" && request.effectId === "snap") weaponSnap.trigger(request.intensity, "both");
+  });
 
   function mkIconCanvas(parent: HTMLElement, id: string): HTMLCanvasElement {
     const wrap = mkChild(parent, id + "Wrap", "line-height:0;");
@@ -593,6 +653,8 @@ export function createHUDArcade(root: HTMLElement) {
       previousEnergy = energyVal;
       previousLives = currentLives;
 
+      const currentWeaponSnapshot = getHudWeaponPresentationSnapshot(p);
+
       // weapon icons (animated)
       iconPhase += 0.15;
       const activeW = p.weapon ?? "W1";
@@ -604,6 +666,16 @@ export function createHUDArcade(root: HTMLElement) {
       const weaponLevels = getHudWeaponLevels(p);
       refs.w1Level.textContent = `${weaponLevels.w1Label} LVL ${weaponLevels.w1Level}`;
       refs.w2Level.textContent = `LVL ${weaponLevels.w2Level}`;
+
+      const changedWeaponSlots = detectHudWeaponChanges(previousWeaponSnapshot, currentWeaponSnapshot);
+      if (changedWeaponSlots.w1 || changedWeaponSlots.w2) {
+        const snap = loadHudFxLabState(localStorage).events.weapon.snap;
+        if (snap.enabled) {
+          const target = changedWeaponSlots.w1 && changedWeaponSlots.w2 ? "both" : changedWeaponSlots.w1 ? "w1" : "w2";
+          weaponSnap.trigger(snap.intensity, target);
+        }
+      }
+      previousWeaponSnapshot = currentWeaponSnapshot;
 
       // bomb: PNG icon + count (icon degrades to count-only if PNG missing)
       const b = Math.max(0, (p.bombs ?? 0) | 0);

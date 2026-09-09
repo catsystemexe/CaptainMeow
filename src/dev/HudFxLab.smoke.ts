@@ -46,6 +46,12 @@ assert.deepEqual(getHudFxTestRequests(toggleHudFx(healSelected, "pop")), [], "an
 assert.deepEqual(getHudFxTestRequests(toggleHudFx(healFlashEnabled, "ghost")), [
   { eventId: "heal", effectId: "flash", intensity: 0.64 },
 ], "unimplemented HEAL effects do not add preview requests");
+const weaponSelected = selectHudFxEvent(defaults, "weapon");
+const weaponSnapEnabled = updateHudFxIntensity(toggleHudFx(weaponSelected, "snap"), "snap", 0.82);
+assert.deepEqual(getHudFxTestRequests(weaponSnapEnabled), [
+  { eventId: "weapon", effectId: "snap", intensity: 0.82 },
+], "enabled WPN SNAP produces one preview at its current intensity");
+assert.deepEqual(getHudFxTestRequests(toggleHudFx(weaponSelected, "ghost")), [], "an unimplemented WPN effect does not enable TEST");
 assert.equal(getHudFxTestRequest(selectHudFxEvent(scorePopEnabled, "wave")), undefined, "unsupported events keep TEST disabled");
 assert.equal(getHudFxTestRequest(defaults), undefined, "disabled SCORE POP keeps TEST disabled");
 const previewRequests: unknown[] = [];
@@ -67,6 +73,12 @@ assert(healPreview);
 requestHudFxPreview(healPreview);
 assert.equal(JSON.stringify(healFlashEnabled), healSnapshot, "HEAL preview does not mutate configuration or gameplay state");
 assert.deepEqual(previewRequests.at(-1), { eventId: "heal", effectId: "flash", intensity: 0.64 });
+const weaponSnapshot = JSON.stringify(weaponSnapEnabled);
+const weaponPreview = getHudFxTestRequest(weaponSnapEnabled);
+assert(weaponPreview);
+requestHudFxPreview(weaponPreview);
+assert.equal(JSON.stringify(weaponSnapEnabled), weaponSnapshot, "WPN preview does not mutate configuration or gameplay state");
+assert.deepEqual(previewRequests.at(-1), { eventId: "weapon", effectId: "snap", intensity: 0.82 });
 setHudFxPreviewHandler(undefined);
 
 class FakeElement {
@@ -152,6 +164,19 @@ const disabledHealUi = createHudFxLabUI(uiStorage, documentStub) as unknown as F
 const disabledHealTest = disabledHealUi.children[3];
 assert.equal(disabledHealTest.disabled, true, "disabled HEAL FLASH keeps TEST disabled");
 assert.equal(disabledHealTest.title, "Enable HEAL FLASH to preview it");
+
+saveHudFxLabState(uiStorage, weaponSnapEnabled);
+const weaponUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+const weaponTest = weaponUi.children[3];
+assert.equal(weaponTest.disabled, false, "enabled WPN SNAP enables TEST");
+assert.equal(weaponTest.title, "Preview WPN SNAP");
+assert.equal(weaponTest.attributes.get("aria-label"), "Preview WPN SNAP");
+
+saveHudFxLabState(uiStorage, weaponSelected);
+const disabledWeaponUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+const disabledWeaponTest = disabledWeaponUi.children[3];
+assert.equal(disabledWeaponTest.disabled, true, "disabled WPN SNAP keeps TEST disabled");
+assert.equal(disabledWeaponTest.title, "Enable WPN SNAP to preview it");
 
 const uiSource = readFileSync(new URL("./HudFxLabUI.ts", import.meta.url), "utf8");
 assert.match(uiSource, /const commitAndRender = .*commitWithoutRender\(next\); render\(\);/, "structural controls still persist and rerender");
