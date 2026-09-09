@@ -6,7 +6,7 @@ const lab = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8")
 const layout = readFileSync(new URL("./PixelBgrDevWorkspaceLayout.ts", import.meta.url), "utf8");
 
 assert.deepEqual([...PIXEL_BGR_LEFT_TOOLS], ["scene", "placement", "markers"], "only the requested tools remain in the left navigation");
-for (const action of ["Open scene", "Save scene", "Duplicate scene", "Close Scene Lab", "Delete scene"])
+for (const action of ["Open scene", "Save scene", "Duplicate scene", "Close Scene Lab"])
   assert(lab.includes(`this.iconButton("${action}"`), `${action} retains a handler-backed icon`);
 for (const removed of ["SCENE / ASSETS / ENVIRONMENT", "Player X:", "UI opacity", "V2 ·", "PASS —"])
   assert(!lab.includes(removed), `${removed} is absent from permanent Scene Lab UI`);

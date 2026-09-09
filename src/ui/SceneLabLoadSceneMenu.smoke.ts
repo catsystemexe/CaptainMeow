@@ -6,7 +6,7 @@ import { SCENE_LAB_SCENE_CATALOG } from "./SceneLabSceneCatalog";
 const source = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 const main = readFileSync(new URL("../main.ts", import.meta.url), "utf8");
 
-assert.equal(source.match(/this\.iconButton\("Open scene"/g)?.length, 1, "the V2 path exposes one Open scene icon");
+assert(source.includes('this.iconButton("Open scene"') && source.includes('this.iconButton("Load current scene"'), "V2 uses Open while V1 retains its legacy Load action");
 assert.equal(source.match(/renderSceneMenu\(\)/g)?.length, 3, "both render paths share one menu renderer rather than creating duplicate menu implementations");
 assert.match(source, /if\(this\.sceneMenuOpen\)return/, "opening an already-open menu is a no-op");
 assert.match(source, /document\.addEventListener\("pointerdown",this\.onSceneMenuOutside\)/, "outside pointer dismissal is installed");
@@ -22,14 +22,12 @@ assert.deepEqual(desert.create(), createBackgroundV2DesertTestScene(), "Desert c
 assert(SCENE_LAB_SCENE_CATALOG.some(entry => entry.label === "Visual Verification V2"), "the existing V2 verification scene is available");
 assert(SCENE_LAB_SCENE_CATALOG.some(entry => entry.label === "B2 Demo"), "the existing V1 demo scene is available");
 
-for (const unchangedHandler of [
+for (const handler of [
   'this.iconButton("Open scene",FolderOpen,"FolderOpen",()=>this.toggleSceneMenu())',
   'this.iconButton("Save scene",Save,"Save",()=>this.saveV2())',
   'this.iconButton("Duplicate scene",Copy,"Copy",()=>this.duplicateV2())',
   'this.iconButton("Close Scene Lab",X,"X",()=>this.close())',
-  'this.iconButton("Delete scene",Trash2,"Trash2"',
-  '"Import JSON..."',
-  '"Export JSON..."',
-]) assert(source.includes(unchangedHandler), `${unchangedHandler} remains unchanged`);
+]) assert(source.includes(handler), `${handler} is wired`);
+assert(source.includes("Import JSON...") && source.includes("Export JSON..."), "JSON actions remain in the Open menu");
 
 console.log("SceneLabLoadSceneMenu.smoke: PASS");

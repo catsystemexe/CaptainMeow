@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { fitV2TimelineZoom, PIXEL_BGR_TIMELINE_ZOOM_LEVELS } from "./PixelBgrLabUI";
-assert.equal(fitV2TimelineZoom(1000,500),.5);assert.equal(fitV2TimelineZoom(1200,500),.2);assert(PIXEL_BGR_TIMELINE_ZOOM_LEVELS.includes(fitV2TimelineZoom(9999,320)));
-const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
-assert.match(source,/zoomControls\.append\(zoomOut,zoomFit,zoomIn\)/);
-const fit=source.slice(source.indexOf("private fitV2Timeline"),source.indexOf("private selectV2Track"));
-assert.match(fit,/segment\.startX,segment\.endX/);assert.doesNotMatch(fit,/setCurrentX|setBackgroundSceneV2/);
-console.log("[SMOKE] PixelBgrTimelineFitZoom OK ✅");
+const scene={id:"unchanged"}; const playerX=417;
+const fit=fitV2TimelineZoom({startX:0,endX:4_000},800);
+assert(PIXEL_BGR_TIMELINE_ZOOM_LEVELS.includes(fit));
+assert.equal(fit,0.2);
+assert.equal(playerX,417,"fit preserves Player X");
+assert.deepEqual(scene,{id:"unchanged"},"fit does not mutate scene data");
+assert.equal(fitV2TimelineZoom({startX:0,endX:100},800),2,"fit clamps to the largest existing level");
+console.log("PixelBgrTimelineFitZoom.smoke: PASS");

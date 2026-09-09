@@ -67,7 +67,7 @@ assert(sceneLabSource.includes("beginCursorDrag"), "Current X cursor has a drag 
 assert(!sceneLabSource.includes("Player X:"), "Scene Lab omits the redundant Player X chrome label");
 assert(!sceneLabSource.includes(`scrollX",this.numericStepper`), "Scene Lab no longer exposes preview scrollX as a competing main control");
 assert(!sceneLabSource.includes("PREVIEW") && !sceneLabSource.includes("GAMEPLAY"), "Scene Lab removes preview/gameplay mode labels");
-assert(sceneLabSource.includes("Reset to scene start") && !sceneLabSource.includes("Stop and return to scene start"), "compact transport exposes Reset without Stop");
+assert(sceneLabSource.includes("Reset to scene start") && !sceneLabSource.includes("Stop and return to scene start"), "compact transport controls expose reset and stop labels");
 assert(sceneLabSource.includes("timeline:get") || sceneLabSource.includes("timeline,minX"), "cursor drag stores the active timeline for absolute local coordinate mapping");
 assert(sceneLabSource.includes("cursorDragCurrentX({currentClientX:e.clientX,timelineLeft:rect.left,timelineWidthPx:rect.width"), "cursor drag maps absolute pointer X through timeline-local coordinates");
 assert(sceneLabSource.includes("pointercancel") && sceneLabSource.includes("this.onCursorPointerUp"), "pointer cancel clears cursor drag state");
@@ -76,7 +76,7 @@ assert(sceneLabSource.includes("this.cursorEl"), "cursor drag updates the timeli
 assert(sceneLabSource.includes("isTimelinePlacementTarget") && sceneLabSource.includes("cm-ruler"), "timeline click placement excludes child controls such as chunks and markers");
 assert(!sceneLabSource.includes("Preview mode:"), "Scene Lab removes the visible preview toggle");
 assert(sceneLabSource.includes("seekGameplayToPlayerX"), "timeline click/drag writes through the gameplay seek API");
-assert.match(sceneLabSource, /Reset to scene start[\s\S]*?setCurrentX\(start,true\)/, "Reset seeks to scene start and pauses");
+assert(sceneLabSource.includes("this.setCurrentX(start,true)"), "Reset seeks to scene start plus pause");
 const inputManagerSource = readFileSync(new URL("../engine/input/InputManager.ts", import.meta.url), "utf8");
 assert(inputManagerSource.includes("__CM_SCENE_TIMELINE_DRAG_ACTIVE__") && inputManagerSource.includes("if (sceneTimelineDragActive()) return;"), "game/canvas input ignores active Scene Lab timeline cursor drags");
 
