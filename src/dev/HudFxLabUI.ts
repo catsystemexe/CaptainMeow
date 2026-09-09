@@ -45,8 +45,13 @@ export function createHudFxLabUI(storage: Storage = localStorage, documentRef: D
       const toggle = choice(id.toUpperCase(), setting.enabled, () => commitAndRender(toggleHudFx(state, id)));
       const slider = documentRef.createElement("input"); slider.type = "range"; slider.min = "0"; slider.max = "1"; slider.step = "0.01";
       slider.value = String(setting.intensity); slider.disabled = !setting.enabled; slider.setAttribute("aria-label", `${id} intensity`);
-      slider.addEventListener("input", () => commitWithoutRender(updateHudFxIntensity(state, id, Number(slider.value))));
-      row.append(toggle, slider); root.appendChild(row);
+      const value = documentRef.createElement("output"); value.className = "cm-hud-fx-value";
+      value.textContent = setting.intensity.toFixed(2); value.setAttribute("aria-label", `${id} intensity value`);
+      slider.addEventListener("input", () => {
+        commitWithoutRender(updateHudFxIntensity(state, id, Number(slider.value)));
+        value.textContent = state.events[state.selectedEvent][id].intensity.toFixed(2);
+      });
+      row.append(toggle, slider, value); root.appendChild(row);
     }
     root.appendChild(choice("RESET", false, () => commitAndRender(createDefaultHudFxLabState())));
   };
