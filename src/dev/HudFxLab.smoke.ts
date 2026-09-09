@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createDefaultHudFxLabState, HUD_FX_LAB_STORAGE_KEY, loadHudFxLabState, normalizeHudFxLabState, saveHudFxLabState, selectHudFxEvent, toggleHudFx, updateHudFxIntensity } from "./HudFxLabState";
-import { getHudFxTestRequest } from "./HudFxLabUI";
+import { createHudFxLabUI, getHudFxTestRequest } from "./HudFxLabUI";
 import { requestHudFxPreview, setHudFxPreviewHandler } from "./HudFxPreviewBridge";
 
 const defaults = createDefaultHudFxLabState();
@@ -34,8 +34,56 @@ requestHudFxPreview(preview);
 assert.deepEqual(previewRequests, [{ eventId: "score", effectId: "pop", intensity: 0.73 }]);
 assert.deepEqual(scorePopEnabled.events.score.pop, { enabled: true, intensity: 0.5 }, "preview does not mutate configuration or gameplay state");
 setHudFxPreviewHandler(undefined);
+
+class FakeElement {
+  className = "";
+  textContent: string | null = null;
+  type = "";
+  value = "";
+  min = "";
+  max = "";
+  step = "";
+  disabled = false;
+  title = "";
+  children: FakeElement[] = [];
+  attributes = new Map<string, string>();
+  listeners = new Map<string, Array<() => void>>();
+
+  constructor(readonly tagName: string) {}
+  setAttribute(name: string, value: string) { this.attributes.set(name, value); }
+  addEventListener(type: string, listener: () => void) {
+    const listeners = this.listeners.get(type) ?? [];
+    listeners.push(listener);
+    this.listeners.set(type, listeners);
+  }
+  append(...children: FakeElement[]) { this.children.push(...children); }
+  appendChild(child: FakeElement) { this.children.push(child); return child; }
+  replaceChildren(...children: FakeElement[]) { this.children = children; }
+  dispatch(type: string) { for (const listener of this.listeners.get(type) ?? []) listener(); }
+}
+
+const documentStub = { createElement: (tagName: string) => new FakeElement(tagName) } as unknown as Document;
+const uiValues = new Map<string, string>();
+const uiStorage = { getItem: (key: string) => uiValues.get(key) ?? null, setItem: (key: string, value: string) => { uiValues.set(key, value); } };
+saveHudFxLabState(uiStorage, scorePopEnabled);
+const ui = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+const rows = ui.children.filter((child) => child.className === "cm-hud-fx-row");
+const popSlider = rows[0].children[1];
+const popValue = rows[0].children[2];
+assert.equal(popValue.tagName, "output", "numeric readout uses a semantic output element");
+assert.equal(popValue.textContent, "0.50", "initial persisted intensity uses two decimal places");
+assert.equal(popValue.attributes.get("aria-label"), "pop intensity value");
+popSlider.value = "0.73";
+popSlider.dispatch("input");
+assert.equal(loadHudFxLabState(uiStorage).events.score.pop.intensity, 0.73, "slider input updates persistence");
+assert.equal(popValue.textContent, "0.73", "slider input updates its readout immediately");
+assert.equal(rows[0].children[1], popSlider, "slider input does not rerender or replace the active control");
+const disabledSnapSlider = rows[1].children[1];
+const disabledSnapValue = rows[1].children[2];
+assert.equal(disabledSnapSlider.disabled, true);
+assert.equal(disabledSnapValue.textContent, "0.50", "disabled effects still present their current value");
+
 const uiSource = readFileSync(new URL("./HudFxLabUI.ts", import.meta.url), "utf8");
-assert.match(uiSource, /slider\.addEventListener\("input", \(\) => commitWithoutRender\(/, "slider input persists without replacing the actively dragged control");
 assert.match(uiSource, /const commitAndRender = .*commitWithoutRender\(next\); render\(\);/, "structural controls still persist and rerender");
 assert.match(uiSource, /requestHudFxPreview\(/, "TEST requests the narrow runtime preview");
 console.log("HudFxLab state smoke passed");
