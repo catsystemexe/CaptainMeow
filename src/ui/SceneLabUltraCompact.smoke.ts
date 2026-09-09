@@ -6,8 +6,9 @@ const lab = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8")
 const layout = readFileSync(new URL("./PixelBgrDevWorkspaceLayout.ts", import.meta.url), "utf8");
 
 assert.deepEqual([...PIXEL_BGR_LEFT_TOOLS], ["scene", "placement", "markers"], "only the requested tools remain in the left navigation");
-for (const action of ["Load current scene", "Export scene", "Import scene", "Duplicate scene", "Reset or delete scene", "Close Scene Lab"])
+for (const action of ["Open scene", "Save scene", "Duplicate scene", "Close Scene Lab", "Delete saved scene"])
   assert(lab.includes(`this.iconButton("${action}"`), `${action} retains a handler-backed icon`);
+assert(!lab.includes("this.root.append(this.renderLeftTools(),this.renderPreview"), "legacy Scene, Placement, and Markers navigation is hidden in V2 compact mode");
 for (const removed of ["SCENE / ASSETS / ENVIRONMENT", "Player X:", "UI opacity", "V2 ·", "PASS —"])
   assert(!lab.includes(removed), `${removed} is absent from permanent Scene Lab UI`);
 assert(!lab.includes("cm-scene-opacity-row") && !lab.includes("--cm-scene-lab-opacity"), "the opacity row and its state hook are absent");

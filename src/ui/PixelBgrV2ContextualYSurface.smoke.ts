@@ -9,12 +9,15 @@ const scene:BackgroundSceneV2={version:2,id:"context-y",environment:{},tracks:[{
 const segment=updateV2Segment(scene,"mid","mid-a",{offsetY:-56});assert(segment.ok);if(segment.ok){assert.equal(segment.scene.tracks[0].segments[0].offsetY,-56);assert.equal(segment.segmentId,"mid-a","segment remains selected by the edit result");}
 const object=updateV2Object(scene,"mid","rock",{y:13});assert(object.ok);if(object.ok){assert.equal(object.scene.tracks[0].objects[0].y,13);assert.equal(object.objectId,"rock","object remains selected by the edit result");}
 const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
-assert.match(source,/this\.renderV2Environment\(v2Scene\)\);[\s\S]*?renderV2ContextualYSurface\(\)[\s\S]*?this\.renderLeftTools\(\)/,"contextual Y is composed below Environment/Static Bgr and above tools");
+assert.match(source,/headerBlock\.append\(titlebar,this\.renderV2Toolbar\(\)\)[\s\S]*?sourceBlock\.append\(this\.renderV2Environment\(v2Scene\)\)[\s\S]*?renderV2ContextualYSurface\(\)[\s\S]*?transportBlock\.append\(this\.renderPreview/,"compact header, source, selection, and transport blocks retain their intended order");
 assert.match(source,/if\(!segment&&!object\)return null/,"no selection produces no contextual surface");
 assert.match(source,/title\.textContent=`Selected · \$\{id\}`/,"segment and object selections share the compact selected heading");
 assert.match(source,/value:segment\.segment\.offsetY[\s\S]*?updateV2Segment\([^;]*\{offsetY:value\}/,"segment control writes canonical offsetY through the immutable helper");
 assert.match(source,/value:object!\.object\.y[\s\S]*?updateV2Object\([^;]*\{y:value\}/,"object control writes canonical y through the immutable helper");
 assert.match(source,/surface\.append\(title,row\);return surface/,"a selected item renders the contextual surface");
+assert.match(source,/displayValue:Math\.round\(segment\.segment\.offsetY\)/,"segment Y displays as a whole integer");
+assert.match(source,/displayValue:Math\.round\(object!\.object\.y\)/,"object Y displays as a whole integer");
+assert.match(source,/cm-v2-left-block\+\.cm-v2-left-block\{margin-top:10px\}/,"compact UI blocks have visible vertical spacing");
 assert.match(source,/this\.v2SelectedSegmentId=result\.segmentId/,"segment edit retains result selection");
 assert.match(source,/this\.v2SelectedObjectId=result\.objectId/,"object edit retains result selection");
 console.log("[SMOKE] PixelBgrV2ContextualYSurface OK ✅");
