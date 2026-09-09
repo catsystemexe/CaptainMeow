@@ -76,6 +76,13 @@ export function createExactTimelineScale(startX: number, endX: number, widthPx: 
   };
 }
 
+/** Presentation zoom that makes the complete timeline no wider than its viewport. */
+export function timelineFitZoom(viewportWidthPx: number, unzoomedWidthPx: number): number {
+  const viewportWidth = Number.isFinite(viewportWidthPx) ? Math.max(1, viewportWidthPx) : 1;
+  const timelineWidth = Number.isFinite(unzoomedWidthPx) ? Math.max(1, unzoomedWidthPx) : 1;
+  return Math.min(1, viewportWidth / timelineWidth);
+}
+
 export function worldToTimelinePx(x: number, scale: TimelineScale): number {
   const span = Math.max(MIN_SPAN, scale.maxX - scale.minX);
   return ((x - scale.minX) / span) * scale.widthPx;

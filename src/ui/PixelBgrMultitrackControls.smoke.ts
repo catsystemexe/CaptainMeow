@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createBackgroundV2DesertTestScene } from "../render/bg/v2/BackgroundV2DesertTestScene";
-import { clickedTimelineCurrentX, createExactTimelineScale, timelinePointerDeltaWorld, worldToTimelinePx } from "./PixelBgrTimeline";
+import { clickedTimelineCurrentX, createExactTimelineScale, timelineFitZoom, timelinePointerDeltaWorld, worldToTimelinePx } from "./PixelBgrTimeline";
 import { projectBackgroundV2Timeline, setV2RoleTracksEnabled, v2RoleVisibility } from "./PixelBgrV2TimelineProjection";
 import { PIXEL_BGR_TIMELINE_ZOOM_LEVELS } from "./PixelBgrLabUI";
 
@@ -26,10 +26,14 @@ const scale2 = createExactTimelineScale(0, 1000, 1000, 2);
 assert.equal(worldToTimelinePx(400, scale2), worldToTimelinePx(400, scale1) * 2, "zoom feeds the canonical exact scale");
 assert.equal(clickedTimelineCurrentX(worldToTimelinePx(400, scale2), 0, scale2), 400, "zoomed seek remains the exact inverse mapping");
 assert.equal(timelinePointerDeltaWorld(0, 200, scale2), 100, "zoomed editing uses that same scale authority");
+assert.equal(timelineFitZoom(900, 20_000), 0.045, "Fit derives an exact overview zoom from the live viewport and full timeline width");
+assert.equal(timelineFitZoom(900, 720), 1, "Fit does not enlarge a timeline that already fits");
 
 assert.match(source, /private v2TimelineZoom = 0\.1/, "presentation zoom defaults to the practical 1:10 overview");
 assert.match(source, /createExactTimelineScale\([^;]*this\.v2TimelineZoom\)/, "ruler, cursor, seek, drag and resize receive one zoomed scale");
 assert.match(source, /cursorViewportX[\s\S]*this\.v2TimelineZoom=next;this\.render\(\)[\s\S]*newScroll\.scrollLeft/, "zoom preserves Player X's viewport position without seeking");
+assert.match(source, /zoomControls\.append\(zoomOut,fit,zoomIn\)/, "Fit is visible between zoom out and zoom in");
+assert.match(source, /timelineFitZoom\(this\.workspace\.timeline\.clientWidth,baseWidthPx\)/, "Fit uses the live timeline viewport and complete authored width");
 assert.doesNotMatch(source.slice(source.indexOf("private changeV2TimelineZoom"), source.indexOf("private openV2EventInsertMenu")), /setCurrentX|setBackgroundSceneV2/, "zoom mutates neither Player X nor scene data");
 assert.match(source, /eye\.onpointerdown=isolateTimelinePointerEvent/, "eye pointerdown uses timeline pointer isolation");
 assert.match(source, /visibility!=="all"/, "mixed and disabled lanes deterministically enable all on click");
