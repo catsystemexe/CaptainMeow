@@ -177,7 +177,7 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 .cm-bgr-workspace-left > .cm-pixel-bgr-lab {
   min-height: 0;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 .cm-bgr-workspace-gutter {

@@ -1,5 +1,6 @@
 import type { BackgroundSceneV2, BackgroundTrackRole } from "../render/bg/v2/BackgroundV2Types";
 import { trackXToWorldX } from "../render/bg/v2/BackgroundV2Math";
+import { orderedV2SceneEvents } from "./PixelBgrV2SceneEvents";
 
 export interface GameplayTimelineRange { id: string; label: string; startX: number; endX: number }
 export interface GameplayTimelineMarker { id: string; label: string; x: number }
@@ -96,7 +97,7 @@ export function projectBackgroundV2Timeline(
   }
   for (const range of ranges) if (finite(range.startX) && finite(range.endX)) points.push(range.startX, range.endX);
   for (const marker of markers) if (finite(marker.x)) points.push(marker.x);
-  const events = (scene.events ?? []).map(event => ({ id: event.id, type: event.type, label: event.type === "signal" ? event.name : "END", worldX: event.worldX, enabled: event.enabled }));
+  const events = orderedV2SceneEvents(scene).map(event => ({ id: event.id, type: event.type, label: event.type === "signal" ? event.name : "END", worldX: event.worldX, enabled: event.enabled }));
   for (const event of events) if (finite(event.worldX)) points.push(event.worldX);
 
   const environmentLabels = scene.environment.starfield
