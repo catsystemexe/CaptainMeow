@@ -14,20 +14,20 @@ assert.match(panelRule, /width:100%.*display:block.*margin:0/, "the center panel
 assert.doesNotMatch(panelRule, /calc\(100% \+|margin-left:-100px|calc\(-1 \*/, "the panel uses no cross-column gutter transport");
 
 const scrollRule = cssRule(".cm-v2-timeline-scroll");
-assert.match(scrollRule, /width:100%;max-width:100%;height:145px/, "the canonical ruler and four lanes stay within the compact height budget");
+assert.match(scrollRule, /width:100%;max-width:100%;height:172px/, "the canonical ruler and four role lanes plus Events stay within the compact height budget");
 assert.match(scrollRule, /overflow-x:auto;overflow-y:hidden/, "the dedicated timeline viewport scrolls only in authored world X");
 
 const mountedScrollRule = cssRule(".cm-bgr-workspace-timeline .cm-v2-timeline-scroll");
 assert.match(mountedScrollRule, /flex:0 0 auto;min-height:0/, "timeline lane content keeps its compact authored height");
-assert.match(layoutSource, /data-timeline-mode="v2"[\s\S]*?\.cm-bgr-workspace-center[\s\S]*?grid-template-rows: minmax\(0, 1fr\) 149px;/, "V2 mode retains its exact compact timeline band in the center");
-assert.match(layoutSource, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-y: hidden;/, "the standard four-role timeline has no vertical scroll dependency");
+assert.match(layoutSource, /data-timeline-mode="v2"[\s\S]*?\.cm-bgr-workspace-center[\s\S]*?grid-template-rows: minmax\(0, 1fr\) 176px;/, "V2 mode retains its exact compact timeline band in the center");
+assert.match(layoutSource, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-y: hidden;/, "the standard role/event timeline has no vertical scroll dependency");
 
 const timelineRule = cssRule(".cm-v2-timeline");
-assert.match(timelineRule, /height:128px/, "the visible timeline interaction band has a fixed compact height");
+assert.match(timelineRule, /height:155px/, "the visible timeline interaction band has a fixed compact height");
 assert.match(timelineRule, /pointer-events:auto/, "the timeline remains directly pointer-interactive");
 
 const gutterRule = cssRule(".cm-v2-timeline-gutter");
-assert.match(gutterRule, /width:100%;height:128px;display:grid;grid-template-rows:20px repeat\(4,27px\);overflow:visible/, "the full-width gutter shares the exact ruler plus four-lane geometry");
+assert.match(gutterRule, /width:100%;height:155px;display:grid;grid-template-rows:20px repeat\(5,27px\);overflow:visible/, "the full-width gutter shares the exact ruler plus five-lane geometry");
 assert.match(gutterRule, /background:#000/, "the visible gutter uses compact monochrome presentation");
 assert.match(source, /this\.workspace\.gutter\.appendChild\(gutter\)/, "the gutter mounts into the left workspace region");
 assert.match(source, /panel\.appendChild\(scroll\)/, "the center timeline panel contains only the horizontal lane viewport");
@@ -37,7 +37,7 @@ assert.match(source, /const labelTrack=lane\.tracks\.find[\s\S]*?button\(lane\.l
 assert.match(source, /lane\.tracks\.length>1[\s\S]*?el\("select","cm-v2-lane-track-select"\)[\s\S]*?trackSelect\.onchange=\(\)=>this\.selectV2Track\(trackSelect\.value\)/, "a multi-track role lane exposes every underlying track through a compact lane selector");
 assert.match(cssRule(".cm-v2-lane-label"), /min-width:0;[\s\S]*height:23px/, "canonical role labels remain constrained within their grid column");
 
-assert.match(source, /const rowHeight=27;[\s\S]*?const headerHeight=20;[\s\S]*?projection\.lanes\.length\*rowHeight/, "timeline height is one ruler plus exactly the projected role lanes");
+assert.match(source, /const rowHeight=27;[\s\S]*?const headerHeight=20;[\s\S]*?\(projection\.lanes\.length\+1\)\*rowHeight/, "timeline height is one ruler plus the projected role lanes plus Events");
 assert.equal(source.match(/el\("div","cm-cursor cm-v2-cursor"\)/g)?.length, 1, "one Player X cursor is rendered");
 assert.match(cssRule(".cm-v2-cursor"), /top:0;[\s\S]*bottom:0;[\s\S]*border-left:2px solid/, "Player X cursor spans ruler and every lane above authored content");
 

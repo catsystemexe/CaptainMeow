@@ -17,7 +17,7 @@ export function validateBackgroundSceneV2(value: unknown): BackgroundV2Validatio
   const errors: BackgroundV2ValidationIssue[] = [];
   const issue = (path: string, message: string) => errors.push({ path, message });
   if (!object(value)) return { valid: false, errors: [{ path: "scene", message: "must be an object" }] };
-  rejectUnknown(value, ["version", "id", "environment", "staticBackdrop", "tracks"], "", issue);
+  rejectUnknown(value, ["version", "id", "environment", "staticBackdrop", "tracks", "events"], "", issue);
   if (value.version !== 2) issue("version", "must equal 2 (V1 is not imported automatically)");
   if (!nonEmpty(value.id)) issue("id", "must be a non-empty string");
   if (!object(value.environment)) issue("environment", "must be an object");
@@ -82,6 +82,27 @@ export function validateBackgroundSceneV2(value: unknown): BackgroundV2Validatio
       };
       validateItems("segments"); validateItems("objects");
     });
+  }
+  if (value.events !== undefined) {
+    if (!Array.isArray(value.events)) issue("events", "must be an array when present");
+    else {
+      const ids = new Set<string>();
+      let levelEnds = 0;
+      value.events.forEach((raw, index) => {
+        const path = `events[${index}]`;
+        if (!object(raw)) { issue(path, "must be an object"); return; }
+        const type = raw.type;
+        rejectUnknown(raw, type === "signal" ? ["id", "type", "worldX", "enabled", "name"] : ["id", "type", "worldX", "enabled"], path, issue);
+        if (!nonEmpty(raw.id)) issue(`${path}.id`, "must be a non-empty string");
+        else if (ids.has(raw.id)) issue(`${path}.id`, "must be unique scene-wide"); else ids.add(raw.id);
+        if (!finite(raw.worldX) || raw.worldX < 0) issue(`${path}.worldX`, "must be a finite non-negative number");
+        if (typeof raw.enabled !== "boolean") issue(`${path}.enabled`, "must be boolean");
+        if (type === "signal") { if (!nonEmpty(raw.name)) issue(`${path}.name`, "must be a non-empty string"); }
+        else if (type === "level-end") levelEnds += 1;
+        else issue(`${path}.type`, "is invalid");
+      });
+      if (levelEnds > 1) issue("events", "may contain only one level-end event");
+    }
   }
   return { valid: errors.length === 0, errors };
 }

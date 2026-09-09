@@ -9,7 +9,7 @@ assert(layout.includes("center.append(viewport, timeline)"), "the timeline is a 
 assert(layout.includes("main.append(left, center, right)"), "both side labs are siblings of the full-height center");
 assert(!layout.includes("root.append(modeToggle, main, timeline)"), "the timeline is not a root full-width row");
 assert.match(layout, /grid-template-columns: clamp\(150px, 15vw, 170px\) minmax\(0, 1fr\) clamp\(170px, 18vw, 190px\)/, "dock widths and flexible center are preserved");
-assert.match(layout, /data-timeline-mode="v2"\] \.cm-bgr-workspace-center \{\s*grid-template-rows: minmax\(0, 1fr\) 149px;/, "V2 center owns game plus compact multitrack rows");
+assert.match(layout, /data-timeline-mode="v2"\] \.cm-bgr-workspace-center \{\s*grid-template-rows: minmax\(0, 1fr\) 176px;/, "V2 center owns game plus compact multitrack rows");
 assert.match(layout, /data-timeline-mode="disabled"\] \.cm-bgr-workspace-center \{\s*grid-template-rows: minmax\(0, 1fr\) 0;/, "non-V2 center collapses the timeline row");
 assert.doesNotMatch(ui, /Timeline unavailable for this scene format/, "there is no full-width disabled timeline message");
 assert.match(layout, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-x: hidden;[\s\S]*?overflow-y: hidden;/, "timeline overflow stays within its center viewport without vertical scrolling");

@@ -68,12 +68,18 @@ export interface BackgroundTrack {
   objects: BackgroundObject[];
 }
 
+/** Scene-global runtime-relevant datum authored directly in canonical world X. */
+export type BackgroundSceneEvent =
+  | { id: string; type: "level-end"; worldX: number; enabled: boolean }
+  | { id: string; type: "signal"; worldX: number; enabled: boolean; name: string };
+
 export interface BackgroundSceneV2 {
   version: 2;
   id: string;
   environment: BackgroundEnvironment;
   staticBackdrop?: BackgroundStaticBackdrop;
   tracks: BackgroundTrack[];
+  events?: BackgroundSceneEvent[];
 }
 
 export interface BackgroundEvaluationContext {

@@ -9,7 +9,7 @@ const main = readFileSync(new URL("../main.ts", import.meta.url), "utf8");
 assert.match(layout, /grid-template-columns:\s*clamp\(150px,\s*15vw,\s*170px\)\s+minmax\(0,\s*1fr\)\s+clamp\(170px,\s*18vw,\s*190px\)/, "the Enemy Lab dock returns width to the game while Scene Lab stays compact");
 assert.doesNotMatch(layout, /overflow-x:\s*auto[\s\S]*?@media \(max-width: 1099px\)/, "the responsive shell does not introduce page-level horizontal scrolling");
 assert.doesNotMatch(layout, /@media[\s\S]*?cm-bgr-workspace-(?:left|right)[\s\S]*?display:\s*none/, "responsive rules keep both DEV docks visible");
-assert.match(layout, /data-timeline-mode="v2"[\s\S]*?\.cm-bgr-workspace-center[\s\S]*?149px/, "V2 scenes reserve the timeline inside the center");
+assert.match(layout, /data-timeline-mode="v2"[\s\S]*?\.cm-bgr-workspace-center[\s\S]*?176px/, "V2 scenes reserve the timeline inside the center");
 assert.match(layout, /data-timeline-mode="disabled"[\s\S]*?\.cm-bgr-workspace-center[\s\S]*?minmax\(0, 1fr\) 0/, "other scenes collapse the center timeline row");
 assert.match(layout, /\.cm-bgr-workspace-left \{[\s\S]*?padding-top:\s*36px/, "the left dock reserves a compact inset for the fixed mode toggle");
 assert.match(layout, /\.cm-bgr-workspace-shell\.is-game \{[\s\S]*?grid-template-rows:\s*1fr/, "GAME mode removes timeline reservation");

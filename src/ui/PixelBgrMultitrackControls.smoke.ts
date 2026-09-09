@@ -30,13 +30,13 @@ assert.equal(timelinePointerDeltaWorld(0, 200, scale2), 100, "zoomed editing use
 assert.match(source, /private v2TimelineZoom = 0\.1/, "presentation zoom defaults to the practical 1:10 overview");
 assert.match(source, /createExactTimelineScale\([^;]*this\.v2TimelineZoom\)/, "ruler, cursor, seek, drag and resize receive one zoomed scale");
 assert.match(source, /cursorViewportX[\s\S]*this\.v2TimelineZoom=next;this\.render\(\)[\s\S]*newScroll\.scrollLeft/, "zoom preserves Player X's viewport position without seeking");
-assert.doesNotMatch(source.slice(source.indexOf("private changeV2TimelineZoom"), source.indexOf("private selectV2Track")), /setCurrentX|setBackgroundSceneV2/, "zoom mutates neither Player X nor scene data");
+assert.doesNotMatch(source.slice(source.indexOf("private changeV2TimelineZoom"), source.indexOf("private openV2EventInsertMenu")), /setCurrentX|setBackgroundSceneV2/, "zoom mutates neither Player X nor scene data");
 assert.match(source, /eye\.onpointerdown=isolateTimelinePointerEvent/, "eye pointerdown uses timeline pointer isolation");
 assert.match(source, /visibility!=="all"/, "mixed and disabled lanes deterministically enable all on click");
 assert.match(source, /gutterRow\.append\(label,eye,parallax,add\)/, "each compact gutter row uses label, eye, parallax, add order");
 assert.equal((source.match(/for\(const lane of projection\.lanes\)/g) ?? []).length >= 2, true, "all four projected role lanes receive gutter controls and timeline rows");
 assert.match(source, /this\.workspace\.gutter\.appendChild\(gutter\)/, "fixed gutter is mounted in the left workspace region");
 assert.match(source, /panel\.appendChild\(scroll\)/, "timeline lanes remain in the center horizontal scroll owner");
-assert.match(layout, /grid-template-rows: minmax\(0, 1fr\) 149px/, "center timeline allocation remains 149px");
+assert.match(layout, /grid-template-rows: minmax\(0, 1fr\) 176px/, "center timeline allocation remains 176px");
 assert.match(layout, /\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-x: hidden;[\s\S]*?overflow-y: hidden;/, "outer center timeline retains no vertical scrollbar");
 console.log("[SMOKE] PixelBgrMultitrackControls OK ✅");

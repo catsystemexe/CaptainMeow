@@ -444,3 +444,20 @@ The shared multitrack axis is gameplay/world X. Segment and object X geometry re
 The parallax authoring policy is `preserve-track-geometry`: editing the selected `BackgroundTrack.parallax.x` changes no segment/object/asset geometry or unrelated track data. Zero remains valid fixed/non-invertible parallax; the lane and track controls remain available, but no fake finite segment/object world interval is projected.
 
 Each gutter row is ordered `role label → role visibility eye → selected-track parallax X → timeline origin/lane`. Visibility remains a role-level aggregate over `track.enabled`; parallax remains owned by the active underlying track, including independently selectable tracks in multi-track roles.
+
+
+## P1.X.14 — V2 events lane and contextual Y rail
+
+The maintained V2 authoring shape is:
+
+```text
+BackgroundSceneV2
+├─ environment
+├─ staticBackdrop?
+├─ tracks[]
+└─ events?[]
+```
+
+`events` are optional, scene-global runtime-relevant data authored in canonical world X. V1 supports `signal` and `level-end` (at most one level-end per scene). Events have no track, parallax, role, rendering z, or BGR asset. Runtime execution—including level transitions, signals, boss spawning, and music changes—is explicitly deferred to a follow-up. A marker is an authoring annotation (future/optional); an event is runtime-relevant scene data and does not reuse the legacy V1 marker/action schema.
+
+The contextual Y rail is a presentation/authoring control at the right edge of the left Scene Lab authoring region, adjacent to the canvas. It appears only for a selected segment or object and applies an unbounded relative pointer delta converted through presentation scale. Canonical ownership remains `BackgroundSegment.offsetY` or `BackgroundObject.y`; tracks, Static Bgr, and events do not expose the rail.
