@@ -19,6 +19,12 @@ export function getHudFxTestRequests(state: HudFxLabState): HudFxPreviewRequest[
   if (state.selectedEvent === "weapon" && state.events.weapon.snap.enabled) {
     return [{ eventId: "weapon", effectId: "snap", intensity: state.events.weapon.snap.intensity }];
   }
+  if (state.selectedEvent === "bomb") {
+    const requests: HudFxPreviewRequest[] = [];
+    if (state.events.bomb.snap.enabled) requests.push({ eventId: "bomb", effectId: "snap", intensity: state.events.bomb.snap.intensity });
+    if (state.events.bomb.flash.enabled) requests.push({ eventId: "bomb", effectId: "flash", intensity: state.events.bomb.flash.intensity });
+    return requests;
+  }
   return [];
 }
 
@@ -57,6 +63,8 @@ export function createHudFxLabUI(storage: Storage = localStorage, documentRef: D
             ? "Enable HEAL FLASH to preview it"
           : state.selectedEvent === "weapon"
             ? "Enable WPN SNAP to preview it"
+          : state.selectedEvent === "bomb"
+            ? "Enable BOMB SNAP or FLASH to preview it"
           : `${labelForEvent(state.selectedEvent)} runtime preview is not supported`;
     test.title = testDescription; test.setAttribute("aria-label", testDescription);
     if (testRequests.length > 0) test.addEventListener("click", () => {

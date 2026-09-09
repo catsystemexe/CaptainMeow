@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
-import { createHudEnergyFlashController, createHudEnergyShakeController, createHudScorePopController, createHudWeaponSnapController, detectHudWeaponChanges, getHudWeaponLevels, getHudWeaponPresentationSnapshot, isHudEnergyDecrease, isHudEnergyHeal, isHudScoreIncrease, triggerHudHitEffects } from "./HUDArcade";
+import { createHudBombFlashController, createHudBombSnapController, createHudEnergyFlashController, createHudEnergyShakeController, createHudScorePopController, createHudWeaponSnapController, detectHudWeaponChanges, getHudWeaponLevels, getHudWeaponPresentationSnapshot, isHudBombChange, isHudEnergyDecrease, isHudEnergyHeal, isHudScoreIncrease, normalizeHudBombCount, triggerHudBombEffects, triggerHudHitEffects } from "./HUDArcade";
 
 const hudSource = readFileSync(new URL("./HUDArcade.ts", import.meta.url), "utf8");
 for (const obsoleteOuterScaling of [
@@ -59,6 +59,82 @@ assert.equal(isHudEnergyHeal(4, 5), true, "positive-to-higher energy triggers HE
 assert.equal(isHudEnergyHeal(0, 5), false, "respawn restoration from zero does not trigger HEAL");
 assert.equal(isHudEnergyHeal(3, 5, { scoreReset: true }), false, "score reset suppresses HEAL");
 assert.equal(isHudEnergyHeal(3, 5, { livesChanged: true }), false, "lives transition suppresses HEAL");
+assert.equal(isHudBombChange(undefined, 2), false, "first bomb count establishes a baseline");
+assert.equal(isHudBombChange(2, 2), false, "unchanged bomb count does not trigger");
+assert.equal(isHudBombChange(2, 3), true, "bomb pickup triggers");
+assert.equal(isHudBombChange(3, 2), true, "bomb use triggers");
+assert.equal(isHudBombChange(1, 0), true, "using the last bomb triggers");
+assert.equal(isHudBombChange(0, 1), true, "pickup from empty triggers");
+assert.equal(isHudBombChange(2, 3, { scoreReset: true }), false, "score reset suppresses BOMB");
+assert.equal(isHudBombChange(2, 3, { livesChanged: true }), false, "lives transition suppresses BOMB");
+assert.equal(normalizeHudBombCount(2.9), 2, "bomb counts normalize to whole inventory units");
+assert.equal(normalizeHudBombCount(-3), 0, "bomb counts normalize to a non-negative value");
+assert.equal(normalizeHudBombCount(Number.NaN), 0, "invalid bomb counts normalize safely");
+
+{
+  const animations: Array<{ cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = [];
+  const node = { animate: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
+    const animation = { cancelCalls: 0, keyframes, options, cancel() { this.cancelCalls++; } };
+    animations.push(animation);
+    return animation as unknown as Animation;
+  } };
+  const snap = createHudBombSnapController(node);
+  snap.trigger(-1);
+  assert(animations[0].keyframes.every((frame) => frame.filter === undefined && frame.opacity === undefined), "BOMB SNAP is transform-only");
+  assert(animations[0].keyframes.every((frame) => frame.transform === "translateY(0px) scale(1, 1)"), "zero BOMB SNAP is neutral");
+  snap.trigger(0.5);
+  assert.equal(animations[0].cancelCalls, 1, "BOMB SNAP retrigger cancels its prior animation");
+  assert.equal(animations[1].keyframes[1].transform, "translateY(-1.75px) scale(1.11, 0.95)", "BOMB SNAP midpoint is meaningful");
+  snap.trigger(2);
+  assert.equal(animations[2].keyframes[1].transform, "translateY(-3.5px) scale(1.22, 0.9)", "BOMB SNAP maximum is strong");
+  assert.equal(animations[2].options.duration, 200, "BOMB SNAP duration is bounded");
+  assert.equal(animations[2].keyframes.at(-1)?.transform, "translateY(0px) scale(1, 1)", "BOMB SNAP settles exactly");
+  const envelope = animations[2].keyframes.map((frame) => frame.transform);
+  snap.trigger(1);
+  assert.deepEqual(animations[3].keyframes.map((frame) => frame.transform), envelope, "BOMB SNAP is deterministic");
+}
+
+{
+  const animations: Array<{ cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = [];
+  const node = { animate: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
+    const animation = { cancelCalls: 0, keyframes, options, cancel() { this.cancelCalls++; } };
+    animations.push(animation);
+    return animation as unknown as Animation;
+  } };
+  const flash = createHudBombFlashController(node);
+  flash.trigger(-1);
+  assert(animations[0].keyframes.every((frame) => frame.transform === undefined && frame.opacity === undefined), "BOMB FLASH is filter-only");
+  assert.equal(animations[0].keyframes[1].filter, animations[0].keyframes[0].filter, "zero BOMB FLASH is neutral");
+  flash.trigger(0.5);
+  assert.equal(animations[0].cancelCalls, 1, "BOMB FLASH retrigger cancels its prior animation");
+  assert.match(String(animations[1].keyframes[1].filter), /brightness\(1\.85\).*rgba\(255,102,0,0\.45\)/, "BOMB FLASH midpoint is meaningful and orange");
+  flash.trigger(2);
+  assert.match(String(animations[2].keyframes[1].filter), /brightness\(2\.7\) saturate\(1\.5\).*rgba\(255,244,190,1\).*rgba\(255,102,0,0\.9\)/, "BOMB FLASH maximum has white-hot orange ignition");
+  assert.equal(animations[2].options.duration, 240, "BOMB FLASH duration is bounded");
+  assert.equal(animations[2].keyframes.at(-1)?.filter, animations[2].keyframes[0].filter, "BOMB FLASH settles exactly");
+  const envelope = animations[2].keyframes.map((frame) => frame.filter);
+  flash.trigger(1);
+  assert.deepEqual(animations[3].keyframes.map((frame) => frame.filter), envelope, "BOMB FLASH is deterministic");
+}
+
+{
+  const calls: string[] = [];
+  const animation = {} as Animation;
+  const snap = { trigger: (intensity: number) => { calls.push(`snap:${intensity}`); return animation; } };
+  const flash = { trigger: (intensity: number) => { calls.push(`flash:${intensity}`); return animation; } };
+  const bomb = { pop: { enabled: false, intensity: 0.5 }, shake: { enabled: false, intensity: 0.5 }, flash: { enabled: false, intensity: 0.8 }, ghost: { enabled: false, intensity: 0.5 }, glitch: { enabled: false, intensity: 0.5 }, snap: { enabled: true, intensity: 0.2 } };
+  triggerHudBombEffects(bomb, snap, flash);
+  assert.deepEqual(calls, ["snap:0.2"], "BOMB dispatch supports SNAP only");
+  bomb.snap.enabled = false; bomb.flash.enabled = true;
+  triggerHudBombEffects(bomb, snap, flash);
+  assert.deepEqual(calls.slice(1), ["flash:0.8"], "BOMB dispatch supports FLASH only");
+  bomb.snap.enabled = true;
+  triggerHudBombEffects(bomb, snap, flash);
+  assert.deepEqual(calls.slice(2), ["snap:0.2", "flash:0.8"], "one BOMB event dispatches both enabled effects");
+  bomb.snap.enabled = false; bomb.flash.enabled = false;
+  triggerHudBombEffects(bomb, snap, flash);
+  assert.equal(calls.length, 4, "BOMB dispatch does nothing when both effects are disabled");
+}
 
 {
   const animations: Array<{ cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = [];
@@ -206,6 +282,11 @@ assert.match(hudSource, /if \(changedWeaponSlots\.w1 \|\| changedWeaponSlots\.w2
 assert.match(hudSource, /weaponSnap\.trigger\(snap\.intensity, target\)/, "runtime SNAP targets only materially changed slots");
 assert.match(hudSource, /request\.eventId === "weapon" && request\.effectId === "snap"\) weaponSnap\.trigger\(request\.intensity, "both"\)/, "WPN SNAP preview targets both weapon groups");
 assert(!hudSource.includes("selectedEvent"), "runtime HUD reactions remain independent of editor selection");
+assert.match(hudSource, /bombGroup\.style\.transformOrigin = "center center"/, "BOMB SNAP uses the local bomb group origin");
+assert(hudSource.indexOf("refs.bomb.innerHTML") < hudSource.indexOf("if (isHudBombChange(previousBombs, b"), "current bomb DOM renders before BOMB dispatch");
+assert.match(hudSource, /if \(isHudBombChange\(previousBombs, b, \{ scoreReset, livesChanged \}\)\) \{\s*const bomb = loadHudFxLabState\(localStorage\)\.events\.bomb;\s*triggerHudBombEffects\(bomb, bombSnap, bombFlash\);\s*\}\s*previousBombs = b;/, "BOMB config loads once after detection and baseline updates after dispatch");
+assert.match(hudSource, /request\.eventId === "bomb" && request\.effectId === "snap"\) bombSnap\.trigger/, "BOMB SNAP uses the existing preview handler");
+assert.match(hudSource, /request\.eventId === "bomb" && request\.effectId === "flash"\) bombFlash\.trigger/, "BOMB FLASH uses the existing preview handler");
 
 {
   const calls: string[] = [];
