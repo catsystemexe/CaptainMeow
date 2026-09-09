@@ -9,7 +9,7 @@ const scene:BackgroundSceneV2={version:2,id:"context-y",environment:{},tracks:[{
 const segment=updateV2Segment(scene,"mid","mid-a",{offsetY:-56});assert(segment.ok);if(segment.ok){assert.equal(segment.scene.tracks[0].segments[0].offsetY,-56);assert.equal(segment.segmentId,"mid-a","segment remains selected by the edit result");}
 const object=updateV2Object(scene,"mid","rock",{y:13});assert(object.ok);if(object.ok){assert.equal(object.scene.tracks[0].objects[0].y,13);assert.equal(object.objectId,"rock","object remains selected by the edit result");}
 const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
-assert.match(source,/this\.renderV2Environment\(v2Scene\)\);[\s\S]*?renderV2ContextualYSurface\(\)[\s\S]*?this\.renderLeftTools\(\)/,"contextual Y is composed below Environment/Static Bgr and above tools");
+assert.match(source,/this\.renderV2Environment\(v2Scene\)\);[\s\S]*?renderV2ContextualYSurface\(\)[\s\S]*?this\.renderPreview/,"contextual Y is composed below Environment/Static Bgr and above transport while V2 tools are hidden");
 assert.match(source,/if\(!segment&&!object\)return null/,"no selection produces no contextual surface");
 assert.match(source,/title\.textContent=`Selected · \$\{id\}`/,"segment and object selections share the compact selected heading");
 assert.match(source,/value:segment\.segment\.offsetY[\s\S]*?updateV2Segment\([^;]*\{offsetY:value\}/,"segment control writes canonical offsetY through the immutable helper");

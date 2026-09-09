@@ -33,7 +33,7 @@ assert.match(source, /cursorViewportX[\s\S]*this\.v2TimelineZoom=next;this\.rend
 assert.doesNotMatch(source.slice(source.indexOf("private changeV2TimelineZoom"), source.indexOf("private selectV2Track")), /setCurrentX|setBackgroundSceneV2/, "zoom mutates neither Player X nor scene data");
 assert.match(source, /eye\.onpointerdown=isolateTimelinePointerEvent/, "eye pointerdown uses timeline pointer isolation");
 assert.match(source, /visibility!=="all"/, "mixed and disabled lanes deterministically enable all on click");
-assert.match(source, /gutterRow\.append\(label,eye,parallax,add\)/, "each compact gutter row uses label, eye, parallax, add order");
+assert.match(source, /gutterRow\.append\(label,parallax,eye,add\)/, "each compact gutter row uses label, parallax, eye, add order");
 assert.equal((source.match(/for\(const lane of projection\.lanes\)/g) ?? []).length >= 2, true, "all four projected role lanes receive gutter controls and timeline rows");
 assert.match(source, /this\.workspace\.gutter\.appendChild\(gutter\)/, "fixed gutter is mounted in the left workspace region");
 assert.match(source, /panel\.appendChild\(scroll\)/, "timeline lanes remain in the center horizontal scroll owner");
