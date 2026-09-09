@@ -10,7 +10,7 @@ const eventSurface=method("renderV2EventSurface","plainV2InspectorHeader");
 assert.doesNotMatch(leftRender,/renderV2ContextualYSurface|renderV2InspectorHeader\("LAYER"/,"left panel has no Layer section");
 assert.doesNotMatch(eventSurface,/numericStepper|worldX|this\.row\("X"/,"Event list has no X editor");
 assert.match(eventSurface,/cm-v2-logic-row/);assert.match(source,/grid-template-columns:20px minmax\(0,1fr\) max-content/);
-assert.match(eventSurface,/aria-label.*Event/);assert.match(eventSurface,/row\.title=name/);assert.match(eventSurface,/ondblclick/,"signal names remain compactly editable");
+assert.match(eventSurface,/aria-label.*Event/);assert.match(eventSurface,/row\.title=name/);assert.match(eventSurface,/cm-v2-logic-name-edit/,"signal names are directly editable in their numbered row");
 assert.match(eventSurface,/type\.textContent=event\.type/);assert.doesNotMatch(eventSurface,/updateV2SceneEvent\([^;]*type/,"Event type remains immutable");
 for(const label of ["TRIGGER","MARKER"])assert.match(leftRender,new RegExp(`renderV2ReservedInspector\\(\\"${label}\\"\\)`));
 assert.doesNotMatch(source,/type V2(?:Trigger|Marker)|createV2(?:Trigger|Marker)/);

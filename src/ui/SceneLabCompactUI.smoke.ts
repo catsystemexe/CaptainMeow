@@ -14,7 +14,7 @@ assert(lab.includes("this.setDisplayMode(this.displayMode === \"dev\" ? \"game\"
 assert.match(layout, /\.cm-bgr-workspace-mode-toggle \{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;/, "mode toggle has no card wrapper");
 assert.match(lab, /\.cm-v2-workspace\{[^}]*overflow:visible/, "Scene Lab workspace does not create a nested vertical scroller");
 assert(!lab.includes('el("div","cm-pixel-panel cm-scene-toolbar")\n    const badge'), "compact V2 sections do not depend on decorative pixel panels or badges");
-assert(lab.includes("cm-v2-transport-block .cm-transport-button svg{width:32px;height:32px}"), "compact transport icons are at least twice their prior visual size");
+assert(lab.includes("cm-v2-transport-block .cm-transport-button svg{width:44px;height:44px}"), "transport icons are deliberately large primary controls");
 assert(lab.includes("Reset to scene start") && lab.includes("setPaused?.(!paused)") && lab.includes("setPaused?.(true);this.setCurrentX(start,true)") && !lab.includes("Stop and return to scene start"), "transport provides reset plus a single play/pause toggle");
 assert(lab.includes("Drag Player X cursor") && lab.includes("seekGameplayToPlayerX"), "timeline Player X mapping remains authoritative");
 
