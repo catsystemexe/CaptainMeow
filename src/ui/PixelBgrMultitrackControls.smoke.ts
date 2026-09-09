@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createBackgroundV2DesertTestScene } from "../render/bg/v2/BackgroundV2DesertTestScene";
-import { clickedTimelineCurrentX, createExactTimelineScale, timelineFitZoom, timelinePointerDeltaWorld, worldToTimelinePx } from "./PixelBgrTimeline";
+import { clickedTimelineCurrentX, createExactTimelineScale, PIXEL_BGR_TIMELINE_ZOOM_LEVELS, timelineFitZoom, timelinePointerDeltaWorld, worldToTimelinePx } from "./PixelBgrTimeline";
 import { projectBackgroundV2Timeline, setV2RoleTracksEnabled, v2RoleVisibility } from "./PixelBgrV2TimelineProjection";
-import { PIXEL_BGR_TIMELINE_ZOOM_LEVELS } from "./PixelBgrLabUI";
 
 const source = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 const layout = readFileSync(new URL("./PixelBgrDevWorkspaceLayout.ts", import.meta.url), "utf8");
@@ -26,14 +25,32 @@ const scale2 = createExactTimelineScale(0, 1000, 1000, 2);
 assert.equal(worldToTimelinePx(400, scale2), worldToTimelinePx(400, scale1) * 2, "zoom feeds the canonical exact scale");
 assert.equal(clickedTimelineCurrentX(worldToTimelinePx(400, scale2), 0, scale2), 400, "zoomed seek remains the exact inverse mapping");
 assert.equal(timelinePointerDeltaWorld(0, 200, scale2), 100, "zoomed editing uses that same scale authority");
-assert.equal(timelineFitZoom(900, 20_000), 0.045, "Fit derives an exact overview zoom from the live viewport and full timeline width");
+assert.equal(timelineFitZoom(900, 20_000), 0.02, "a non-preset mathematical ratio resolves to the closest fitting preset");
 assert.equal(timelineFitZoom(900, 720), 1, "Fit does not enlarge a timeline that already fits");
+assert.equal(timelineFitZoom(1, 1_000_000), PIXEL_BGR_TIMELINE_ZOOM_LEVELS[0], "Fit falls back to the smallest preset when no level fully fits");
+for (const width of [1, 720, 1_337, 20_000, 1_000_000]) {
+  assert(PIXEL_BGR_TIMELINE_ZOOM_LEVELS.includes(timelineFitZoom(900, width) as typeof PIXEL_BGR_TIMELINE_ZOOM_LEVELS[number]), "every Fit result belongs to the canonical preset list");
+}
+const emptyScene = { ...desert, tracks: [], events: [] };
+const emptyProjection = projectBackgroundV2Timeline(emptyScene, {}, 0);
+assert.deepEqual(emptyProjection.bounds, { startX: 0, endX: 0 }, "an empty authored scene has safe zero-width bounds");
+assert.equal(timelineFitZoom(900, Math.max(720, emptyProjection.bounds.endX - emptyProjection.bounds.startX)), 1, "an empty authored scene fits safely");
+const sceneWithFarEvent = { ...emptyScene, events: [{ id: "far", type: "signal" as const, worldX: 50_000, enabled: true, name: "far" }] };
+const sceneBeforeFit = structuredClone(sceneWithFarEvent);
+const eventProjection = projectBackgroundV2Timeline(sceneWithFarEvent, {}, 123);
+assert.equal(eventProjection.bounds.endX, 50_000, "the farthest Event expands the authored fit range");
+assert.equal(timelineFitZoom(900, Math.max(720, eventProjection.bounds.endX - eventProjection.bounds.startX)), 0.01, "the farther Event changes Fit to the required smaller preset");
+assert.equal(eventProjection.playerX, 123, "deriving Fit bounds does not seek Player X");
+assert.deepEqual(sceneWithFarEvent, sceneBeforeFit, "deriving Fit bounds does not mutate scene data");
 
 assert.match(source, /private v2TimelineZoom = 0\.1/, "presentation zoom defaults to the practical 1:10 overview");
 assert.match(source, /createExactTimelineScale\([^;]*this\.v2TimelineZoom\)/, "ruler, cursor, seek, drag and resize receive one zoomed scale");
 assert.match(source, /cursorViewportX[\s\S]*this\.v2TimelineZoom=next;this\.render\(\)[\s\S]*newScroll\.scrollLeft/, "zoom preserves Player X's viewport position without seeking");
 assert.match(source, /zoomControls\.append\(zoomOut,fit,zoomIn\)/, "Fit is visible between zoom out and zoom in");
 assert.match(source, /timelineFitZoom\(this\.workspace\.timeline\.clientWidth,baseWidthPx\)/, "Fit uses the live timeline viewport and complete authored width");
+assert.match(source, /currentIndex=PIXEL_BGR_TIMELINE_ZOOM_LEVELS\.indexOf[\s\S]*currentIndex\+direction/, "minus and plus step only through the canonical preset list");
+const fitMethod = source.slice(source.indexOf("private fitV2Timeline"), source.indexOf("private changeV2TimelineZoom"));
+assert.doesNotMatch(fitMethod, /v2Selected|setCurrentX|setBackgroundSceneV2/, "Fit changes neither selection, Player X, nor scene data");
 assert.doesNotMatch(source.slice(source.indexOf("private changeV2TimelineZoom"), source.indexOf("private openV2EventInsertMenu")), /setCurrentX|setBackgroundSceneV2/, "zoom mutates neither Player X nor scene data");
 assert.match(source, /eye\.onpointerdown=isolateTimelinePointerEvent/, "eye pointerdown uses timeline pointer isolation");
 assert.match(source, /visibility!=="all"/, "mixed and disabled lanes deterministically enable all on click");

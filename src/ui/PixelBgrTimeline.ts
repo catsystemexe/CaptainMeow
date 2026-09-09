@@ -14,6 +14,7 @@ const MIN_SPAN = 1;
 const PADDING = 120;
 export const DEFAULT_CHUNK_TIMELINE_SNAP_PX = 16;
 export const MIN_CHUNK_TIMELINE_LENGTH = 64;
+export const PIXEL_BGR_TIMELINE_ZOOM_LEVELS = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2] as const;
 
 /** The rendered camera interval, derived from the gameplay world's scroll authority. */
 export function timelineViewportRange(scrollX: number, viewportWorldWidth: number): TimelineViewportRange {
@@ -76,11 +77,15 @@ export function createExactTimelineScale(startX: number, endX: number, widthPx: 
   };
 }
 
-/** Presentation zoom that makes the complete timeline no wider than its viewport. */
+/** Largest canonical presentation zoom that fits the complete timeline. */
 export function timelineFitZoom(viewportWidthPx: number, unzoomedWidthPx: number): number {
   const viewportWidth = Number.isFinite(viewportWidthPx) ? Math.max(1, viewportWidthPx) : 1;
   const timelineWidth = Number.isFinite(unzoomedWidthPx) ? Math.max(1, unzoomedWidthPx) : 1;
-  return Math.min(1, viewportWidth / timelineWidth);
+  for (let index = PIXEL_BGR_TIMELINE_ZOOM_LEVELS.length - 1; index >= 0; index -= 1) {
+    const zoom = PIXEL_BGR_TIMELINE_ZOOM_LEVELS[index];
+    if (timelineWidth * zoom <= viewportWidth) return zoom;
+  }
+  return PIXEL_BGR_TIMELINE_ZOOM_LEVELS[0];
 }
 
 export function worldToTimelinePx(x: number, scale: TimelineScale): number {
