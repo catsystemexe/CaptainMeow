@@ -27,7 +27,7 @@ assert.match(timelineRule, /height:155px/, "the visible timeline interaction ban
 assert.match(timelineRule, /pointer-events:auto/, "the timeline remains directly pointer-interactive");
 
 const gutterRule = cssRule(".cm-v2-timeline-gutter");
-assert.match(gutterRule, /width:100%;height:155px;display:grid;grid-template-rows:20px repeat\(5,27px\);overflow:visible/, "the full-width gutter shares the exact ruler plus five-lane geometry");
+assert.match(gutterRule, /width:100%;height:144px;display:grid;grid-template-rows:20px repeat\(4,27px\) 16px;overflow:visible/, "the full-width gutter shares the ruler, four visual lanes, and compact Events lane geometry");
 assert.match(gutterRule, /background:#000/, "the visible gutter uses compact monochrome presentation");
 assert.match(source, /this\.workspace\.gutter\.appendChild\(gutter\)/, "the gutter mounts into the left workspace region");
 assert.match(source, /panel\.appendChild\(scroll\)/, "the center timeline panel contains only the horizontal lane viewport");
@@ -37,7 +37,7 @@ assert.match(source, /const labelTrack=lane\.tracks\.find[\s\S]*?button\(lane\.l
 assert.match(source, /lane\.tracks\.length>1[\s\S]*?el\("select","cm-v2-lane-track-select"\)[\s\S]*?trackSelect\.onchange=\(\)=>this\.selectV2Track\(trackSelect\.value\)/, "a multi-track role lane exposes every underlying track through a compact lane selector");
 assert.match(cssRule(".cm-v2-lane-label"), /min-width:0;[\s\S]*height:23px/, "canonical role labels remain constrained within their grid column");
 
-assert.match(source, /const rowHeight=27;[\s\S]*?const headerHeight=20;[\s\S]*?\(projection\.lanes\.length\+1\)\*rowHeight/, "timeline height is one ruler plus the projected role lanes plus Events");
+assert.match(source, /const rowHeight=27;[\s\S]*?const eventRowHeight=16;[\s\S]*?const headerHeight=20;[\s\S]*?projection\.lanes\.length\*rowHeight\+eventRowHeight/, "timeline height is one ruler plus the projected role lanes and compact Events lane");
 assert.equal(source.match(/el\("div","cm-cursor cm-v2-cursor"\)/g)?.length, 1, "one Player X cursor is rendered");
 assert.match(cssRule(".cm-v2-cursor"), /top:0;[\s\S]*bottom:0;[\s\S]*border-left:2px solid/, "Player X cursor spans ruler and every lane above authored content");
 
@@ -45,7 +45,7 @@ assert.match(source, /cm-v2-segment-handle left[\s\S]*?beginV2SegmentDrag\(e,tra
 assert.match(source, /cm-v2-segment-handle right[\s\S]*?beginV2SegmentDrag\(e,track\.id,segment\.id,"resize-right",scale\)/, "right resize handles retain their edit event wiring");
 
 const timelineMount = source.indexOf("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))");
-const leftComposition = source.indexOf("this.root.append(this.renderV2Toolbar()", timelineMount);
+const leftComposition = source.indexOf("headerBlock.append(titlebar,this.renderV2Toolbar())", timelineMount);
 assert.ok(timelineMount >= 0 && leftComposition > timelineMount, "timeline and left-side tools render from one Lab owner into their dedicated regions");
 
 const timelineWidth = source.indexOf("timeline.style.width=`${scale.widthPx}px`");

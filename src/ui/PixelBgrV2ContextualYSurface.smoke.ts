@@ -11,10 +11,10 @@ const object=updateV2Object(scene,"mid","rock",{y:13});assert(object.ok);if(obje
 const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
 assert.match(source,/headerBlock\.append\(titlebar,this\.renderV2Toolbar\(\)\)[\s\S]*?sourceBlock\.append\(this\.renderV2Environment\(v2Scene\)\)[\s\S]*?renderV2ContextualYSurface\(\)[\s\S]*?transportBlock\.append\(this\.renderPreview/,"compact header, source, selection, and transport blocks retain their intended order");
 assert.match(source,/if\(!segment&&!object\)return null/,"no selection produces no contextual surface");
-assert.match(source,/title\.textContent=`Selected · \$\{id\}`/,"segment and object selections share the compact selected heading");
+assert.match(source,/renderV2InspectorHeader\("LAYER"/,"segment and object selections share the explicit Layer heading and controls");
 assert.match(source,/value:segment\.segment\.offsetY[\s\S]*?updateV2Segment\([^;]*\{offsetY:value\}/,"segment control writes canonical offsetY through the immutable helper");
 assert.match(source,/value:object!\.object\.y[\s\S]*?updateV2Object\([^;]*\{y:value\}/,"object control writes canonical y through the immutable helper");
-assert.match(source,/surface\.append\(title,row\);return surface/,"a selected item renders the contextual surface");
+assert.match(source,/surface\.append\(title,this\.row\("ID",document\.createTextNode\(id\)\),row\);return surface/,"a selected item renders its canonical ID and Y in the contextual surface");
 assert.match(source,/displayValue:Math\.round\(segment\.segment\.offsetY\)/,"segment Y displays as a whole integer");
 assert.match(source,/displayValue:Math\.round\(object!\.object\.y\)/,"object Y displays as a whole integer");
 assert.match(source,/cm-v2-left-block\+\.cm-v2-left-block\{margin-top:10px\}/,"compact UI blocks have visible vertical spacing");
