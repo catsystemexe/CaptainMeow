@@ -6,7 +6,8 @@ import { SCENE_LAB_SCENE_CATALOG } from "./SceneLabSceneCatalog";
 const source = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 const main = readFileSync(new URL("../main.ts", import.meta.url), "utf8");
 
-assert.equal(source.match(/this\.iconButton\("Load current scene"/g)?.length, 2, "the existing V1/V2 render paths each keep one Load scene icon");
+assert.equal(source.match(/this\.iconButton\("Load current scene"/g)?.length, 1, "the legacy V1 render path keeps its Load scene icon");
+assert.equal(source.match(/this\.iconButton\("Open scene"/g)?.length, 1, "the compact V2 render path exposes Open");
 assert.equal(source.match(/renderSceneMenu\(\)/g)?.length, 3, "both render paths share one menu renderer rather than creating duplicate menu implementations");
 assert.match(source, /if\(this\.sceneMenuOpen\)return/, "opening an already-open menu is a no-op");
 assert.match(source, /document\.addEventListener\("pointerdown",this\.onSceneMenuOutside\)/, "outside pointer dismissal is installed");
@@ -23,11 +24,10 @@ assert(SCENE_LAB_SCENE_CATALOG.some(entry => entry.label === "Visual Verificatio
 assert(SCENE_LAB_SCENE_CATALOG.some(entry => entry.label === "B2 Demo"), "the existing V1 demo scene is available");
 
 for (const unchangedHandler of [
-  'this.iconButton("Export scene",Download,"Download",()=>this.exportV2File())',
-  'this.iconButton("Import scene",Upload,"Upload",()=>this.importV2File())',
+  'this.iconButton("Save scene",Save,"Save",()=>this.saveV2())',
   'this.iconButton("Duplicate scene",Copy,"Copy",()=>this.duplicateV2())',
-  'this.iconButton("Reset or delete scene",Trash2,"Trash2",()=>this.clearSavedV2())',
   'this.iconButton("Close Scene Lab",X,"X",()=>this.close())',
 ]) assert(source.includes(unchangedHandler), `${unchangedHandler} remains unchanged`);
+assert(source.includes('this.iconButton("Delete saved scene",Trash2,"Trash2",()=>this.deleteSavedV2())'), "V2 delete is explicit and distinct from reset");
 
 console.log("SceneLabLoadSceneMenu.smoke: PASS");

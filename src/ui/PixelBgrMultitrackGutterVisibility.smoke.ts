@@ -19,7 +19,7 @@ assert.match(cssRule(ui, ".cm-v2-panel"), /width:100%/, "timeline content begins
 
 const projection = projectBackgroundV2Timeline(createBackgroundV2DesertTestScene());
 assert.deepEqual(projection.lanes.map(lane => lane.label), ["Front", "Near", "Mid", "Far"], "all canonical gutter roles are present");
-assert.match(ui, /gutterRow\.append\(label,eye,parallax,add\)/, "each role keeps label, eye, parallax, add order");
+assert.match(ui, /gutterRow\.append\(label,parallax,eye,add\)/, "each role keeps label, parallax, eye, add order");
 assert.match(ui, /lane\.tracks\.length>1[\s\S]*?row\.appendChild\(trackSelect\)/, "selectors remain conditional on genuinely multitrack lanes");
 assert.equal(projection.lanes.find(lane => lane.label === "Far")?.tracks.length, 1, "Desert no longer creates a selector for its single Far track");
 
