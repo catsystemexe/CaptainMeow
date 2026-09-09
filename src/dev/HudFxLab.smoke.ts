@@ -46,6 +46,17 @@ assert.deepEqual(getHudFxTestRequests(toggleHudFx(healSelected, "pop")), [], "an
 assert.deepEqual(getHudFxTestRequests(toggleHudFx(healFlashEnabled, "ghost")), [
   { eventId: "heal", effectId: "flash", intensity: 0.64 },
 ], "unimplemented HEAL effects do not add preview requests");
+const waveSelected = selectHudFxEvent(defaults, "wave");
+const wavePopEnabled = updateHudFxIntensity(toggleHudFx(waveSelected, "pop"), "pop", 0.42);
+const waveFlashEnabled = updateHudFxIntensity(toggleHudFx(waveSelected, "flash"), "flash", 0.87);
+const waveBothEnabled = updateHudFxIntensity(toggleHudFx(wavePopEnabled, "flash"), "flash", 0.87);
+assert.deepEqual(getHudFxTestRequests(wavePopEnabled), [{ eventId: "wave", effectId: "pop", intensity: 0.42 }]);
+assert.deepEqual(getHudFxTestRequests(waveFlashEnabled), [{ eventId: "wave", effectId: "flash", intensity: 0.87 }]);
+assert.deepEqual(getHudFxTestRequests(waveBothEnabled), [
+  { eventId: "wave", effectId: "pop", intensity: 0.42 },
+  { eventId: "wave", effectId: "flash", intensity: 0.87 },
+], "WAVE previews use POP, FLASH order and preserve independent intensities");
+assert.deepEqual(getHudFxTestRequests(toggleHudFx(waveSelected, "ghost")), [], "an unimplemented WAVE effect does not enable TEST");
 const weaponSelected = selectHudFxEvent(defaults, "weapon");
 const weaponSnapEnabled = updateHudFxIntensity(toggleHudFx(weaponSelected, "snap"), "snap", 0.82);
 assert.deepEqual(getHudFxTestRequests(weaponSnapEnabled), [
@@ -63,7 +74,6 @@ assert.deepEqual(getHudFxTestRequests(bombBothEnabled), [
   { eventId: "bomb", effectId: "flash", intensity: 0.81 },
 ], "BOMB previews use SNAP, FLASH order and preserve independent intensities");
 assert.deepEqual(getHudFxTestRequests(toggleHudFx(bombSelected, "ghost")), [], "an unimplemented BOMB effect does not enable TEST");
-assert.equal(getHudFxTestRequest(selectHudFxEvent(scorePopEnabled, "wave")), undefined, "unsupported events keep TEST disabled");
 assert.equal(getHudFxTestRequest(defaults), undefined, "disabled SCORE POP keeps TEST disabled");
 const previewRequests: unknown[] = [];
 setHudFxPreviewHandler((request) => previewRequests.push(request));
@@ -94,6 +104,10 @@ const bombSnapshot = JSON.stringify(bombBothEnabled);
 for (const bombPreview of getHudFxTestRequests(bombBothEnabled)) requestHudFxPreview(bombPreview);
 assert.equal(JSON.stringify(bombBothEnabled), bombSnapshot, "BOMB preview does not mutate configuration or gameplay state");
 assert.deepEqual(previewRequests.slice(-2), getHudFxTestRequests(bombBothEnabled));
+const waveSnapshot = JSON.stringify(waveBothEnabled);
+for (const wavePreview of getHudFxTestRequests(waveBothEnabled)) requestHudFxPreview(wavePreview);
+assert.equal(JSON.stringify(waveBothEnabled), waveSnapshot, "WAVE preview does not mutate configuration or gameplay state");
+assert.deepEqual(previewRequests.slice(-2), getHudFxTestRequests(waveBothEnabled));
 setHudFxPreviewHandler(undefined);
 
 class FakeElement {
@@ -179,6 +193,23 @@ const disabledHealUi = createHudFxLabUI(uiStorage, documentStub) as unknown as F
 const disabledHealTest = disabledHealUi.children[3];
 assert.equal(disabledHealTest.disabled, true, "disabled HEAL FLASH keeps TEST disabled");
 assert.equal(disabledHealTest.title, "Enable HEAL FLASH to preview it");
+
+for (const [state, title] of [
+  [wavePopEnabled, "Preview WAVE POP"],
+  [waveFlashEnabled, "Preview WAVE FLASH"],
+  [waveBothEnabled, "Preview WAVE POP + FLASH"],
+] as const) {
+  saveHudFxLabState(uiStorage, state);
+  const waveUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+  const waveTest = waveUi.children[3];
+  assert.equal(waveTest.disabled, false, `${title} is enabled`);
+  assert.equal(waveTest.title, title);
+}
+saveHudFxLabState(uiStorage, waveSelected);
+const disabledWaveUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+const disabledWaveTest = disabledWaveUi.children[3];
+assert.equal(disabledWaveTest.disabled, true, "disabled WAVE effects keep TEST disabled");
+assert.equal(disabledWaveTest.title, "Enable WAVE POP or FLASH to preview it");
 
 saveHudFxLabState(uiStorage, weaponSnapEnabled);
 const weaponUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;

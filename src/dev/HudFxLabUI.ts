@@ -16,6 +16,12 @@ export function getHudFxTestRequests(state: HudFxLabState): HudFxPreviewRequest[
   if (state.selectedEvent === "heal" && state.events.heal.flash.enabled) {
     return [{ eventId: "heal", effectId: "flash", intensity: state.events.heal.flash.intensity }];
   }
+  if (state.selectedEvent === "wave") {
+    const requests: HudFxPreviewRequest[] = [];
+    if (state.events.wave.pop.enabled) requests.push({ eventId: "wave", effectId: "pop", intensity: state.events.wave.pop.intensity });
+    if (state.events.wave.flash.enabled) requests.push({ eventId: "wave", effectId: "flash", intensity: state.events.wave.flash.intensity });
+    return requests;
+  }
   if (state.selectedEvent === "weapon" && state.events.weapon.snap.enabled) {
     return [{ eventId: "weapon", effectId: "snap", intensity: state.events.weapon.snap.intensity }];
   }
@@ -65,6 +71,8 @@ export function createHudFxLabUI(storage: Storage = localStorage, documentRef: D
             ? "Enable WPN SNAP to preview it"
           : state.selectedEvent === "bomb"
             ? "Enable BOMB SNAP or FLASH to preview it"
+          : state.selectedEvent === "wave"
+            ? "Enable WAVE POP or FLASH to preview it"
           : `${labelForEvent(state.selectedEvent)} runtime preview is not supported`;
     test.title = testDescription; test.setAttribute("aria-label", testDescription);
     if (testRequests.length > 0) test.addEventListener("click", () => {

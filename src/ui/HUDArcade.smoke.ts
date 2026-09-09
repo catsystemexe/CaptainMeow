@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
-import { createHudBombFlashController, createHudBombSnapController, createHudEnergyFlashController, createHudEnergyShakeController, createHudScorePopController, createHudWeaponSnapController, detectHudWeaponChanges, getHudWeaponLevels, getHudWeaponPresentationSnapshot, isHudBombChange, isHudEnergyDecrease, isHudEnergyHeal, isHudScoreIncrease, normalizeHudBombCount, triggerHudBombEffects, triggerHudHitEffects } from "./HUDArcade";
+import { createHudBombFlashController, createHudBombSnapController, createHudEnergyFlashController, createHudEnergyShakeController, createHudScorePopController, createHudWaveFlashController, createHudWavePopController, createHudWeaponSnapController, detectHudWeaponChanges, getHudWeaponLevels, getHudWeaponPresentationSnapshot, isHudBombChange, isHudEnergyDecrease, isHudEnergyHeal, isHudScoreIncrease, isHudWaveIncrease, normalizeHudBombCount, normalizeHudWave, triggerHudBombEffects, triggerHudHitEffects, triggerHudWaveEffects } from "./HUDArcade";
 
 const hudSource = readFileSync(new URL("./HUDArcade.ts", import.meta.url), "utf8");
 for (const obsoleteOuterScaling of [
@@ -70,6 +70,64 @@ assert.equal(isHudBombChange(2, 3, { livesChanged: true }), false, "lives transi
 assert.equal(normalizeHudBombCount(2.9), 2, "bomb counts normalize to whole inventory units");
 assert.equal(normalizeHudBombCount(-3), 0, "bomb counts normalize to a non-negative value");
 assert.equal(normalizeHudBombCount(Number.NaN), 0, "invalid bomb counts normalize safely");
+assert.equal(isHudWaveIncrease(undefined, 1), false, "first wave establishes a baseline");
+assert.equal(isHudWaveIncrease(1, 1), false, "unchanged wave does not trigger");
+assert.equal(isHudWaveIncrease(1, 2), true, "wave increase triggers");
+assert.equal(isHudWaveIncrease(2, 3), true, "each subsequent wave increase triggers");
+assert.equal(isHudWaveIncrease(3, 2), false, "wave decrease does not trigger");
+assert.equal(isHudWaveIncrease(5, 1), false, "wave reset does not trigger");
+assert.equal(isHudWaveIncrease(0, 1), true, "a real zero baseline can trigger");
+assert.equal(normalizeHudWave(2.9), 2, "waves normalize to integer presentation values");
+assert.equal(normalizeHudWave(-3), 0, "waves normalize to non-negative values");
+assert.equal(normalizeHudWave(Number.NaN), 0, "invalid waves normalize safely");
+
+{
+  type RecordedAnimation = { cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions; cancel(): void };
+  const popAnimations: RecordedAnimation[] = [];
+  const flashAnimations: RecordedAnimation[] = [];
+  const node = (animations: RecordedAnimation[]) => ({ animate: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
+    const animation: RecordedAnimation = { cancelCalls: 0, keyframes, options, cancel() { this.cancelCalls++; } };
+    animations.push(animation);
+    return animation as unknown as Animation;
+  } });
+  const pop = createHudWavePopController(node(popAnimations));
+  const flash = createHudWaveFlashController(node(flashAnimations));
+  pop.trigger(-1);
+  assert(popAnimations[0].keyframes.every((frame) => frame.transform === "scale(1, 1)"), "zero WAVE POP is neutral");
+  assert(popAnimations[0].keyframes.every((frame) => frame.filter === undefined && frame.opacity === undefined), "WAVE POP is transform-only");
+  pop.trigger(Number.NaN);
+  assert.equal(popAnimations[0].cancelCalls, 1, "WAVE POP retrigger cancels prior POP");
+  assert.match(String(popAnimations[1].keyframes[1].transform), /^scale\(1\.19, 1\.14/, "nonfinite WAVE POP intensity uses the established midpoint fallback");
+  pop.trigger(2);
+  assert.equal(popAnimations[2].keyframes[1].transform, "scale(1.38, 1.28)", "maximum WAVE POP is strong");
+  assert.equal(popAnimations[2].options.duration, 290, "WAVE POP duration is bounded");
+  assert.equal(popAnimations[2].keyframes.at(-1)?.transform, "scale(1, 1)", "WAVE POP settles exactly");
+
+  flash.trigger(-1);
+  assert(flashAnimations[0].keyframes.every((frame) => frame.filter === flashAnimations[0].keyframes[0].filter), "zero WAVE FLASH is neutral");
+  assert(flashAnimations[0].keyframes.every((frame) => frame.transform === undefined && frame.opacity === undefined), "WAVE FLASH is filter-only");
+  flash.trigger(0.5);
+  assert.equal(flashAnimations[0].cancelCalls, 1, "WAVE FLASH retrigger cancels prior FLASH");
+  assert.match(String(flashAnimations[1].keyframes[1].filter), /rgba\(70,225,255/, "WAVE FLASH has a cyan and white identity");
+  flash.trigger(2);
+  assert.match(String(flashAnimations[2].keyframes[1].filter), /brightness\(2\.6\) saturate\(1\.4\)/, "maximum WAVE FLASH has a strong ignition");
+  assert.equal(flashAnimations[2].options.duration, 240, "WAVE FLASH duration is bounded");
+  assert.equal(flashAnimations[2].keyframes.at(-1)?.filter, flashAnimations[2].keyframes[0].filter, "WAVE FLASH settles exactly");
+  assert.equal(popAnimations[2].cancelCalls, 0, "WAVE FLASH does not cancel WAVE POP");
+
+  const settings = { pop: { enabled: true, intensity: 0.3 }, flash: { enabled: true, intensity: 0.8 } } as ReturnType<typeof import("../dev/HudFxLabState").loadHudFxLabState>["events"]["wave"];
+  const calls: string[] = [];
+  triggerHudWaveEffects(settings, { trigger: (intensity) => { calls.push(`pop:${intensity}`); return {} as Animation; } }, { trigger: (intensity) => { calls.push(`flash:${intensity}`); return {} as Animation; } });
+  assert.deepEqual(calls, ["pop:0.3", "flash:0.8"], "one WAVE event dispatches independent POP then FLASH effects");
+  calls.length = 0;
+  triggerHudWaveEffects({ ...settings, pop: { ...settings.pop, enabled: false }, flash: { ...settings.flash, enabled: false } }, { trigger: () => { calls.push("pop"); return {} as Animation; } }, { trigger: () => { calls.push("flash"); return {} as Animation; } });
+  assert.deepEqual(calls, [], "disabled WAVE effects do not dispatch");
+}
+assert.match(hudSource, /wave\.style\.transformOrigin = "center center"/, "WAVE POP uses the numeric node's centered origin");
+assert(hudSource.indexOf("refs.wave.textContent") < hudSource.indexOf("if (isHudWaveIncrease(previousWave, currentWave))"), "new wave text renders before WAVE FX dispatch");
+assert(hudSource.indexOf("triggerHudWaveEffects(waveFx, wavePop, waveFlash)") < hudSource.indexOf("previousWave = currentWave"), "wave baseline updates after dispatch");
+assert.match(hudSource, /const waveFx = loadHudFxLabState\(localStorage\)\.events\.wave;/, "legitimate WAVE loads one configuration snapshot");
+assert(!hudSource.includes("s.wave ="), "HUD WAVE reactions do not mutate session wave state");
 
 {
   const animations: Array<{ cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = [];
