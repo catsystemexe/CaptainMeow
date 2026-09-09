@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createDefaultHudFxLabState, HUD_FX_LAB_STORAGE_KEY, loadHudFxLabState, normalizeHudFxLabState, saveHudFxLabState, selectHudFxEvent, toggleHudFx, updateHudFxIntensity } from "./HudFxLabState";
-import { createHudFxLabUI, getHudFxTestRequest } from "./HudFxLabUI";
+import { createHudFxLabUI, getHudFxTestRequest, getHudFxTestRequests } from "./HudFxLabUI";
 import { requestHudFxPreview, setHudFxPreviewHandler } from "./HudFxPreviewBridge";
 
 const defaults = createDefaultHudFxLabState();
@@ -28,7 +28,15 @@ const hitSelected = selectHudFxEvent(defaults, "hit");
 const hitShakeEnabled = updateHudFxIntensity(toggleHudFx(hitSelected, "shake"), "shake", 0.73);
 assert.deepEqual(getHudFxTestRequest(hitShakeEnabled), { eventId: "hit", effectId: "shake", intensity: 0.73 });
 assert.equal(getHudFxTestRequest(hitSelected), undefined, "disabled HIT SHAKE keeps TEST disabled");
-assert.equal(getHudFxTestRequest(toggleHudFx(hitSelected, "flash")), undefined, "another enabled HIT effect does not enable TEST");
+const hitFlashEnabled = updateHudFxIntensity(toggleHudFx(hitSelected, "flash"), "flash", 0.26);
+assert.deepEqual(getHudFxTestRequests(hitShakeEnabled), [{ eventId: "hit", effectId: "shake", intensity: 0.73 }]);
+assert.deepEqual(getHudFxTestRequests(hitFlashEnabled), [{ eventId: "hit", effectId: "flash", intensity: 0.26 }]);
+const hitBothEnabled = toggleHudFx(hitShakeEnabled, "flash");
+assert.deepEqual(getHudFxTestRequests(hitBothEnabled), [
+  { eventId: "hit", effectId: "shake", intensity: 0.73 },
+  { eventId: "hit", effectId: "flash", intensity: 0.5 },
+], "implemented HIT requests preserve independent intensities");
+assert.deepEqual(getHudFxTestRequests(toggleHudFx(hitSelected, "ghost")), [], "an unimplemented HIT effect does not enable TEST");
 assert.equal(getHudFxTestRequest(selectHudFxEvent(scorePopEnabled, "wave")), undefined, "unsupported events keep TEST disabled");
 assert.equal(getHudFxTestRequest(defaults), undefined, "disabled SCORE POP keeps TEST disabled");
 const previewRequests: unknown[] = [];
@@ -101,11 +109,21 @@ assert.equal(hitTest.disabled, false, "enabled HIT SHAKE enables TEST");
 assert.equal(hitTest.title, "Preview HIT SHAKE");
 assert.equal(hitTest.attributes.get("aria-label"), "Preview HIT SHAKE");
 
+saveHudFxLabState(uiStorage, hitBothEnabled);
+const hitBothUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+const hitBothTest = hitBothUi.children[3];
+const multiPreviewRequests: unknown[] = [];
+setHudFxPreviewHandler((request) => multiPreviewRequests.push(request));
+hitBothTest.dispatch("click");
+assert.deepEqual(multiPreviewRequests, getHudFxTestRequests(hitBothEnabled), "one TEST click previews every enabled implemented HIT effect");
+assert.equal(hitBothTest.title, "Preview HIT SHAKE + FLASH");
+setHudFxPreviewHandler(undefined);
+
 saveHudFxLabState(uiStorage, hitSelected);
 const disabledHitUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
 const disabledHitTest = disabledHitUi.children[3];
 assert.equal(disabledHitTest.disabled, true, "disabled HIT SHAKE disables TEST");
-assert.equal(disabledHitTest.title, "Enable HIT SHAKE to preview it");
+assert.equal(disabledHitTest.title, "Enable HIT SHAKE or FLASH to preview it");
 
 const uiSource = readFileSync(new URL("./HudFxLabUI.ts", import.meta.url), "utf8");
 assert.match(uiSource, /const commitAndRender = .*commitWithoutRender\(next\); render\(\);/, "structural controls still persist and rerender");

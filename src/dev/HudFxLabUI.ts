@@ -3,14 +3,21 @@ import { requestHudFxPreview, type HudFxPreviewRequest } from "./HudFxPreviewBri
 
 const labelForEvent = (id: string) => id === "weapon" ? "WPN" : id.toUpperCase();
 
-export function getHudFxTestRequest(state: HudFxLabState): HudFxPreviewRequest | undefined {
+export function getHudFxTestRequests(state: HudFxLabState): HudFxPreviewRequest[] {
   if (state.selectedEvent === "score" && state.events.score.pop.enabled) {
-    return { eventId: "score", effectId: "pop", intensity: state.events.score.pop.intensity };
+    return [{ eventId: "score", effectId: "pop", intensity: state.events.score.pop.intensity }];
   }
-  if (state.selectedEvent === "hit" && state.events.hit.shake.enabled) {
-    return { eventId: "hit", effectId: "shake", intensity: state.events.hit.shake.intensity };
+  if (state.selectedEvent === "hit") {
+    const requests: HudFxPreviewRequest[] = [];
+    if (state.events.hit.shake.enabled) requests.push({ eventId: "hit", effectId: "shake", intensity: state.events.hit.shake.intensity });
+    if (state.events.hit.flash.enabled) requests.push({ eventId: "hit", effectId: "flash", intensity: state.events.hit.flash.intensity });
+    return requests;
   }
-  return undefined;
+  return [];
+}
+
+export function getHudFxTestRequest(state: HudFxLabState): HudFxPreviewRequest | undefined {
+  return getHudFxTestRequests(state)[0];
 }
 
 export function createHudFxLabUI(storage: Storage = localStorage, documentRef: Document = document): HTMLElement {
@@ -32,17 +39,19 @@ export function createHudFxLabUI(storage: Storage = localStorage, documentRef: D
     const eventLabel = documentRef.createElement("div"); eventLabel.className = "cm-dev-label"; eventLabel.textContent = "event:";
     const events = documentRef.createElement("div"); events.className = "cm-hud-fx-events";
     for (const id of HUD_FX_EVENTS) events.appendChild(choice(labelForEvent(id), state.selectedEvent === id, () => commitAndRender(selectHudFxEvent(state, id))));
-    const testRequest = getHudFxTestRequest(state);
-    const test = documentRef.createElement("button"); test.type = "button"; test.textContent = "TEST"; test.disabled = !testRequest;
-    const testDescription = testRequest
-      ? `Preview ${labelForEvent(testRequest.eventId)} ${testRequest.effectId.toUpperCase()}`
+    const testRequests = getHudFxTestRequests(state);
+    const test = documentRef.createElement("button"); test.type = "button"; test.textContent = "TEST"; test.disabled = testRequests.length === 0;
+    const testDescription = testRequests.length > 0
+      ? `Preview ${labelForEvent(state.selectedEvent)} ${testRequests.map((request) => request.effectId.toUpperCase()).join(" + ")}`
       : state.selectedEvent === "score"
         ? "Enable SCORE POP to preview it"
         : state.selectedEvent === "hit"
-          ? "Enable HIT SHAKE to preview it"
+          ? "Enable HIT SHAKE or FLASH to preview it"
           : `${labelForEvent(state.selectedEvent)} runtime preview is not supported`;
     test.title = testDescription; test.setAttribute("aria-label", testDescription);
-    if (testRequest) test.addEventListener("click", () => requestHudFxPreview(getHudFxTestRequest(state) ?? testRequest));
+    if (testRequests.length > 0) test.addEventListener("click", () => {
+      for (const request of getHudFxTestRequests(state)) requestHudFxPreview(request);
+    });
     const fxLabel = documentRef.createElement("div"); fxLabel.className = "cm-dev-label"; fxLabel.textContent = "fx:";
     root.append(title, eventLabel, events, test, fxLabel);
     for (const id of HUD_FX_EFFECTS) {

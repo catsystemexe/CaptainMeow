@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
-import { createHudEnergyShakeController, createHudScorePopController, getHudWeaponLevels, isHudEnergyDecrease, isHudScoreIncrease } from "./HUDArcade";
+import { createHudEnergyFlashController, createHudEnergyShakeController, createHudScorePopController, getHudWeaponLevels, isHudEnergyDecrease, isHudScoreIncrease, triggerHudHitEffects } from "./HUDArcade";
 
 const hudSource = readFileSync(new URL("./HUDArcade.ts", import.meta.url), "utf8");
 for (const obsoleteOuterScaling of [
@@ -95,7 +95,46 @@ assert.match(hudSource, /loadHudFxLabState\(localStorage\)\.events\.score\.pop/,
   assert.deepEqual(animations[2].keyframes.map((frame) => frame.transform), firstEnvelope, "SHAKE keyframes are deterministic");
 }
 assert.match(hudSource, /createHudEnergyShakeController\(energy\)/, "stable hudEnergy node owns SHAKE");
-assert.match(hudSource, /loadHudFxLabState\(localStorage\)\.events\.hit\.shake/, "real HIT events read HIT SHAKE independent of editor selection");
+
+{
+  const animations: Array<{ cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = [];
+  const energyNode = {
+    animate: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
+      const animation = { cancelCalls: 0, keyframes, options, cancel() { this.cancelCalls++; } };
+      animations.push(animation);
+      return animation as unknown as Animation;
+    },
+  };
+  const flash = createHudEnergyFlashController(energyNode);
+  flash.trigger(-1);
+  flash.trigger(2);
+  assert.equal(animations[0].cancelCalls, 1, "retrigger cancels the prior FLASH");
+  assert.equal(animations[0].keyframes[1].filter, "brightness(1) drop-shadow(0 0 0px rgba(180,255,255,0))", "FLASH intensity clamps to zero");
+  assert.equal(animations[1].options.duration, 180, "FLASH maximum duration remains bounded");
+  assert.equal(animations[1].keyframes.at(-1)?.filter, "brightness(1) drop-shadow(0 0 0px rgba(255,255,255,0))", "FLASH settles exactly to its filter baseline");
+  assert(animations[1].keyframes.every((frame) => frame.transform === undefined), "FLASH keyframes are filter-only");
+  const firstEnvelope = animations[1].keyframes.map((frame) => frame.filter);
+  flash.trigger(1);
+  assert.deepEqual(animations[2].keyframes.map((frame) => frame.filter), firstEnvelope, "FLASH keyframes are deterministic");
+}
+assert.match(hudSource, /createHudEnergyFlashController\(energy\)/, "stable hudEnergy node owns FLASH");
+assert.match(hudSource, /const hit = loadHudFxLabState\(localStorage\)\.events\.hit;/, "real HIT loads one configuration snapshot independent of editor selection");
+
+{
+  const calls: string[] = [];
+  const animation = {} as Animation;
+  const shake = { trigger: (intensity: number) => { calls.push(`shake:${intensity}`); return animation; } };
+  const flash = { trigger: (intensity: number) => { calls.push(`flash:${intensity}`); return animation; } };
+  const hit = { pop: { enabled: false, intensity: 0.5 }, shake: { enabled: true, intensity: 0.2 }, flash: { enabled: false, intensity: 0.8 }, ghost: { enabled: false, intensity: 0.5 }, glitch: { enabled: false, intensity: 0.5 }, snap: { enabled: false, intensity: 0.5 } };
+  triggerHudHitEffects(hit, shake, flash);
+  assert.deepEqual(calls, ["shake:0.2"], "SHAKE-only HIT triggers SHAKE only");
+  hit.shake.enabled = false; hit.flash.enabled = true;
+  triggerHudHitEffects(hit, shake, flash);
+  assert.deepEqual(calls.slice(1), ["flash:0.8"], "FLASH-only HIT triggers FLASH only");
+  hit.shake.enabled = true;
+  triggerHudHitEffects(hit, shake, flash);
+  assert.deepEqual(calls.slice(2), ["shake:0.2", "flash:0.8"], "one HIT independently triggers both enabled effects");
+}
 
 {
   const levels = getHudWeaponLevels({
