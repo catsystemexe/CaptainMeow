@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
-import { createHudScorePopController, getHudWeaponLevels, isHudScoreIncrease } from "./HUDArcade";
+import { createHudEnergyShakeController, createHudScorePopController, getHudWeaponLevels, isHudEnergyDecrease, isHudScoreIncrease } from "./HUDArcade";
 
 const hudSource = readFileSync(new URL("./HUDArcade.ts", import.meta.url), "utf8");
 for (const obsoleteOuterScaling of [
@@ -47,6 +47,10 @@ assert.equal(isHudScoreIncrease(undefined, 100), false, "first score establishes
 assert.equal(isHudScoreIncrease(100, 100), false, "unchanged score does not trigger");
 assert.equal(isHudScoreIncrease(100, 110), true, "score increase triggers");
 assert.equal(isHudScoreIncrease(110, 0), false, "score reset does not trigger");
+assert.equal(isHudEnergyDecrease(undefined, 5), false, "first energy establishes a baseline");
+assert.equal(isHudEnergyDecrease(5, 5), false, "unchanged energy does not trigger");
+assert.equal(isHudEnergyDecrease(5, 4), true, "energy decrease triggers HIT");
+assert.equal(isHudEnergyDecrease(4, 5), false, "energy increase does not trigger HIT");
 
 {
   const animations: Array<{ cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = [];
@@ -67,6 +71,31 @@ assert.equal(isHudScoreIncrease(110, 0), false, "score reset does not trigger");
 }
 assert.match(hudSource, /score\.style\.transformOrigin = "right center"/, "stable score node owns the POP origin");
 assert.match(hudSource, /loadHudFxLabState\(localStorage\)\.events\.score\.pop/, "real score events read SCORE POP independent of editor selection");
+
+{
+  const animations: Array<{ cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = [];
+  const energyNode = {
+    animate: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
+      const animation = { cancelCalls: 0, keyframes, options, cancel() { this.cancelCalls++; } };
+      animations.push(animation);
+      return animation as unknown as Animation;
+    },
+  };
+  const shake = createHudEnergyShakeController(energyNode);
+  shake.trigger(-1);
+  shake.trigger(2);
+  assert.equal(animations.length, 2, "retrigger starts a fresh SHAKE immediately");
+  assert.equal(animations[0].cancelCalls, 1, "retrigger cancels the prior SHAKE");
+  assert.equal(animations[0].keyframes[1].transform, "translate(0px, 0px)", "SHAKE intensity clamps to zero");
+  assert.equal(animations[1].keyframes[1].transform, "translate(-6px, 3px)", "SHAKE intensity clamps to one");
+  assert.equal(animations[1].options.duration, 220, "maximum SHAKE duration remains controlled");
+  assert.equal(animations[1].keyframes.at(-1)?.transform, "translate(0px, 0px)", "SHAKE settles to its transform baseline");
+  const firstEnvelope = animations[1].keyframes.map((frame) => frame.transform);
+  shake.trigger(1);
+  assert.deepEqual(animations[2].keyframes.map((frame) => frame.transform), firstEnvelope, "SHAKE keyframes are deterministic");
+}
+assert.match(hudSource, /createHudEnergyShakeController\(energy\)/, "stable hudEnergy node owns SHAKE");
+assert.match(hudSource, /loadHudFxLabState\(localStorage\)\.events\.hit\.shake/, "real HIT events read HIT SHAKE independent of editor selection");
 
 {
   const levels = getHudWeaponLevels({

@@ -24,7 +24,12 @@ assert.deepEqual(normalizeHudFxLabState({ selectedEvent: "wave", events: { wave:
 assert.deepEqual(createDefaultHudFxLabState(), defaults, "reset produces complete defaults");
 const scorePopEnabled = toggleHudFx(defaults, "pop");
 assert.deepEqual(getHudFxTestRequest(scorePopEnabled), { eventId: "score", effectId: "pop", intensity: 0.5 });
-assert.equal(getHudFxTestRequest(selectHudFxEvent(scorePopEnabled, "hit")), undefined, "unsupported events keep TEST disabled");
+const hitSelected = selectHudFxEvent(defaults, "hit");
+const hitShakeEnabled = updateHudFxIntensity(toggleHudFx(hitSelected, "shake"), "shake", 0.73);
+assert.deepEqual(getHudFxTestRequest(hitShakeEnabled), { eventId: "hit", effectId: "shake", intensity: 0.73 });
+assert.equal(getHudFxTestRequest(hitSelected), undefined, "disabled HIT SHAKE keeps TEST disabled");
+assert.equal(getHudFxTestRequest(toggleHudFx(hitSelected, "flash")), undefined, "another enabled HIT effect does not enable TEST");
+assert.equal(getHudFxTestRequest(selectHudFxEvent(scorePopEnabled, "wave")), undefined, "unsupported events keep TEST disabled");
 assert.equal(getHudFxTestRequest(defaults), undefined, "disabled SCORE POP keeps TEST disabled");
 const previewRequests: unknown[] = [];
 setHudFxPreviewHandler((request) => previewRequests.push(request));
@@ -33,6 +38,12 @@ assert(preview);
 requestHudFxPreview(preview);
 assert.deepEqual(previewRequests, [{ eventId: "score", effectId: "pop", intensity: 0.73 }]);
 assert.deepEqual(scorePopEnabled.events.score.pop, { enabled: true, intensity: 0.5 }, "preview does not mutate configuration or gameplay state");
+const hitSnapshot = JSON.stringify(hitShakeEnabled);
+const hitPreview = getHudFxTestRequest(hitShakeEnabled);
+assert(hitPreview);
+requestHudFxPreview(hitPreview);
+assert.equal(JSON.stringify(hitShakeEnabled), hitSnapshot, "HIT preview does not mutate configuration or gameplay state");
+assert.deepEqual(previewRequests.at(-1), { eventId: "hit", effectId: "shake", intensity: 0.73 });
 setHudFxPreviewHandler(undefined);
 
 class FakeElement {
@@ -82,6 +93,19 @@ const disabledSnapSlider = rows[1].children[1];
 const disabledSnapValue = rows[1].children[2];
 assert.equal(disabledSnapSlider.disabled, true);
 assert.equal(disabledSnapValue.textContent, "0.50", "disabled effects still present their current value");
+
+saveHudFxLabState(uiStorage, hitShakeEnabled);
+const hitUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+const hitTest = hitUi.children[3];
+assert.equal(hitTest.disabled, false, "enabled HIT SHAKE enables TEST");
+assert.equal(hitTest.title, "Preview HIT SHAKE");
+assert.equal(hitTest.attributes.get("aria-label"), "Preview HIT SHAKE");
+
+saveHudFxLabState(uiStorage, hitSelected);
+const disabledHitUi = createHudFxLabUI(uiStorage, documentStub) as unknown as FakeElement;
+const disabledHitTest = disabledHitUi.children[3];
+assert.equal(disabledHitTest.disabled, true, "disabled HIT SHAKE disables TEST");
+assert.equal(disabledHitTest.title, "Enable HIT SHAKE to preview it");
 
 const uiSource = readFileSync(new URL("./HudFxLabUI.ts", import.meta.url), "utf8");
 assert.match(uiSource, /const commitAndRender = .*commitWithoutRender\(next\); render\(\);/, "structural controls still persist and rerender");
