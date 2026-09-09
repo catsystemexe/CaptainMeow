@@ -73,6 +73,15 @@ export function isHudScoreIncrease(previousScore: number | undefined, currentSco
   return previousScore !== undefined && currentScore > previousScore;
 }
 
+export function normalizeHudWave(value: unknown): number {
+  const wave = Number(value ?? 0);
+  return Number.isFinite(wave) ? Math.max(0, Math.floor(wave)) : 0;
+}
+
+export function isHudWaveIncrease(previousWave: number | undefined, currentWave: number): boolean {
+  return previousWave !== undefined && currentWave > previousWave;
+}
+
 export function isHudEnergyDecrease(previousEnergy: number | undefined, currentEnergy: number): boolean {
   return previousEnergy !== undefined && currentEnergy < previousEnergy;
 }
@@ -132,6 +141,44 @@ export function createHudScorePopController(scoreNode: Pick<HTMLElement, "animat
         },
         { transform: "scale(1, 1)", filter: "brightness(1)", textShadow: `0 0 8px ${COL_CYAN}`, offset: 1 },
       ], { duration: 140 + 140 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+export function createHudWavePopController(waveNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      activeAnimation?.cancel();
+      activeAnimation = waveNode.animate([
+        { transform: "scale(1, 1)", offset: 0 },
+        { transform: `scale(${1 + 0.38 * amount}, ${1 + 0.28 * amount})`, offset: 0.24 },
+        { transform: `scale(${1 - 0.06 * amount}, ${1 + 0.1 * amount})`, offset: 0.52 },
+        { transform: `scale(${1 + 0.04 * amount}, ${1 - 0.02 * amount})`, offset: 0.75 },
+        { transform: "scale(1, 1)", offset: 1 },
+      ], { duration: 150 + 140 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+export function createHudWaveFlashController(waveNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      const baseline = "brightness(1) saturate(1) drop-shadow(0 0 0px rgba(255,255,255,0)) drop-shadow(0 0 0px rgba(70,225,255,0))";
+      const peak = amount === 0 ? baseline : `brightness(${1 + 1.6 * amount}) saturate(${1 + 0.4 * amount}) drop-shadow(0 0 ${4 * amount}px rgba(255,255,255,${amount})) drop-shadow(0 0 ${10 * amount}px rgba(70,225,255,${0.9 * amount}))`;
+      const secondary = amount === 0 ? baseline : `brightness(${1 + 0.45 * amount}) saturate(${1 + 0.2 * amount}) drop-shadow(0 0 ${6 * amount}px rgba(70,225,255,${0.7 * amount}))`;
+      activeAnimation?.cancel();
+      activeAnimation = waveNode.animate([
+        { filter: baseline, offset: 0 },
+        { filter: peak, offset: 0.2 },
+        { filter: secondary, offset: 0.52 },
+        { filter: baseline, offset: 1 },
+      ], { duration: 140 + 100 * amount, easing: "ease-out" });
       return activeAnimation;
     },
   };
@@ -289,6 +336,15 @@ export function triggerHudBombEffects(
   if (bomb.flash.enabled) bombFlash.trigger(bomb.flash.intensity);
 }
 
+export function triggerHudWaveEffects(
+  wave: ReturnType<typeof loadHudFxLabState>["events"]["wave"],
+  wavePop: HudEffectTrigger,
+  waveFlash: HudEffectTrigger,
+): void {
+  if (wave.pop.enabled) wavePop.trigger(wave.pop.intensity);
+  if (wave.flash.enabled) waveFlash.trigger(wave.flash.intensity);
+}
+
 function readHudLevel(slot: WeaponSlotHudLike | undefined): number {
   const n = Number(slot?.level ?? 1);
   return Number.isFinite(n) ? Math.max(1, Math.floor(n)) : 1;
@@ -429,6 +485,7 @@ export function createHUDArcade(root: HTMLElement) {
   let previousEnergy: number | undefined;
   let previousLives: number | undefined;
   let previousBombs: number | undefined;
+  let previousWave: number | undefined;
   let previousWeaponSnapshot: HudWeaponPresentationSnapshot | undefined;
 
   // one-time keyframes/styles for the CRT-ish HUD overlay + rainbow cooldown
@@ -521,6 +578,9 @@ export function createHUDArcade(root: HTMLElement) {
       `color:#ffffff;text-shadow:0 0 6px ${COL_CYAN};`,
   );
   wave.className = "hud-value hud-wave-value";
+  wave.style.transformOrigin = "center center";
+  const wavePop = createHudWavePopController(wave);
+  const waveFlash = createHudWaveFlashController(wave);
 
   // ===== WEAPON block (bottom-left) =====
   const weaponBlock = mkChild(panel, "hudWeaponBlock", `position:absolute;left:${EDGE_INSET_X}px;bottom:${EDGE_INSET_Y}px;display:flex;align-items:center;gap:14px;`);
@@ -551,6 +611,8 @@ export function createHUDArcade(root: HTMLElement) {
     if (request.eventId === "weapon" && request.effectId === "snap") weaponSnap.trigger(request.intensity, "both");
     if (request.eventId === "bomb" && request.effectId === "snap") bombSnap.trigger(request.intensity);
     if (request.eventId === "bomb" && request.effectId === "flash") bombFlash.trigger(request.intensity);
+    if (request.eventId === "wave" && request.effectId === "pop") wavePop.trigger(request.intensity);
+    if (request.eventId === "wave" && request.effectId === "flash") waveFlash.trigger(request.intensity);
   });
 
   function mkIconCanvas(parent: HTMLElement, id: string): HTMLCanvasElement {
@@ -691,7 +753,13 @@ export function createHUDArcade(root: HTMLElement) {
       renderLives(currentLives);
 
       // wave / score numbers drawn into their pre-styled overlay divs
+      const currentWave = normalizeHudWave(s.wave);
       refs.wave.textContent = waveText ?? String((s.wave ?? 0) | 0).padStart(2, "0");
+      if (isHudWaveIncrease(previousWave, currentWave)) {
+        const waveFx = loadHudFxLabState(localStorage).events.wave;
+        triggerHudWaveEffects(waveFx, wavePop, waveFlash);
+      }
+      previousWave = currentWave;
       const currentScore = Number(s.score ?? 0);
       refs.score.textContent = String(Math.floor(currentScore)).padStart(6, "0");
       const scoreReset = previousScore !== undefined && currentScore < previousScore;
