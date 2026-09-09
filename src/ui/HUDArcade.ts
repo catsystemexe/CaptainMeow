@@ -120,6 +120,41 @@ export function createHudEnergyShakeController(energyNode: Pick<HTMLElement, "an
   };
 }
 
+export function createHudEnergyFlashController(energyNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      const baseline = "brightness(1) drop-shadow(0 0 0px rgba(255,255,255,0))";
+      activeAnimation?.cancel();
+      activeAnimation = energyNode.animate([
+        { filter: baseline, offset: 0 },
+        {
+          filter: `brightness(${1 + 1.1 * amount}) drop-shadow(0 0 ${7 * amount}px rgba(180,255,255,${0.9 * amount}))`,
+          offset: 0.25,
+        },
+        {
+          filter: `brightness(${1 + 0.3 * amount}) drop-shadow(0 0 ${3 * amount}px rgba(0,255,238,${0.45 * amount}))`,
+          offset: 0.6,
+        },
+        { filter: baseline, offset: 1 },
+      ], { duration: 90 + 90 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+type HudEffectTrigger = { trigger(intensity: number): Animation };
+
+export function triggerHudHitEffects(
+  hit: ReturnType<typeof loadHudFxLabState>["events"]["hit"],
+  energyShake: HudEffectTrigger,
+  energyFlash: HudEffectTrigger,
+): void {
+  if (hit.shake.enabled) energyShake.trigger(hit.shake.intensity);
+  if (hit.flash.enabled) energyFlash.trigger(hit.flash.intensity);
+}
+
 function readHudLevel(slot: WeaponSlotHudLike | undefined): number {
   const n = Number(slot?.level ?? 1);
   return Number.isFinite(n) ? Math.max(1, Math.floor(n)) : 1;
@@ -288,6 +323,7 @@ export function createHUDArcade(root: HTMLElement) {
     return segment;
   });
   const energyShake = createHudEnergyShakeController(energy);
+  const energyFlash = createHudEnergyFlashController(energy);
   const lives = mkChild(
     energyBlock,
     "hudLives",
@@ -314,6 +350,7 @@ export function createHUDArcade(root: HTMLElement) {
   setHudFxPreviewHandler((request) => {
     if (request.eventId === "score" && request.effectId === "pop") scorePop.trigger(request.intensity);
     if (request.eventId === "hit" && request.effectId === "shake") energyShake.trigger(request.intensity);
+    if (request.eventId === "hit" && request.effectId === "flash") energyFlash.trigger(request.intensity);
   });
 
   // ===== WAVE block (top-center) =====
@@ -510,8 +547,8 @@ export function createHUDArcade(root: HTMLElement) {
         segment.style.boxShadow = filled ? `0 0 4px ${COL_CYAN}` : "none";
       }
       if (isHudEnergyDecrease(previousEnergy, energyVal)) {
-        const shake = loadHudFxLabState(localStorage).events.hit.shake;
-        if (shake.enabled) energyShake.trigger(shake.intensity);
+        const hit = loadHudFxLabState(localStorage).events.hit;
+        triggerHudHitEffects(hit, energyShake, energyFlash);
       }
       previousEnergy = energyVal;
 
