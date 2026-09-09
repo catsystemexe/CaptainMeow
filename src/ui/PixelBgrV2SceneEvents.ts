@@ -55,6 +55,19 @@ export function deleteV2SceneEvent(scene: BackgroundSceneV2, eventId: string): V
   return validated(scene, { ...scene, events: (scene.events ?? []).filter(event => event.id !== eventId) }, "");
 }
 
+export function duplicateV2SceneEvent(scene: BackgroundSceneV2, eventId: string): V2SceneEventEditResult {
+  const source = (scene.events ?? []).find(event => event.id === eventId);
+  if (!source) return fail(scene, "event-not-found", `Event '${eventId}' was not found.`);
+  if (source.type === "level-end") return fail(scene, "duplicate-level-end", "Scene already has a level-end event.");
+  const event: BackgroundSceneEvent = { ...source, id: uniqueId(scene, source.id), worldX: source.worldX + V2_EVENT_SNAP_WORLD_X };
+  return validated(scene, { ...scene, events: [...(scene.events ?? []), event] }, event.id);
+}
+
+/** Deterministic presentation order; the returned ordinal is never scene data. */
+export function orderedV2SceneEvents(scene: BackgroundSceneV2): BackgroundSceneEvent[] {
+  return [...(scene.events ?? [])].sort((a, b) => a.worldX - b.worldX || a.id.localeCompare(b.id));
+}
+
 export function getV2LevelEndWorldX(scene: BackgroundSceneV2): number | null {
   return scene.events?.find(event => event.type === "level-end" && event.enabled)?.worldX ?? null;
 }
