@@ -125,7 +125,7 @@ assert.equal(normalizeHudWave(Number.NaN), 0, "invalid waves normalize safely");
 }
 assert.match(hudSource, /wave\.style\.transformOrigin = "center center"/, "WAVE POP uses the numeric node's centered origin");
 assert(hudSource.indexOf("refs.wave.textContent") < hudSource.indexOf("if (isHudWaveIncrease(previousWave, currentWave))"), "new wave text renders before WAVE FX dispatch");
-assert(hudSource.indexOf("triggerHudWaveEffects(waveFx, wavePop, waveFlash)") < hudSource.indexOf("previousWave = currentWave"), "wave baseline updates after dispatch");
+assert(hudSource.indexOf('dispatchHudFx("wave", waveFx)') < hudSource.indexOf("previousWave = currentWave"), "wave baseline updates after dispatch");
 assert.match(hudSource, /const waveFx = loadHudFxLabState\(localStorage\)\.events\.wave;/, "legitimate WAVE loads one configuration snapshot");
 assert(!hudSource.includes("s.wave ="), "HUD WAVE reactions do not mutate session wave state");
 
@@ -212,7 +212,7 @@ assert(!hudSource.includes("s.wave ="), "HUD WAVE reactions do not mutate sessio
   assert.equal(animations[1].keyframes.at(-1)?.filter, "brightness(1)", "POP settles to its brightness baseline");
 }
 assert.match(hudSource, /score\.style\.transformOrigin = "right center"/, "stable score node owns the POP origin");
-assert.match(hudSource, /loadHudFxLabState\(localStorage\)\.events\.score\.pop/, "real score events read SCORE POP independent of editor selection");
+assert.match(hudSource, /const scoreFx = loadHudFxLabState\(localStorage\)\.events\.score;/, "real score events read SCORE POP independent of editor selection");
 
 {
   const animations: Array<{ cancelCalls: number; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = [];
@@ -281,10 +281,10 @@ assert.match(hudSource, /createHudEnergyShakeController\(energy\)/, "stable hudE
 }
 assert.match(hudSource, /createHudEnergyFlashController\(energy\)/, "stable hudEnergy node owns FLASH");
 assert.match(hudSource, /const hit = loadHudFxLabState\(localStorage\)\.events\.hit;/, "real HIT loads one configuration snapshot independent of editor selection");
-assert.match(hudSource, /const flash = loadHudFxLabState\(localStorage\)\.events\.heal\.flash;/, "real HEAL reads HEAL FLASH independent of editor selection");
-assert.match(hudSource, /isHudEnergyHeal\(previousEnergy, energyVal,[\s\S]*?loadHudFxLabState\(localStorage\)\.events\.heal\.flash/, "HEAL configuration is loaded only after a legitimate HEAL is detected");
+assert.match(hudSource, /const heal = loadHudFxLabState\(localStorage\)\.events\.heal;/, "real HEAL loads one configuration snapshot");
+assert.match(hudSource, /isHudEnergyHeal\(previousEnergy, energyVal,[\s\S]*?loadHudFxLabState\(localStorage\)\.events\.heal/, "HEAL configuration is loaded only after a legitimate HEAL is detected");
 assert(hudSource.indexOf("segment.style.boxShadow") < hudSource.indexOf("if (isHudEnergyDecrease(previousEnergy, energyVal))"), "energy segment DOM state updates before HIT or HEAL dispatch");
-assert.match(hudSource, /energyFlash\.trigger\(flash\.intensity, "heal"\)/, "real HEAL dispatches the HEAL FLASH variant");
+assert.match(hudSource, /eventId === "heal" && effectId === "flash"\) energyFlash\.trigger\(intensity, "heal"\)/, "real HEAL dispatches the HEAL FLASH variant");
 assert(!hudSource.includes("player.energy ="), "HUD reactions do not mutate gameplay energy");
 
 {
@@ -336,15 +336,15 @@ assert(!hudSource.includes("player.energy ="), "HUD reactions do not mutate game
 assert.match(hudSource, /w1Group\.style\.transformOrigin = "center center"/, "W1 SNAP uses a stable local transform origin");
 assert.match(hudSource, /w2Group\.style\.transformOrigin = "center center"/, "W2 SNAP uses a stable local transform origin");
 assert(hudSource.indexOf("refs.w2Level.textContent") < hudSource.indexOf("const changedWeaponSlots = detectHudWeaponChanges"), "new weapon presentation renders before SNAP dispatch");
-assert.match(hudSource, /if \(changedWeaponSlots\.w1 \|\| changedWeaponSlots\.w2\) \{\s*const snap = loadHudFxLabState\(localStorage\)\.events\.weapon\.snap;/, "weapon configuration loads once and only after a legitimate transition");
-assert.match(hudSource, /weaponSnap\.trigger\(snap\.intensity, target\)/, "runtime SNAP targets only materially changed slots");
-assert.match(hudSource, /request\.eventId === "weapon" && request\.effectId === "snap"\) weaponSnap\.trigger\(request\.intensity, "both"\)/, "WPN SNAP preview targets both weapon groups");
+assert.match(hudSource, /if \(changedWeaponSlots\.w1 \|\| changedWeaponSlots\.w2\) \{\s*const weaponFx = loadHudFxLabState\(localStorage\)\.events\.weapon;/, "weapon configuration loads once and only after a legitimate transition");
+assert.match(hudSource, /dispatchHudFx\("weapon", weaponFx, target\)/, "runtime SNAP targets only materially changed slots");
+assert.match(hudSource, /dispatchHudFx\(request\.eventId, previewSettings\)/, "WPN SNAP preview targets both weapon groups");
 assert(!hudSource.includes("selectedEvent"), "runtime HUD reactions remain independent of editor selection");
 assert.match(hudSource, /bombGroup\.style\.transformOrigin = "center center"/, "BOMB SNAP uses the local bomb group origin");
 assert(hudSource.indexOf("refs.bomb.innerHTML") < hudSource.indexOf("if (isHudBombChange(previousBombs, b"), "current bomb DOM renders before BOMB dispatch");
-assert.match(hudSource, /if \(isHudBombChange\(previousBombs, b, \{ scoreReset, livesChanged \}\)\) \{\s*const bomb = loadHudFxLabState\(localStorage\)\.events\.bomb;\s*triggerHudBombEffects\(bomb, bombSnap, bombFlash\);\s*\}\s*previousBombs = b;/, "BOMB config loads once after detection and baseline updates after dispatch");
-assert.match(hudSource, /request\.eventId === "bomb" && request\.effectId === "snap"\) bombSnap\.trigger/, "BOMB SNAP uses the existing preview handler");
-assert.match(hudSource, /request\.eventId === "bomb" && request\.effectId === "flash"\) bombFlash\.trigger/, "BOMB FLASH uses the existing preview handler");
+assert.match(hudSource, /if \(isHudBombChange\(previousBombs, b, \{ scoreReset, livesChanged \}\)\) \{\s*const bomb = loadHudFxLabState\(localStorage\)\.events\.bomb;\s*dispatchHudFx\("bomb", bomb\);\s*\}\s*previousBombs = b;/, "BOMB config loads once after detection and baseline updates after dispatch");
+assert.match(hudSource, /eventId === "bomb" && effectId === "snap"\) bombSnap\.trigger/, "BOMB SNAP uses specialized routing");
+assert.match(hudSource, /eventId === "bomb" && effectId === "flash"\) bombFlash\.trigger/, "BOMB FLASH uses specialized routing");
 
 {
   const calls: string[] = [];
