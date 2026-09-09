@@ -214,9 +214,11 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 .cm-hud-fx-lab h3 { margin:0 0 5px; font-size:12px; letter-spacing:1px; }
 .cm-dev-label { margin:5px 0 2px; color:#888; }
 .cm-hud-fx-events { display:grid; grid-template-columns:repeat(3,max-content); gap:2px 7px; }
-.cm-hud-fx-row { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; gap:4px; margin:2px 0; }
+.cm-hud-fx-row { display:grid; grid-template-columns:48px minmax(55px,1fr) 30px; align-items:center; gap:4px; margin:2px 0; }
 .cm-hud-fx-row input[type="range"] { width:100%; min-width:0; accent-color:#6f8fc0; }
 .cm-hud-fx-row input[type="range"]:disabled { opacity:.35; }
+.cm-hud-fx-value { color:#aaa; font:10px/1 ui-monospace,Menlo,Consolas,monospace; font-variant-numeric:tabular-nums; text-align:right; }
+.cm-hud-fx-row input[type="range"]:disabled + .cm-hud-fx-value { opacity:.35; }
 
 .cm-bgr-workspace-timeline {
   display: flex;

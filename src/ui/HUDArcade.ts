@@ -7,13 +7,17 @@
 // overlay + glow here instead. Truly compositing the HUD under PostFX would
 // require rendering it into the WebGL pipeline (out of scope for this pass).
 
+import { HUD_FX_EFFECTS, loadHudFxLabState, type HudFxEffectId, type HudFxEventId, type HudFxLabState } from "../dev/HudFxLabState";
+import { setHudFxPreviewHandler } from "../dev/HudFxPreviewBridge";
+import { createGenericHudFxController } from "./HudGenericFx";
+
 type HudRefs = {
   layer: HTMLDivElement;
   panel: HTMLDivElement;
   lives: HTMLDivElement;
+  energySegments: HTMLDivElement[];
   wave: HTMLDivElement;
   score: HTMLDivElement;
-  energy: HTMLDivElement;
   w1: HTMLCanvasElement;
   w2: HTMLCanvasElement;
   w1Level: HTMLDivElement;
@@ -50,11 +54,297 @@ type HudMode = "PLAY" | "TITLE" | "GAME_OVER";
 
 // --- Fonts ----------------------------------------------------------------
 const LABEL_FONT = "'Orbitron', sans-serif";
+const EDGE_INSET_X = 7;
+const EDGE_INSET_Y = 6;
+const LABEL_FONT_SIZE = 10;
+const WEAPON_TEXT_SIZE = 10;
 
 // --- Palette --------------------------------------------------------------
 const COL_CYAN = "#00ffee";
 
 export type HudWeaponLevels = { w1Level: number; w2Level: number; w1Label: string; w2Label: string };
+export type HudWeaponPresentationSnapshot = {
+  w1: { weaponId: string; level: number };
+  w2: { weaponId: string; level: number };
+};
+export type HudWeaponChangedSlots = { w1: boolean; w2: boolean };
+export type HudWeaponSnapTarget = "w1" | "w2" | "both";
+
+export function isHudScoreIncrease(previousScore: number | undefined, currentScore: number): boolean {
+  return previousScore !== undefined && currentScore > previousScore;
+}
+
+export function normalizeHudWave(value: unknown): number {
+  const wave = Number(value ?? 0);
+  return Number.isFinite(wave) ? Math.max(0, Math.floor(wave)) : 0;
+}
+
+export function isHudWaveIncrease(previousWave: number | undefined, currentWave: number): boolean {
+  return previousWave !== undefined && currentWave > previousWave;
+}
+
+export function isHudEnergyDecrease(previousEnergy: number | undefined, currentEnergy: number): boolean {
+  return previousEnergy !== undefined && currentEnergy < previousEnergy;
+}
+
+export type HudEnergyResetContext = {
+  scoreReset?: boolean;
+  livesChanged?: boolean;
+};
+
+export function isHudEnergyHeal(
+  previousEnergy: number | undefined,
+  currentEnergy: number,
+  resetContext: HudEnergyResetContext = {},
+): boolean {
+  return previousEnergy !== undefined
+    && previousEnergy > 0
+    && currentEnergy > previousEnergy
+    && !resetContext.scoreReset
+    && !resetContext.livesChanged;
+}
+
+export function normalizeHudBombCount(value: unknown): number {
+  const count = Number(value ?? 0);
+  return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+}
+
+export function isHudBombChange(
+  previousBombs: number | undefined,
+  currentBombs: number,
+  resetContext: HudEnergyResetContext = {},
+): boolean {
+  return previousBombs !== undefined
+    && currentBombs !== previousBombs
+    && !resetContext.scoreReset
+    && !resetContext.livesChanged;
+}
+
+export function createHudScorePopController(scoreNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      activeAnimation?.cancel();
+      activeAnimation = scoreNode.animate([
+        { transform: "scale(1, 1)", filter: "brightness(1)", textShadow: `0 0 8px ${COL_CYAN}`, offset: 0 },
+        {
+          transform: `scale(${1 + 0.4 * amount}, ${1 + 0.25 * amount})`,
+          filter: `brightness(${1 + 0.8 * amount})`,
+          textShadow: `0 0 ${8 + 10 * amount}px ${COL_CYAN}`,
+          offset: 0.3,
+        },
+        {
+          transform: `scale(${1 - 0.05 * amount}, ${1 + 0.08 * amount})`,
+          filter: `brightness(${1 + 0.15 * amount})`,
+          textShadow: `0 0 ${8 + 2 * amount}px ${COL_CYAN}`,
+          offset: 0.6,
+        },
+        { transform: "scale(1, 1)", filter: "brightness(1)", textShadow: `0 0 8px ${COL_CYAN}`, offset: 1 },
+      ], { duration: 140 + 140 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+export function createHudWavePopController(waveNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      activeAnimation?.cancel();
+      activeAnimation = waveNode.animate([
+        { transform: "scale(1, 1)", offset: 0 },
+        { transform: `scale(${1 + 0.38 * amount}, ${1 + 0.28 * amount})`, offset: 0.24 },
+        { transform: `scale(${1 - 0.06 * amount}, ${1 + 0.1 * amount})`, offset: 0.52 },
+        { transform: `scale(${1 + 0.04 * amount}, ${1 - 0.02 * amount})`, offset: 0.75 },
+        { transform: "scale(1, 1)", offset: 1 },
+      ], { duration: 150 + 140 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+export function createHudWaveFlashController(waveNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      const baseline = "brightness(1) saturate(1) drop-shadow(0 0 0px rgba(255,255,255,0)) drop-shadow(0 0 0px rgba(70,225,255,0))";
+      const peak = amount === 0 ? baseline : `brightness(${1 + 1.6 * amount}) saturate(${1 + 0.4 * amount}) drop-shadow(0 0 ${4 * amount}px rgba(255,255,255,${amount})) drop-shadow(0 0 ${10 * amount}px rgba(70,225,255,${0.9 * amount}))`;
+      const secondary = amount === 0 ? baseline : `brightness(${1 + 0.45 * amount}) saturate(${1 + 0.2 * amount}) drop-shadow(0 0 ${6 * amount}px rgba(70,225,255,${0.7 * amount}))`;
+      activeAnimation?.cancel();
+      activeAnimation = waveNode.animate([
+        { filter: baseline, offset: 0 },
+        { filter: peak, offset: 0.2 },
+        { filter: secondary, offset: 0.52 },
+        { filter: baseline, offset: 1 },
+      ], { duration: 140 + 100 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+export function createHudEnergyShakeController(energyNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      const x = 6 * amount;
+      const y = 3 * amount;
+      activeAnimation?.cancel();
+      activeAnimation = energyNode.animate([
+        { transform: "translate(0px, 0px)", offset: 0 },
+        { transform: `translate(${-x}px, ${y}px)`, offset: 0.15 },
+        { transform: `translate(${x}px, ${-y}px)`, offset: 0.3 },
+        { transform: `translate(${-0.7 * x}px, ${-0.5 * y}px)`, offset: 0.45 },
+        { transform: `translate(${0.6 * x}px, ${0.5 * y}px)`, offset: 0.6 },
+        { transform: `translate(${-0.25 * x}px, 0px)`, offset: 0.78 },
+        { transform: "translate(0px, 0px)", offset: 1 },
+      ], { duration: 120 + 100 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+export function createHudEnergyFlashController(energyNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number, variant: "hit" | "heal" = "hit"): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      const baseline = "brightness(1) drop-shadow(0 0 0px rgba(255,255,255,0))";
+      activeAnimation?.cancel();
+      activeAnimation = variant === "heal"
+        ? energyNode.animate([
+          { filter: baseline, offset: 0 },
+          {
+            filter: `brightness(${1 + 1.8 * amount}) saturate(${1 + 0.6 * amount}) drop-shadow(0 0 ${4 * amount}px rgba(235,255,248,${amount})) drop-shadow(0 0 ${11 * amount}px rgba(80,255,225,${0.85 * amount}))`,
+            offset: 0.2,
+          },
+          {
+            filter: `brightness(${1 + 0.5 * amount}) saturate(${1 + 0.3 * amount}) drop-shadow(0 0 ${6 * amount}px rgba(80,255,238,${0.65 * amount}))`,
+            offset: 0.53,
+          },
+          { filter: baseline, offset: 1 },
+        ], { duration: 140 + 110 * amount, easing: "ease-out" })
+        : energyNode.animate([
+          { filter: baseline, offset: 0 },
+          {
+            filter: `brightness(${1 + 1.1 * amount}) drop-shadow(0 0 ${7 * amount}px rgba(180,255,255,${0.9 * amount}))`,
+            offset: 0.25,
+          },
+          {
+            filter: `brightness(${1 + 0.3 * amount}) drop-shadow(0 0 ${3 * amount}px rgba(0,255,238,${0.45 * amount}))`,
+            offset: 0.6,
+          },
+          { filter: baseline, offset: 1 },
+        ], { duration: 90 + 90 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+export function createHudWeaponSnapController(nodes: {
+  w1: Pick<HTMLElement, "animate">;
+  w2: Pick<HTMLElement, "animate">;
+}) {
+  let w1Animation: Animation | undefined;
+  let w2Animation: Animation | undefined;
+
+  const triggerSlot = (intensity: number, slot: "w1" | "w2"): Animation => {
+    const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+    const activeAnimation = slot === "w1" ? w1Animation : w2Animation;
+    activeAnimation?.cancel();
+    const animation = nodes[slot].animate([
+      { transform: "translateY(0px) scale(1, 1)", offset: 0 },
+      { transform: `translateY(${-3 * amount}px) scale(${1 + 0.18 * amount}, ${1 - 0.08 * amount})`, offset: 0.2 },
+      { transform: `translateY(${1.5 * amount}px) scale(${1 - 0.04 * amount}, ${1 + 0.08 * amount})`, offset: 0.42 },
+      { transform: `translateY(${-0.5 * amount}px) scale(${1 + 0.03 * amount}, 1)`, offset: 0.7 },
+      { transform: "translateY(0px) scale(1, 1)", offset: 1 },
+    ], { duration: 110 + 70 * amount, easing: "ease-out" });
+    if (slot === "w1") w1Animation = animation;
+    else w2Animation = animation;
+    return animation;
+  };
+
+  return {
+    trigger(intensity: number, target: HudWeaponSnapTarget): Animation[] {
+      if (target === "both") return [triggerSlot(intensity, "w1"), triggerSlot(intensity, "w2")];
+      return [triggerSlot(intensity, target)];
+    },
+  };
+}
+
+export function createHudBombSnapController(bombNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      activeAnimation?.cancel();
+      activeAnimation = bombNode.animate([
+        { transform: "translateY(0px) scale(1, 1)", offset: 0 },
+        { transform: `translateY(${-3.5 * amount}px) scale(${1 + 0.22 * amount}, ${1 - 0.1 * amount})`, offset: 0.18 },
+        { transform: `translateY(${1.5 * amount}px) scale(${1 - 0.05 * amount}, ${1 + 0.1 * amount})`, offset: 0.4 },
+        { transform: `translateY(${-0.5 * amount}px) scale(${1 + 0.03 * amount}, 1)`, offset: 0.68 },
+        { transform: "translateY(0px) scale(1, 1)", offset: 1 },
+      ], { duration: 120 + 80 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+export function createHudBombFlashController(bombNode: Pick<HTMLElement, "animate">) {
+  let activeAnimation: Animation | undefined;
+  return {
+    trigger(intensity: number): Animation {
+      const amount = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 0.5;
+      const baseline = "brightness(1) saturate(1) drop-shadow(0 0 0px rgba(255,244,190,0)) drop-shadow(0 0 0px rgba(255,102,0,0))";
+      activeAnimation?.cancel();
+      activeAnimation = bombNode.animate([
+        { filter: baseline, offset: 0 },
+        {
+          filter: `brightness(${1 + 1.7 * amount}) saturate(${1 + 0.5 * amount}) drop-shadow(0 0 ${4 * amount}px rgba(255,244,190,${amount})) drop-shadow(0 0 ${10 * amount}px rgba(255,102,0,${0.9 * amount}))`,
+          offset: 0.2,
+        },
+        {
+          filter: `brightness(${1 + 0.5 * amount}) saturate(${1 + 0.2 * amount}) drop-shadow(0 0 ${6 * amount}px rgba(255,102,0,${0.7 * amount}))`,
+          offset: 0.52,
+        },
+        { filter: baseline, offset: 1 },
+      ], { duration: 140 + 100 * amount, easing: "ease-out" });
+      return activeAnimation;
+    },
+  };
+}
+
+type HudEffectTrigger = { trigger(intensity: number): Animation };
+
+export function triggerHudHitEffects(
+  hit: ReturnType<typeof loadHudFxLabState>["events"]["hit"],
+  energyShake: HudEffectTrigger,
+  energyFlash: HudEffectTrigger,
+): void {
+  if (hit.shake.enabled) energyShake.trigger(hit.shake.intensity);
+  if (hit.flash.enabled) energyFlash.trigger(hit.flash.intensity);
+}
+
+export function triggerHudBombEffects(
+  bomb: ReturnType<typeof loadHudFxLabState>["events"]["bomb"],
+  bombSnap: HudEffectTrigger,
+  bombFlash: HudEffectTrigger,
+): void {
+  if (bomb.snap.enabled) bombSnap.trigger(bomb.snap.intensity);
+  if (bomb.flash.enabled) bombFlash.trigger(bomb.flash.intensity);
+}
+
+export function triggerHudWaveEffects(
+  wave: ReturnType<typeof loadHudFxLabState>["events"]["wave"],
+  wavePop: HudEffectTrigger,
+  waveFlash: HudEffectTrigger,
+): void {
+  if (wave.pop.enabled) wavePop.trigger(wave.pop.intensity);
+  if (wave.flash.enabled) waveFlash.trigger(wave.flash.intensity);
+}
 
 function readHudLevel(slot: WeaponSlotHudLike | undefined): number {
   const n = Number(slot?.level ?? 1);
@@ -77,6 +367,24 @@ export function getHudWeaponLevels(p: Pick<PlayerLike, "weapons">): HudWeaponLev
     w2Level: readHudLevel(p.weapons?.slots?.w2),
     w1Label: readHudWeaponLabel(p.weapons?.slots?.w1, "BOLT"),
     w2Label: readHudWeaponLabel(p.weapons?.slots?.w2, "LASER"),
+  };
+}
+
+export function getHudWeaponPresentationSnapshot(p: Pick<PlayerLike, "weapons">): HudWeaponPresentationSnapshot {
+  return {
+    w1: { weaponId: String(p.weapons?.slots?.w1?.weaponId ?? ""), level: readHudLevel(p.weapons?.slots?.w1) },
+    w2: { weaponId: String(p.weapons?.slots?.w2?.weaponId ?? ""), level: readHudLevel(p.weapons?.slots?.w2) },
+  };
+}
+
+export function detectHudWeaponChanges(
+  previous: HudWeaponPresentationSnapshot | undefined,
+  current: HudWeaponPresentationSnapshot,
+): HudWeaponChangedSlots {
+  if (!previous) return { w1: false, w2: false };
+  return {
+    w1: current.w1.weaponId !== previous.w1.weaponId || current.w1.level > previous.w1.level,
+    w2: current.w2.weaponId !== previous.w2.weaponId || current.w2.level > previous.w2.level,
   };
 }
 
@@ -174,6 +482,12 @@ function drawW2(
 export function createHUDArcade(root: HTMLElement) {
   let mode: HudMode = "PLAY";
   let iconPhase = 0;
+  let previousScore: number | undefined;
+  let previousEnergy: number | undefined;
+  let previousLives: number | undefined;
+  let previousBombs: number | undefined;
+  let previousWave: number | undefined;
+  let previousWeaponSnapshot: HudWeaponPresentationSnapshot | undefined;
 
   // one-time keyframes/styles for the CRT-ish HUD overlay + rainbow cooldown
   if (!document.getElementById("hudArcadeStyles")) {
@@ -200,122 +514,181 @@ export function createHUDArcade(root: HTMLElement) {
     `font-family:${LABEL_FONT};text-shadow:0 0 6px rgba(0,255,238,0.35),0 2px 0 rgba(0,0,0,0.7);`;
   root.appendChild(layer);
 
-  layer.style.transformOrigin = "top left";
-  function scaleHud() {
-    const scaleX = window.innerWidth / 1280;
-    const scaleY = window.innerHeight / 720;
-    const scale = Math.min(scaleX, scaleY, 1.0);
-    layer.style.transform = `scale(${scale})`;
-  }
-  window.addEventListener("resize", scaleHud);
-  scaleHud();
-
   // ---- HUD blocks container (toggled by mode) ----
-  // Each block = a PNG frame (defines the box) with dynamic content overlaid
-  // absolutely inside it. Pixel offsets below are estimates, tuned to the art.
   const panel = mkChild(layer, "hudPanel", "position:absolute;inset:0;z-index:3;");
 
-  // A PNG-framed container: the <img> sets the size (height fixed, width auto
-  // from the PNG's intrinsic ratio); overlays position against this box.
-  function mkFrame(parent: HTMLElement, id: string, src: string, heightPx: number): HTMLDivElement {
-    const frame = mkChild(parent, id, "position:relative;display:inline-block;line-height:0;");
-    const img = document.createElement("img");
-    img.src = src;
-    img.style.cssText =
-      `height:${heightPx}px;width:auto;display:block;filter:drop-shadow(0 0 4px ${COL_CYAN});`;
-    img.onerror = () => { img.style.display = "none"; };
-    frame.appendChild(img);
-    return frame;
-  }
-
   // ===== ENERGY block (top-left) =====
-  const energyBlock = mkChild(panel, "hudEnergyBlock", "position:absolute;left:10px;top:8px;");
-  const energyFrame = mkFrame(energyBlock, "hudEnergyFrame", "/ui/energy_icon.png", 66);
+  const energyBlock = mkChild(panel, "hudEnergyBlock", `position:absolute;left:${EDGE_INSET_X}px;top:${EDGE_INSET_Y}px;`);
+  energyBlock.className = "hud-block hud-energy-block";
+  const energyLabel = mkChild(energyBlock, "hudEnergyLabel", `font-size:${LABEL_FONT_SIZE}px;letter-spacing:1.5px;color:${COL_CYAN};`);
+  energyLabel.className = "hud-label hud-energy-label";
+  energyLabel.textContent = "ENERGY";
   const energy = mkChild(
-    energyFrame,
+    energyBlock,
     "hudEnergy",
-    "position:absolute;left:9px;bottom:19px;display:flex;gap:2px;line-height:normal;",
+    "display:flex;gap:2px;margin-top:4px;line-height:normal;",
   );
-  // lives below the energy frame (outside the box)
+  energy.className = "hud-energy-segments";
+  const energySegments = Array.from({ length: 6 }, (_, index) => {
+    const segment = mkChild(energy, `hudEnergySegment${index + 1}`, "width:14px;height:11px;border:1px solid rgba(0,255,238,0.4);");
+    segment.className = "hud-energy-segment";
+    segment.dataset.segment = String(index + 1);
+    return segment;
+  });
+  const energyShake = createHudEnergyShakeController(energy);
+  const energyFlash = createHudEnergyFlashController(energy);
   const lives = mkChild(
     energyBlock,
     "hudLives",
-    "display:flex;gap:4px;margin-top:2px;margin-left:18px;",
+    "display:flex;gap:5px;margin-top:6px;",
   );
+  lives.className = "hud-lives";
 
   // ===== SCORE block (top-right) =====
-  const scoreBlock = mkChild(panel, "hudScoreBlock", "position:absolute;right:20px;top:8px;");
-  const scoreFrame = mkFrame(scoreBlock, "hudScoreFrame", "/ui/score_icon.png", 66);
+  const scoreBlock = mkChild(panel, "hudScoreBlock", `position:absolute;right:${EDGE_INSET_X}px;top:${EDGE_INSET_Y}px;text-align:right;`);
+  scoreBlock.className = "hud-block hud-score-block";
+  const scoreLabel = mkChild(scoreBlock, "hudScoreLabel", `font-size:${LABEL_FONT_SIZE}px;letter-spacing:1.5px;color:${COL_CYAN};`);
+  scoreLabel.className = "hud-label hud-score-label";
+  scoreLabel.textContent = "SCORE";
   const score = mkChild(
-    scoreFrame,
+    scoreBlock,
     "hudScore",
-    "position:absolute;right:12px;bottom:16px;line-height:normal;" +
-      "font-family:'Share Tech Mono',monospace;font-size:16px;letter-spacing:2px;" +
+    "margin-top:2px;line-height:normal;" +
+      "font-family:'Share Tech Mono',monospace;font-size:19px;letter-spacing:2px;" +
       `color:#ffffff;text-shadow:0 0 8px ${COL_CYAN};`,
   );
+  score.className = "hud-value hud-score-value";
+  score.style.transformOrigin = "right center";
+  const scorePop = createHudScorePopController(score);
 
   // ===== WAVE block (top-center) =====
   const waveBlock = mkChild(
     panel,
     "hudWaveBlock",
-    "position:absolute;left:50%;top:8px;transform:translateX(-50%);",
+    `position:absolute;left:50%;top:${EDGE_INSET_Y}px;transform:translateX(-50%);text-align:center;`,
   );
-  const waveFrame = mkFrame(waveBlock, "hudWaveFrame", "/ui/wave_icon.png", 34);
+  waveBlock.className = "hud-block hud-wave-block";
+  const waveLabel = mkChild(waveBlock, "hudWaveLabel", `font-size:${LABEL_FONT_SIZE}px;letter-spacing:1.5px;color:${COL_CYAN};`);
+  waveLabel.className = "hud-label hud-wave-label";
+  waveLabel.textContent = "WAVE";
   const wave = mkChild(
-    waveFrame,
+    waveBlock,
     "hudWave",
-    "position:absolute;right:14px;top:50%;transform:translateY(-50%);line-height:normal;" +
-      `font-family:${LABEL_FONT};font-size:11px;font-weight:700;` +
+    "margin-top:2px;line-height:normal;" +
+      `font-family:${LABEL_FONT};font-size:13px;font-weight:700;` +
       `color:#ffffff;text-shadow:0 0 6px ${COL_CYAN};`,
   );
+  wave.className = "hud-value hud-wave-value";
+  wave.style.transformOrigin = "center center";
+  const wavePop = createHudWavePopController(wave);
+  const waveFlash = createHudWaveFlashController(wave);
 
   // ===== WEAPON block (bottom-left) =====
-  const weaponBlock = mkChild(panel, "hudWeaponBlock", "position:absolute;left:10px;bottom:10px;");
-  const weaponFrame = mkFrame(weaponBlock, "hudWeaponFrame", "/ui/w_icon_box.png", 99);
+  const weaponBlock = mkChild(panel, "hudWeaponBlock", `position:absolute;left:${EDGE_INSET_X}px;bottom:${EDGE_INSET_Y}px;display:flex;align-items:center;gap:14px;`);
+  weaponBlock.className = "hud-weapon-block";
 
-  // W1/W2 icon canvases positioned to the right of the PNG's W1/W2 labels
-  function mkIconCanvas(id: string, leftPx: number, topPx: number): HTMLCanvasElement {
-    const wrap = mkChild(
-      weaponFrame,
-      id + "Wrap",
-      `position:absolute;left:${leftPx}px;top:${topPx}px;line-height:0;`,
-    );
+  function mkWeaponGroup(id: string, className: string, labelText: string): HTMLDivElement {
+    const group = mkChild(weaponBlock, id, "display:flex;align-items:center;gap:6px;line-height:normal;");
+    group.className = className;
+    const label = mkChild(group, `${id}Label`, `font-size:${WEAPON_TEXT_SIZE}px;font-weight:700;color:${COL_CYAN};`);
+    label.className = "hud-weapon-label";
+    label.textContent = labelText;
+    return group;
+  }
+  const w1Group = mkWeaponGroup("hudW1Group", "hud-weapon-group hud-w1-group", "W1");
+  const w2Group = mkWeaponGroup("hudW2Group", "hud-weapon-group hud-w2-group", "W2");
+  const bombGroup = mkWeaponGroup("hudBombGroup", "hud-weapon-group hud-bomb-group", "B");
+  w1Group.style.transformOrigin = "center center";
+  w2Group.style.transformOrigin = "center center";
+  bombGroup.style.transformOrigin = "center center";
+  const weaponSnap = createHudWeaponSnapController({ w1: w1Group, w2: w2Group });
+  const bombSnap = createHudBombSnapController(bombGroup);
+  const bombFlash = createHudBombFlashController(bombGroup);
+  const generic = {
+    score: createGenericHudFxController(score),
+    energy: createGenericHudFxController(energy),
+    wave: createGenericHudFxController(wave),
+    w1: createGenericHudFxController(w1Group),
+    w2: createGenericHudFxController(w2Group),
+    bomb: createGenericHudFxController(bombGroup),
+  };
+  type TargetId = keyof typeof generic;
+  const targetsFor = (eventId: HudFxEventId, weaponTarget: HudWeaponSnapTarget = "both"): TargetId[] => {
+    if (eventId === "score") return ["score"];
+    if (eventId === "hit" || eventId === "heal") return ["energy"];
+    if (eventId === "wave") return ["wave"];
+    if (eventId === "bomb") return ["bomb"];
+    return weaponTarget === "both" ? ["w1", "w2"] : [weaponTarget];
+  };
+  const isSpecialized = (eventId: HudFxEventId, effectId: HudFxEffectId): boolean =>
+    (eventId === "score" && effectId === "pop")
+    || (eventId === "hit" && (effectId === "shake" || effectId === "flash"))
+    || (eventId === "heal" && effectId === "flash")
+    || (eventId === "wave" && (effectId === "pop" || effectId === "flash"))
+    || (eventId === "weapon" && effectId === "snap")
+    || (eventId === "bomb" && (effectId === "snap" || effectId === "flash"));
+  const triggerSpecialized = (eventId: HudFxEventId, effectId: HudFxEffectId, intensity: number, weaponTarget: HudWeaponSnapTarget): void => {
+    if (eventId === "score" && effectId === "pop") scorePop.trigger(intensity);
+    else if (eventId === "hit" && effectId === "shake") energyShake.trigger(intensity);
+    else if (eventId === "hit" && effectId === "flash") energyFlash.trigger(intensity);
+    else if (eventId === "heal" && effectId === "flash") energyFlash.trigger(intensity, "heal");
+    else if (eventId === "wave" && effectId === "pop") wavePop.trigger(intensity);
+    else if (eventId === "wave" && effectId === "flash") waveFlash.trigger(intensity);
+    else if (eventId === "weapon" && effectId === "snap") weaponSnap.trigger(intensity, weaponTarget);
+    else if (eventId === "bomb" && effectId === "snap") bombSnap.trigger(intensity);
+    else if (eventId === "bomb" && effectId === "flash") bombFlash.trigger(intensity);
+  };
+  const dispatchHudFx = (eventId: HudFxEventId, settings: HudFxLabState["events"][HudFxEventId], weaponTarget: HudWeaponSnapTarget = "both"): void => {
+    for (const effectId of HUD_FX_EFFECTS) {
+      const setting = settings[effectId];
+      if (!setting.enabled) continue;
+      if (isSpecialized(eventId, effectId)) triggerSpecialized(eventId, effectId, setting.intensity, weaponTarget);
+      else for (const target of targetsFor(eventId, weaponTarget)) generic[target].trigger(effectId, setting.intensity);
+    }
+  };
+  setHudFxPreviewHandler((request) => {
+    const previewSettings = Object.fromEntries(HUD_FX_EFFECTS.map((id) => [id, { enabled: id === request.effectId, intensity: request.intensity }])) as HudFxLabState["events"][HudFxEventId];
+    dispatchHudFx(request.eventId, previewSettings);
+  });
+
+  function mkIconCanvas(parent: HTMLElement, id: string): HTMLCanvasElement {
+    const wrap = mkChild(parent, id + "Wrap", "line-height:0;");
     const c = document.createElement("canvas");
     c.id = id;
     c.width = 28;
     c.height = 14;
-    c.style.cssText = "width:14px;height:7px;display:block;";
+    c.style.cssText = "width:17px;height:9px;display:block;";
     wrap.appendChild(c);
     return c;
   }
-  const w1 = mkIconCanvas("hudW1", 45, 28);
-  const w2 = mkIconCanvas("hudW2", 45, 50);
+  const w1 = mkIconCanvas(w1Group, "hudW1");
+  const w2 = mkIconCanvas(w2Group, "hudW2");
 
   const weaponLevelCss =
-    "position:absolute;left:64px;line-height:normal;" +
-    "font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;" +
+    "line-height:normal;white-space:nowrap;" +
+    `font-family:'Share Tech Mono',monospace;font-size:${WEAPON_TEXT_SIZE}px;letter-spacing:1px;` +
     `color:#ffffff;text-shadow:0 0 5px ${COL_CYAN};`;
-  const w1Level = mkChild(weaponFrame, "hudW1Level", `${weaponLevelCss}top:27px;`);
-  const w2Level = mkChild(weaponFrame, "hudW2Level", `${weaponLevelCss}top:49px;`);
+  const w1Level = mkChild(w1Group, "hudW1Level", weaponLevelCss);
+  const w2Level = mkChild(w2Group, "hudW2Level", weaponLevelCss);
 
-  // W2 cooldown bar — overlays the "W2" label inside the PNG frame
   const cdTrack = mkChild(
-    weaponFrame,
+    w2Group,
     "hudCdTrack",
-    "position:absolute;left:14px;top:54px;width:24px;height:3px;" +
+    "width:29px;height:4px;" +
       "background:rgba(255,255,255,0.12);border-radius:1px;overflow:hidden;",
   );
+  cdTrack.className = "hud-cooldown-track";
   const cdFill = mkChild(
     cdTrack,
     "hudCdFill",
     `height:100%;width:0%;background:${COL_CYAN};box-shadow:0 0 4px ${COL_CYAN};transition:width 0.1s linear;`,
   );
+  cdFill.className = "hud-cooldown-fill";
 
-  // bomb row inside the weapon frame
   const bomb = mkChild(
-    weaponFrame,
+    bombGroup,
     "hudBomb",
-    "position:absolute;left:45px;top:73px;display:flex;align-items:center;gap:3px;line-height:normal;",
+    "display:flex;align-items:center;gap:4px;line-height:normal;",
   );
 
   // ---- CRT scanline overlay over the HUD ----
@@ -349,7 +722,7 @@ export function createHUDArcade(root: HTMLElement) {
   gameOver.textContent = "GAME OVER\nTry again? Y/N";
 
   const refs: HudRefs = {
-    layer, panel, lives, wave, score, energy, w1, w2, w1Level, w2Level, bomb, cdFill, pause, gameOver, title,
+    layer, panel, lives, energySegments, wave, score, w1, w2, w1Level, w2Level, bomb, cdFill, pause, gameOver, title,
   };
 
   function applyMode() {
@@ -367,7 +740,7 @@ export function createHUDArcade(root: HTMLElement) {
     for (let i = 0; i < 3; i++) {
       const alive = i < lifeCount;
       livesHtml += `<img src="${shipSrc}" onerror="this.style.display='none'"
-        style="height:16px;width:auto;display:block;
+        style="height:19px;width:auto;display:block;
         filter:${alive
           ? "brightness(1) drop-shadow(0 0 2px #00ffee)"
           : "brightness(0.2) grayscale(1)"};">`;
@@ -411,28 +784,54 @@ export function createHUDArcade(root: HTMLElement) {
     },
 
     update: (p: PlayerLike, s: SessionLike, waveText?: string) => {
-      renderLives((s.lives ?? 0) | 0);
+      const currentLives = (s.lives ?? 0) | 0;
+      const livesChanged = previousLives !== undefined && currentLives !== previousLives;
+      renderLives(currentLives);
 
       // wave / score numbers drawn into their pre-styled overlay divs
+      const currentWave = normalizeHudWave(s.wave);
       refs.wave.textContent = waveText ?? String((s.wave ?? 0) | 0).padStart(2, "0");
-      refs.score.textContent = String(Math.floor(s.score ?? 0)).padStart(6, "0");
+      if (isHudWaveIncrease(previousWave, currentWave)) {
+        const waveFx = loadHudFxLabState(localStorage).events.wave;
+        dispatchHudFx("wave", waveFx);
+      }
+      previousWave = currentWave;
+      const currentScore = Number(s.score ?? 0);
+      refs.score.textContent = String(Math.floor(currentScore)).padStart(6, "0");
+      const scoreReset = previousScore !== undefined && currentScore < previousScore;
+      if (isHudScoreIncrease(previousScore, currentScore)) {
+        const scoreFx = loadHudFxLabState(localStorage).events.score;
+        dispatchHudFx("score", scoreFx);
+      }
+      previousScore = currentScore;
 
-      // energy: segmented bar overlaid inside the frame
+      // Energy segments are persistent DOM primitives; updates only change state.
       const energyVal = p.energy ?? 0;
       const energyMax = p.energyMax ?? 5;
       const energyRatio = energyMax > 0 ? energyVal / energyMax : 0;
       const totalSegs = 6;
       const filledSegs = Math.round(energyRatio * totalSegs);
-      let segsHtml = "";
-      for (let i = 0; i < totalSegs; i++) {
+      for (let i = 0; i < refs.energySegments.length; i++) {
         const filled = i < filledSegs;
-        segsHtml +=
-          `<div style="width:12px;height:9px;` +
-          `background:${filled ? "#00ffee" : "rgba(0,255,238,0.12)"};` +
-          `border:1px solid rgba(0,255,238,0.4);` +
-          `box-shadow:${filled ? "0 0 4px #00ffee" : "none"};"></div>`;
+        const segment = refs.energySegments[i];
+        segment.dataset.filled = String(filled);
+        segment.style.background = filled ? COL_CYAN : "rgba(0,255,238,0.12)";
+        segment.style.boxShadow = filled ? `0 0 4px ${COL_CYAN}` : "none";
       }
-      refs.energy.innerHTML = segsHtml;
+      if (isHudEnergyDecrease(previousEnergy, energyVal)) {
+        const hit = loadHudFxLabState(localStorage).events.hit;
+        dispatchHudFx("hit", hit);
+      } else if (isHudEnergyHeal(previousEnergy, energyVal, {
+        scoreReset,
+        livesChanged,
+      })) {
+        const heal = loadHudFxLabState(localStorage).events.heal;
+        dispatchHudFx("heal", heal);
+      }
+      previousEnergy = energyVal;
+      previousLives = currentLives;
+
+      const currentWeaponSnapshot = getHudWeaponPresentationSnapshot(p);
 
       // weapon icons (animated)
       iconPhase += 0.15;
@@ -446,14 +845,27 @@ export function createHUDArcade(root: HTMLElement) {
       refs.w1Level.textContent = `${weaponLevels.w1Label} LVL ${weaponLevels.w1Level}`;
       refs.w2Level.textContent = `LVL ${weaponLevels.w2Level}`;
 
+      const changedWeaponSlots = detectHudWeaponChanges(previousWeaponSnapshot, currentWeaponSnapshot);
+      if (changedWeaponSlots.w1 || changedWeaponSlots.w2) {
+        const weaponFx = loadHudFxLabState(localStorage).events.weapon;
+        const target = changedWeaponSlots.w1 && changedWeaponSlots.w2 ? "both" : changedWeaponSlots.w1 ? "w1" : "w2";
+        dispatchHudFx("weapon", weaponFx, target);
+      }
+      previousWeaponSnapshot = currentWeaponSnapshot;
+
       // bomb: PNG icon + count (icon degrades to count-only if PNG missing)
-      const b = Math.max(0, (p.bombs ?? 0) | 0);
+      const b = normalizeHudBombCount(p.bombs);
       refs.bomb.innerHTML =
         `<img src="/ui/icon-bomb.png" onerror="this.style.display='none'"
-          style="height:12px;width:auto;display:block;filter:drop-shadow(0 0 2px #ff6600);` +
+          style="height:14px;width:auto;display:block;filter:drop-shadow(0 0 2px #ff6600);` +
         `opacity:${b > 0 ? 1 : 0.25};">` +
-        `<span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:#ff6600;` +
+        `<span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#ff6600;` +
         `text-shadow:0 0 4px #ff6600;">×${b}</span>`;
+      if (isHudBombChange(previousBombs, b, { scoreReset, livesChanged })) {
+        const bomb = loadHudFxLabState(localStorage).events.bomb;
+        dispatchHudFx("bomb", bomb);
+      }
+      previousBombs = b;
 
       // W2 cooldown bar
       const w2s = p.w2 ?? {};
