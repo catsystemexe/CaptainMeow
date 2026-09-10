@@ -17,9 +17,9 @@ assert.match(source,/selectV2Segment\(trackId:string,segmentId:string,render=tru
 assert.match(source,/selectV2Object\(trackId:string,objectId:string,render=true\):void \{this\.v2SelectedTrackId=trackId;this\.v2SelectedSegmentId="";this\.v2SelectedObjectId=objectId/,"object selection clears segment selection");
 assert.equal(source.match(/private v2SelectedSegmentId/g)?.length,1,"selection remains owned by the existing Lab state");
 assert.equal(source.match(/private v2SelectedObjectId/g)?.length,1,"no duplicate object selection model is introduced");
-for(const method of ["selectV2Track","selectV2Segment","selectV2Object"]){const start=source.indexOf(`private ${method}`);const end=source.indexOf("\n  private ",start+10);assert.doesNotMatch(source.slice(start,end),/v2SelectedEventId/,`${method} preserves independent Event selection`);}
+for(const method of ["selectV2Track","selectV2Segment","selectV2Object"]){const start=source.indexOf(`private ${method}`);const end=source.indexOf("\n  private ",start+10);assert.match(source.slice(start,end),/v2SelectedEventId=""/,`${method} clears Event selection for exclusive contextual ownership`);}
 
-assert(source.includes("this.workspace.left.insertBefore(this.root, this.workspace.gutter)"),"the Lab-owned inspector state remains mounted transitionally within the left BGR Lab");
+assert(source.includes("this.workspace.leftCanvas.appendChild(this.root)"),"the Lab-owned inspector state remains mounted transitionally within the left BGR Lab");
 assert(source.includes("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))"),"the timeline remains mounted in workspace.timeline");
 assert.match(layoutSource,/\.cm-bgr-workspace-right \{[\s\S]*?overflow: auto;/,"the right region retains internal overflow ownership");
 assert.match(layoutSource,/\.cm-bgr-workspace-timeline \{[\s\S]*?overflow-x: hidden;[\s\S]*?overflow-y: hidden;/,"compact timeline has no vertical-scroll dependency");

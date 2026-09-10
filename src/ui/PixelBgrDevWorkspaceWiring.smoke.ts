@@ -4,9 +4,9 @@ import { readFileSync } from "node:fs";
 const source = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 
 assert.equal(source.match(/createPixelBgrDevWorkspaceShell\(\)/g)?.length, 1, "Lab creates one stable workspace shell during construction");
-assert(source.includes("this.workspace.left.insertBefore(this.root, this.workspace.gutter)"), "existing Lab UI remains the transitional authoring owner in the left dock");
+assert(source.includes("this.workspace.leftCanvas.appendChild(this.root)"), "existing Lab UI remains the transitional authoring owner in the left dock");
 assert(source.includes("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))"), "V2 timeline is mounted in the center-owned timeline region");
-assert.match(source, /sourceBlock\.append\(this\.renderV2Environment\(v2Scene\)\)[^;]*;\s*this\.root\.append\(headerBlock,sourceBlock\)/, "the environment surface remains within the grouped BGR Lab composition");
+assert.match(source, /sourceBlock\.append\(this\.renderV2Environment\(v2Scene\)\)[^;]*;\s*this\.root\.append\(headerBlock,this\.v2Spacer\(\),sourceBlock/, "the environment surface remains within the grouped BGR Lab composition");
 assert(source.includes("while (this.root.childNodes.length > 1)") && source.includes("this.workspace.timeline.replaceChildren()"), "rerenders replace owned BGR and timeline contents without duplicating nodes or the shell");
 assert(!source.includes(".cm-pixel-bgr-lab{position:fixed"), "DEV Lab no longer uses root-level floating-window geometry");
 assert(source.includes('this.setDisplayMode("dev")'), "opening the Lab activates DEV presentation");
@@ -54,7 +54,7 @@ assert(layoutSource.includes('viewport: "cm-bgr-workspace-viewport"'), "the tran
 assert(layoutSource.includes('timeline: "cm-bgr-workspace-timeline"'), "the bottom region keeps its stable timeline class");
 assert(!source.includes("Timeline unavailable for this scene format"), "non-V2 scenes do not render a disabled workspace band");
 assert(source.includes('this.workspace.root.dataset.timelineMode = v2Scene ? "v2" : "disabled"'), "scene format explicitly owns timeline occupancy");
-assert(layoutSource.includes("center.append(viewport, timeline)") && layoutSource.includes("main.append(left, center, right)"), "center owns the game viewport and timeline between full-height sidebars");
+assert(layoutSource.includes("left.append(leftCanvas, gutter)") && layoutSource.includes("center.append(viewport, timeline)") && layoutSource.includes("main.append(left, center, right)"), "center owns the game viewport and timeline between full-height sidebars");
 assert(layoutSource.includes("pointer-events: none"), "transparent authoring viewport preserves interaction with the existing game canvas");
 assert(layoutSource.includes('.cm-bgr-workspace-shell.is-game .cm-bgr-workspace-timeline'), "GAME mode hides the center-owned authoring timeline with the side regions");
 assert(layoutSource.includes('modeToggle: "cm-bgr-workspace-mode-toggle"'), "the shell exposes one compact mode control region");
