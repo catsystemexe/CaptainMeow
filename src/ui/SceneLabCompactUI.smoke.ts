@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createPixelBgrDevWorkspaceShell } from "./PixelBgrDevWorkspaceLayout";
 
 const lab = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 const layout = readFileSync(new URL("./PixelBgrDevWorkspaceLayout.ts", import.meta.url), "utf8");
@@ -19,11 +20,29 @@ assert(lab.includes("cm-v2-transport-block .cm-transport-icon{width:60px;height:
 assert(lab.includes("cm-v2-transport-block{margin-top:auto;flex:0 0 auto}") && lab.includes("cm-scene-transport{flex-wrap:nowrap;margin:0}"), "transport is anchored to the bottom of the canvas-height left panel region");
 assert(layout.includes("left.append(leftCanvas, gutter)") && lab.includes("this.workspace.leftCanvas.appendChild(this.root)"), "the left canvas region owns Scene Lab above its sibling multitrack gutter");
 assert.match(layout,/\.cm-bgr-workspace-left-canvas \{[\s\S]*?display: flex;[\s\S]*?overflow: hidden;/,"the canvas-height region provides the flex containing block for bottom ownership");
+assert.match(layout,/\.cm-bgr-workspace-left-canvas > \.cm-pixel-bgr-lab \{[\s\S]*?flex: 1 1 0;[\s\S]*?height: auto;/,"Scene Lab stretches as a flex item instead of relying on an unresolved percentage height");
 assert.match(layout, /data-timeline-mode="v2"\] \.cm-bgr-workspace-left \{\s*grid-template-rows: minmax\(0, 1fr\) 176px;/, "the canvas-height left panel ends directly above the multitrack gutter");
 assert(lab.includes('transportBlock.append(this.renderPreview([],projection.bounds,true))'), "only the V2 bottom-owned transport receives primary sizing");
+assert.match(lab, /this\.root\.appendChild\(transportBlock\);\s*this\.syncOverlay\(\);\s*return;/, "transport is the final Scene Lab flex child, leaving no spacer or auto-sized region below it");
 assert(lab.indexOf('className="cm-v2-transport-block"') < lab.indexOf('const zoomControls=el("div","cm-v2-zoom-controls")'), "transport is rendered above the multitrack zoom row");
 assert(lab.includes("Reset to scene start") && lab.includes("setPaused?.(!paused)") && lab.includes("setPaused?.(true);this.setCurrentX(start,true)") && !lab.includes("Stop and return to scene start"), "transport provides reset plus a single play/pause toggle");
 assert(lab.includes("Drag Player X cursor") && lab.includes("seekGameplayToPlayerX"), "timeline Player X mapping remains authoritative");
+
+type FakeElement = {
+  className: string;
+  dataset: Record<string, string>;
+  children: FakeElement[];
+  append: (...children: FakeElement[]) => void;
+};
+const fakeDocument = {
+  createElement: (): FakeElement => {
+    const element: FakeElement = { className: "", dataset: {}, children: [], append: (...children) => element.children.push(...children) };
+    return element;
+  },
+} as unknown as Document;
+const workspace = createPixelBgrDevWorkspaceShell(fakeDocument);
+assert.deepEqual(workspace.left.children, [workspace.leftCanvas, workspace.gutter], "gutter is the immediate sibling below the canvas-height left region");
+assert.deepEqual(workspace.center.children, [workspace.viewport, workspace.timeline], "left and center use matching canvas/timeline row ownership");
 
 const title = lab.indexOf('h.textContent = "Scene Lab [F8]"');
 const backdrop = lab.indexOf('backdropRow.append(backdropEye,`BGR:');

@@ -185,6 +185,9 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 }
 
 .cm-bgr-workspace-left-canvas > .cm-pixel-bgr-lab {
+  flex: 1 1 0;
+  width: auto;
+  height: auto;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: hidden;
