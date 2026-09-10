@@ -4,4 +4,8 @@ import { v2YRailValue } from "./PixelBgrV2YRail";
 const drag={pointerId:1,startClientY:100,originalY:-20,logicPerClientPx:2};assert.equal(v2YRailValue(drag,110),0);assert.equal(v2YRailValue(drag,90),-40);assert.equal(v2YRailValue(drag,10000),19780,"rail is not canonically bounded");
 const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");assert.match(source,/if\(!segment&&!object\)[\s\S]*?return surface/);assert.match(source,/panel\.append\(this\.renderV2YRail\(\),this\.renderV2ContextualYSurface\(\)/);assert.match(source,/setPointerCapture/);assert.match(source,/releasePointerCapture/);assert.match(source,/logicH\/rect\.height/);assert.match(source,/\{offsetY:y\}/);assert.match(source,/\{y\}\)/);
 assert.match(source,/width:21px;min-height:155px;background:/,"rail has a visibly thicker interaction surface");assert.match(source,/width:21px;height:21px/,"rail thumb is approximately three times its prior size");assert.match(source,/drag\.thumb\?\.style\.setProperty\("transform"/,"rail thumb visibly tracks pointer movement");
+assert.match(source,/grid-template-columns:42px 21px minmax\(0,1fr\)/,"compact Y readout column is left of the rail and timeline");
+assert.match(source,/\.cm-v2-selected-y\{grid-column:1;grid-row:1/,"Y readout occupies the leftmost column");
+assert.match(source,/\.cm-v2-y-rail\{grid-column:2\}/,"Y rail stays between its readout and lane content");
+assert.match(source,/readout\.textContent=`Y \$\{Math\.round\(value\)\}`/,"Y readout remains compact");
 console.log("[SMOKE] PixelBgrV2YRail OK ✅");
