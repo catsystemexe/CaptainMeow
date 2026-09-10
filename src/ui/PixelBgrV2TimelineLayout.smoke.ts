@@ -46,7 +46,7 @@ assert.match(source, /cm-v2-segment-handle left[\s\S]*?beginV2SegmentDrag\(e,tra
 assert.match(source, /cm-v2-segment-handle right[\s\S]*?beginV2SegmentDrag\(e,track\.id,segment\.id,"resize-right",scale\)/, "right resize handles retain their edit event wiring");
 
 const timelineMount = source.indexOf("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))");
-const leftComposition = source.indexOf("headerBlock.append(titlebar,this.renderV2Toolbar())", timelineMount);
+const leftComposition = source.indexOf("headerBlock.append(titlebar,this.renderV2Toolbar(),summary)", timelineMount);
 assert.ok(timelineMount >= 0 && leftComposition > timelineMount, "timeline and left-side tools render from one Lab owner into their dedicated regions");
 
 const timelineWidth = source.indexOf("timeline.style.width=`${scale.widthPx}px`");
