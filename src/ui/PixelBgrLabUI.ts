@@ -364,7 +364,7 @@ export class PixelBgrLabUI {
     projection.events.forEach((event,index)=>{const selected=this.v2SelectedEventId===event.id;const marker=el("span",`cm-v2-event ${event.type}${event.enabled?"":" disabled"}${selected?" sel":""}`);marker.style.left=`${worldToTimelinePx(event.worldX,scale)}px`;marker.textContent=String(index+1);marker.title=event.label;marker.setAttribute("aria-label",`Event ${index+1}: ${event.label}, ${event.type}, X ${event.worldX}`);marker.onpointerdown=e=>{if(e.button===2){isolateTimelinePointerEvent(e);this.selectV2Event(event.id,false);return;}this.beginV2EventDrag(e,event.id,scale);};marker.oncontextmenu=e=>this.openV2EventContextMenu(e,event.id);eventRow.appendChild(marker);});timeline.appendChild(eventRow);
     const viewport=el("div","cm-v2-viewport-range");const viewportPx=worldToTimelinePx(viewportRange.startX,scale);viewport.style.left="0px";viewport.style.transform=`translate3d(${viewportPx}px, 0, 0)`;viewport.style.width=`${worldToTimelinePx(viewportRange.endX,scale)-viewportPx}px`;viewport.title=`Visible viewport ${Math.round(viewportRange.startX)}..${Math.round(viewportRange.endX)}`;this.v2ViewportEl=viewport;this.v2LastViewportPx=viewportPx;timeline.appendChild(viewport);
     const cursor=el("div","cm-cursor cm-v2-cursor");const cursorPx=worldToTimelinePx(projection.playerX,scale);cursor.style.left="0px";cursor.style.transform=`translate3d(${cursorPx}px, 0, 0)`;cursor.title=`Drag Player X cursor ${Math.round(projection.playerX)}`;cursor.onpointerdown=e=>this.beginCursorDrag(e,timeline,scale,projection.bounds);this.cursorEl=cursor;this.v2CursorEl=cursor;this.v2LastCursorPx=cursorPx;timeline.appendChild(cursor);
-    scroll.appendChild(timeline);const contextualY=this.renderV2ContextualYSurface();if(contextualY.dataset.contextualY==="selection"){panel.classList.add("has-y-rail");panel.dataset.contextKind=this.v2SelectedSegmentId?"segment":"object";panel.append(contextualY,this.renderV2YRail(),scroll);}else panel.appendChild(scroll);return panel;
+    scroll.appendChild(timeline);const contextualY=this.renderV2ContextualYSurface();if(contextualY.dataset.contextualY==="selection"){panel.classList.add("has-y-rail");panel.dataset.contextKind=contextualY.dataset.contextKind;panel.append(contextualY,this.renderV2YRail(),scroll);}else panel.appendChild(scroll);return panel;
   }
   private clearV2TimelineIndicatorRefs():void {if(this.cursorEl===this.v2CursorEl)this.cursorEl=null;this.v2CursorEl=null;this.v2ViewportEl=null;this.v2LastCursorPx=null;this.v2LastViewportPx=null;this.v2RenderedTimelineScale=null;}
   private setV2IndicatorX(element:HTMLElement|null,pixelX:number,lastPixelX:number|null):number {if(element&&pixelX!==lastPixelX)element.style.transform=`translate3d(${pixelX}px, 0, 0)`;return pixelX;}
@@ -392,10 +392,10 @@ export class PixelBgrLabUI {
   private onV2EventPointerUp=(e:PointerEvent):void=>{if(this.v2EventDrag?.pointerId!==e.pointerId)return;isolateTimelinePointerEvent(e);this.endV2EventDrag();this.render();};
   private endV2EventDrag():void {const drag=this.v2EventDrag;if(!drag)return;drag.captureTarget?.releasePointerCapture?.(drag.pointerId);this.v2EventDrag=null;window.removeEventListener("pointermove",this.onV2EventPointerMove);window.removeEventListener("pointerup",this.onV2EventPointerUp);window.removeEventListener("pointercancel",this.onV2EventPointerUp);}
 
-  private selectV2Event(eventId:string,render=true):void {this.v2SelectedEventId=eventId;this.v2SelectedSegmentId="";this.v2SelectedObjectId="";this.v2PlacementTarget=null;if(render)this.render();}
-  private selectV2Track(trackId:string,render=true):void {this.v2SelectedTrackId=trackId;this.v2SelectedSegmentId="";this.v2SelectedObjectId="";this.v2SelectedEventId="";this.v2PlacementTarget=null;if(render)this.render();}
-  private selectV2Segment(trackId:string,segmentId:string,render=true):void {this.v2SelectedTrackId=trackId;this.v2SelectedSegmentId=segmentId;this.v2SelectedObjectId="";this.v2SelectedEventId="";if(render)this.render();}
-  private selectV2Object(trackId:string,objectId:string,render=true):void {this.v2SelectedTrackId=trackId;this.v2SelectedSegmentId="";this.v2SelectedObjectId=objectId;this.v2SelectedEventId="";if(render)this.render();}
+  private selectV2Event(eventId:string,render=true):void {this.v2SelectedEventId=eventId;if(render)this.render();}
+  private selectV2Track(trackId:string,render=true):void {this.v2SelectedTrackId=trackId;this.v2SelectedSegmentId="";this.v2SelectedObjectId="";this.v2PlacementTarget=null;if(render)this.render();}
+  private selectV2Segment(trackId:string,segmentId:string,render=true):void {this.v2SelectedTrackId=trackId;this.v2SelectedSegmentId=segmentId;this.v2SelectedObjectId="";if(render)this.render();}
+  private selectV2Object(trackId:string,objectId:string,render=true):void {this.v2SelectedTrackId=trackId;this.v2SelectedSegmentId="";this.v2SelectedObjectId=objectId;if(render)this.render();}
   private renderV2EventSurface(scene:BackgroundSceneV2):HTMLElement {
     const surface=el("section","cm-v2-inspector-section cm-v2-event-list-section");surface.dataset.inspectorSection="event";surface.appendChild(this.plainV2InspectorHeader("EVENT"));
     const list=el("div","cm-v2-logic-list");list.setAttribute("role","listbox");
@@ -408,7 +408,7 @@ export class PixelBgrLabUI {
     const segment=this.selectedV2Segment();
     const object=segment?null:this.selectedV2Object();
     if(!segment&&!object)return el("section","cm-v2-selected-y");
-    const surface=el("section","cm-v2-selected-y");surface.dataset.contextualY="selection";
+    const surface=el("section","cm-v2-selected-y");surface.dataset.contextualY="selection";surface.dataset.contextKind=segment?"segment":"object";
     const id=segment?.segment.id??object!.object.id;
     const value=segment?.segment.offsetY??object!.object.y;
     const readout=el("span","cm-v2-y-readout");readout.textContent=`Y ${Math.round(value)}`;
