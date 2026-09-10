@@ -5,6 +5,7 @@ export interface PixelBgrDevWorkspaceRegions {
   modeToggle: HTMLElement;
   main: HTMLElement;
   left: HTMLElement;
+  leftCanvas: HTMLElement;
   gutter: HTMLElement;
   center: HTMLElement;
   viewport: HTMLElement;
@@ -17,6 +18,7 @@ export const PIXEL_BGR_WORKSPACE_REGION_CLASSES = {
   modeToggle: "cm-bgr-workspace-mode-toggle",
   main: "cm-bgr-workspace-main",
   left: "cm-bgr-workspace-left",
+  leftCanvas: "cm-bgr-workspace-left-canvas",
   center: "cm-bgr-workspace-center",
   viewport: "cm-bgr-workspace-viewport",
   right: "cm-bgr-workspace-right",
@@ -50,18 +52,19 @@ export function createPixelBgrDevWorkspaceShell(documentRef: Document = document
   const modeToggle = region(documentRef, "nav", PIXEL_BGR_WORKSPACE_REGION_CLASSES.modeToggle, "mode-toggle");
   const main = region(documentRef, "main", PIXEL_BGR_WORKSPACE_REGION_CLASSES.main, "main");
   const left = region(documentRef, "aside", PIXEL_BGR_WORKSPACE_REGION_CLASSES.left, "left");
+  const leftCanvas = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.leftCanvas, "left-canvas");
   const gutter = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.gutter, "gutter");
   const center = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.center, "center");
   const viewport = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.viewport, "viewport");
   const right = region(documentRef, "aside", PIXEL_BGR_WORKSPACE_REGION_CLASSES.right, "right");
   const timeline = region(documentRef, "section", PIXEL_BGR_WORKSPACE_REGION_CLASSES.timeline, "timeline");
 
-  left.append(gutter);
+  left.append(leftCanvas, gutter);
   center.append(viewport, timeline);
   main.append(left, center, right);
   root.append(modeToggle, main);
 
-  return { root, modeToggle, main, left, gutter, center, viewport, right, timeline };
+  return { root, modeToggle, main, left, leftCanvas, gutter, center, viewport, right, timeline };
 }
 
 export function setPixelBgrWorkspaceDisplayMode(root: HTMLElement, mode: PixelBgrDisplayMode): void {
@@ -174,7 +177,14 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   overflow: hidden;
 }
 
-.cm-bgr-workspace-left > .cm-pixel-bgr-lab {
+.cm-bgr-workspace-left-canvas {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.cm-bgr-workspace-left-canvas > .cm-pixel-bgr-lab {
   min-height: 0;
   overflow-x: hidden;
   overflow-y: hidden;

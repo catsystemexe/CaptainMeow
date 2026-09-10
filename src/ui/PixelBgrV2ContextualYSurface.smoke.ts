@@ -8,7 +8,7 @@ const scene:BackgroundSceneV2={version:2,id:"context-y",environment:{},tracks:[{
 const segment=updateV2Segment(scene,"mid","mid-a",{offsetY:-56});assert(segment.ok);if(segment.ok)assert.equal(segment.scene.tracks[0].segments[0].offsetY,-56);
 const object=updateV2Object(scene,"mid","rock",{y:13});assert(object.ok);if(object.ok)assert.equal(object.scene.tracks[0].objects[0].y,13);
 const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
-assert.match(source,/panel\.append\(this\.renderV2YRail\(\),this\.renderV2ContextualYSurface\(\)\)/,"Y controls mount in timeline panel");
+assert.match(source,/panel\.append\(contextualY,this\.renderV2YRail\(\),scroll\)/,"Y controls mount in visual order in the timeline panel");
 assert.doesNotMatch(source,/workspace\.left\.appendChild\(this\.renderV2YRail/);
 assert.match(source,/const value=segment\?\.segment\.offsetY\?\?object!\.object\.y/);
 assert.match(source,/readout\.textContent=`Y \${Math\.round\(value\)}`/);
