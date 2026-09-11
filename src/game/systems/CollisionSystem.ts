@@ -278,9 +278,6 @@ export class CollisionSystem {
 
     if (Number(player.deadT ?? 0) > 0 || Number((player as any).respawnIntroT ?? 0) > 0) return;
 
-    const inv = Number(player.invulnT ?? 0);
-    if (Number.isFinite(inv) && inv > 0) return;
-
     const pwx = Number(player.pos?.x ?? 0);
     const pwy = Number(player.pos?.y ?? 0);
 
@@ -303,6 +300,11 @@ export class CollisionSystem {
         });
       }
     });
+
+    // Projectiles are physical impacts even while iFrames reject their damage.
+    // Enemy-body contact remains gated so immunity cannot be used to ram enemies.
+    const inv = Number(player.invulnT ?? 0);
+    if (Number.isFinite(inv) && inv > 0) return;
 
     // 4) player -> enemy (CONTACT)
     for (const { ref: enemyRef, e: enemy } of enemies) {

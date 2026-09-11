@@ -192,6 +192,21 @@ function testInvulnerablePlayerDoesNotRamEnemy(): void {
   finishTick(bus);
 }
 
+function testInvulnerablePlayerConsumesProjectileWithoutDamage(): void {
+  const store = new EntityStore<WorldEntity>(8);
+  const bus = makeBus();
+  const playerRef = spawnPlayer(store, 0.5);
+  const projectileRef = store.spawn((e: any) => Object.assign(e, {
+    kind: "enemyProjectile", pos: { x: 0, y: 0 }, radius: 2,
+    damage: 1, consumed: false, pendingKill: false,
+  }));
+  const flow = runImpact(bus, store, 0);
+  assert.equal((store.get(projectileRef) as any).consumed, true, "iFrames do not let an overlapping projectile pass through");
+  assert.equal((store.get(playerRef) as any).shield, 5, "DamageSystem rejects projectile damage during iFrames");
+  assert(!flow.some((e) => e.type === EventType.ENTITY_DAMAGED), "rejected damage emits no accepted transaction");
+  finishTick(bus);
+}
+
 function testDurableEnemyOptOut(): void {
   const store = new EntityStore<WorldEntity>(8);
   const bus = makeBus();
@@ -241,6 +256,7 @@ testContactDeathAndPersistentOverlap();
 testShieldStateMachineAndDamageResult();
 testLethalShieldDownContactStillKillsEnemy();
 testInvulnerablePlayerDoesNotRamEnemy();
+testInvulnerablePlayerConsumesProjectileWithoutDamage();
 testDurableEnemyOptOut();
 testRespawnDefaults();
 testLegacyEnergyProjection();

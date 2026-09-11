@@ -167,7 +167,12 @@ async function main() {
   }
 
   const { createHUDArcade } = await import("./ui/HUDArcade");
-  const hud = createHUDArcade(root);
+  const hud = createHUDArcade(root, {
+    onPlayAgain: () => {
+      game.reset();
+      startPlay();
+    },
+  });
 
   const loop = game.loop;
   const store = game.store;
@@ -259,7 +264,7 @@ async function main() {
 
   let renderer: WebGLSceneRenderer;
 
-  // ---- Keys: Pause (P), Start (Enter/Space), GameOver (Y/N)
+  // ---- Keys: Pause (P), Start (Enter/Space)
   window.addEventListener("keydown", (e) => {
     if (e.repeat) return;
 
@@ -356,24 +361,6 @@ async function main() {
       const ui = (globalThis as any).__CM_BG_LAB_UI__;
       if (ui && typeof ui.toggle === "function") ui.toggle();
       else console.log("[BG_LAB] UI not ready");
-      return;
-    }
-// Game over keys (Y/N)
-    if (!session?.gameOver) return;
-
-    if (e.code === "KeyY") {
-      e.preventDefault();
-      (game as any).reset?.(); // hard reset run (no reload)
-      startPlay();
-      return;
-    }
-
-    if (e.code === "KeyN") {
-      e.preventDefault();
-      setHudMode("PLAY");
-      hud.setPaused?.(false);
-      loop.setPaused?.(false);
-    
       return;
     }
   });
