@@ -15,6 +15,8 @@ export interface BackgroundSpriteDrawCommand {
   opacity: number;
   blend: "normal" | "additive";
   effectiveZ: number;
+  flipX?: boolean;
+  flipY?: boolean;
   sourceTrackId: string;
   sourceSegmentId?: string;
   sourceObjectId?: string;
@@ -72,6 +74,8 @@ function commandFor(instance: BackgroundRenderInstance, compatibility?: Backgrou
     opacity: clamp01(instance.opacity, 1),
     blend: instance.blend,
     effectiveZ: instance.effectiveZ,
+    flipX: instance.flipX,
+    flipY: instance.flipY,
     sourceTrackId: instance.sourceTrackId,
     sourceSegmentId: instance.sourceSegmentId,
     sourceObjectId: instance.sourceObjectId,

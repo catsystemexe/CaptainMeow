@@ -11,6 +11,8 @@ This document is the canonical implementation roadmap for the Multitrack Pixel B
 
 It does not replace the project-level canonical documents in `docs/project/*`. It defines the focused architecture, milestones, verification gates, and status for this BGR workstream.
 
+The current canonical entity hierarchy, identity/name, authoring lock, flip, and RMB command contract is [BGR_V2_ENTITY_MODEL.md](BGR_V2_ENTITY_MODEL.md); this roadmap does not duplicate that authority.
+
 Current repository implementation remains primary evidence for what exists. Historical BGR handoffs and archived branches are evidence only unless explicitly promoted.
 
 ## Current confirmed baseline

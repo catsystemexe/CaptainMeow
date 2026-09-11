@@ -10,10 +10,10 @@ export interface GameplayTimelineReference {
 }
 
 export interface V2ProjectedSegment {
-  id: string; trackId: string; startX: number; endX: number; widthPx: number; enabled: boolean; effectiveZ: number;
+  id: string; name?: string; locked?: boolean; trackId: string; startX: number; endX: number; widthPx: number; enabled: boolean; effectiveZ: number;
 }
 export interface V2ProjectedObject {
-  id: string; trackId: string; x: number; width: number | null; enabled: boolean; effectiveZ: number;
+  id: string; name?: string; locked?: boolean; trackId: string; x: number; width: number | null; enabled: boolean; effectiveZ: number;
 }
 export interface V2ProjectedTrack {
   id: string; label: string; role: BackgroundTrackRole; mode: "sequence" | "repeat"; enabled: boolean; sceneIndex: number; parallaxX: number; projectable: boolean;
@@ -23,7 +23,7 @@ export interface V2ProjectedLane {
   id: string; label: string; role: Exclude<BackgroundTrackRole, "custom">;
   tracks: V2ProjectedTrack[];
 }
-export interface V2ProjectedEvent { id: string; type: "signal" | "level-end"; label: string; worldX: number; enabled: boolean }
+export interface V2ProjectedEvent { id: string; type: "signal" | "level-end"; label: string; worldX: number; enabled: boolean; locked?: boolean }
 export interface V2TimelineProjection {
   sceneId: string;
   lanes: V2ProjectedLane[];
@@ -70,7 +70,7 @@ export function projectBackgroundV2Timeline(
         const startX = project(segment.startTrackX);
         const endX = project(segment.startTrackX + segment.widthPx);
         return startX === null || endX === null ? [] : [{
-          id: segment.id, trackId: track.id, startX, endX, widthPx: endX - startX,
+          id: segment.id, name: segment.name, locked: segment.locked, trackId: track.id, startX, endX, widthPx: endX - startX,
           enabled: segment.enabled, effectiveZ: track.zBase + segment.localZ,
         }];
       }) : [],
@@ -78,7 +78,7 @@ export function projectBackgroundV2Timeline(
         const x = project(object.startTrackX);
         if (x === null) return [];
         const endX = finite(object.width ?? Number.NaN) ? project(object.startTrackX + object.width!) : null;
-        return [{ id: object.id, trackId: track.id, x, width: endX === null ? null : endX - x, enabled: object.enabled, effectiveZ: track.zBase + object.localZ }];
+        return [{ id: object.id, name: object.name, locked: object.locked, trackId: track.id, x, width: endX === null ? null : endX - x, enabled: object.enabled, effectiveZ: track.zBase + object.localZ }];
       }) : [],
     };
   });
@@ -97,7 +97,7 @@ export function projectBackgroundV2Timeline(
   }
   for (const range of ranges) if (finite(range.startX) && finite(range.endX)) points.push(range.startX, range.endX);
   for (const marker of markers) if (finite(marker.x)) points.push(marker.x);
-  const events = orderedV2SceneEvents(scene).map(event => ({ id: event.id, type: event.type, label: event.type === "signal" ? event.name : "END", worldX: event.worldX, enabled: event.enabled }));
+  const events = orderedV2SceneEvents(scene).map(event => ({ id: event.id, type: event.type, label: event.name || (event.type === "level-end" ? "END" : event.id), worldX: event.worldX, enabled: event.enabled, locked: event.locked }));
   for (const event of events) if (finite(event.worldX)) points.push(event.worldX);
 
   const environmentLabels = scene.environment.starfield
