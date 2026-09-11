@@ -33,6 +33,7 @@ export const SHAPE_ID: Record<string, number> = {
   thruster: 8,
   laser: 9,
   plasmaOrb: 10,
+  energyField: 11,
 };
 
 // Bounded-quad vertex shader: identical world->screen transform to the main
@@ -374,6 +375,18 @@ void main() {
 
     float alpha = clamp(length(c) * 0.8, 0.0, 1.0);
     outColor = vec4(clamp(c, vec3(0.0), vec3(1.0)), alpha);
+    return;
+  } else if (uShapeType == 11) {
+    // Thin elliptical energy shell. uHitFlash carries presentation strength.
+    float ring = abs(length(vec2(p.x, p.y * 1.18)) - 0.72);
+    float edge = 1.0 - smoothstep(0.025, 0.10, ring);
+    float aura = exp(-ring * 18.0) * 0.42;
+    float pulse = 0.88 + 0.12 * sin(uTime * 6.2831853);
+    float strength = clamp(uHitFlash, 0.0, 1.0);
+    vec3 fieldColor = mix(uColor, vec3(0.82, 1.0, 1.0), edge * 0.55);
+    float alpha = clamp((edge + aura) * pulse * strength, 0.0, 0.9);
+    if (alpha < 0.003) discard;
+    outColor = vec4(fieldColor, alpha);
     return;
   } else {
     // TRIANGLE — clean equilateral pointing +X

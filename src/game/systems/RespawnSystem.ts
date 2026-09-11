@@ -20,8 +20,7 @@ export class RespawnSystem {
     private logicH: number,
     private cfg = {
       respawnDelayTicks: 60, // 1s @60Hz
-      invulnSec: 2.25,       // respawn protection; ordinary hit i-frames remain 0.75s
-      spawnEnergy: 5,
+      invulnSec: 2.5,        // respawn protection; ordinary hit i-frames remain 0.75s
       introSec: 0.8,
       world: undefined as { scrollX: number; scrollY: number } | undefined,
     }
@@ -91,10 +90,9 @@ export class RespawnSystem {
     p.radius = Number.isFinite(Number(p.radius)) ? Number(p.radius) : 3;
     p.bodyRadius = Number.isFinite(Number(p.bodyRadius)) && Number(p.bodyRadius) > 0 ? Number(p.bodyRadius) : 20;
 
-    // energy
-    const max0 = Number(p.energyMax ?? this.cfg.spawnEnergy);
-    p.energyMax = Number.isFinite(max0) && max0 > 0 ? max0 : this.cfg.spawnEnergy;
-    p.energy = this.cfg.spawnEnergy;
+    const max0 = Number(p.shieldMax ?? 5);
+    p.shieldMax = Number.isFinite(max0) && max0 > 0 ? max0 : 5;
+    p.shield = p.shieldMax;
 
     p.pendingKill = false;
     p.__playerDeathFxDone = false;
@@ -102,6 +100,7 @@ export class RespawnSystem {
 
     // ✅ spawn i-frames
     p.invulnT = this.cfg.invulnSec;
+    p.invulnerabilityReason = "respawn";
 
     p.respawnIntroDuration = this.cfg.introSec;
     p.respawnIntroT = this.cfg.introSec;

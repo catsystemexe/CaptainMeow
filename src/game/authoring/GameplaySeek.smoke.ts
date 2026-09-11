@@ -9,7 +9,7 @@ assert.equal(deriveGameplayScrollX(640, 120), 520, "world scroll derives from pl
 
 const store = new EntityStore<any>(16);
 let player: any;
-const playerRef = store.spawn((e: any) => { player = e; e.kind = "player"; e.pos = { x: 100, y: 222 }; e.vel = { x: 4, y: 5 }; e.energy = 3; e.bombs = 2; e.pendingKill = false; });
+const playerRef = store.spawn((e: any) => { player = e; e.kind = "player"; e.pos = { x: 100, y: 222 }; e.vel = { x: 4, y: 5 }; e.shield = 3; e.bombs = 2; e.pendingKill = false; });
 store.spawn((e: any) => { e.kind = "projectile"; e.pos = { x: 120, y: 20 }; e.vel = { x: 1, y: 0 }; e.ttl = 1; e.pendingKill = false; });
 store.spawn((e: any) => { e.kind = "enemy"; e.pos = { x: 180, y: 20 }; e.vel = { x: 0, y: 0 }; e.pendingKill = false; });
 let paused = false;
@@ -34,7 +34,7 @@ const result = seekGameplayToPlayerX(640, { bounds: { startX: 0, endX: 1000 }, p
 assert.equal(result.playerX, 640, "cursor target maps to gameplay Player X");
 assert.equal(result.scrollX, 520, "seek synchronizes world scroll from player anchor");
 assert.equal(player.pos.y, 222, "seek preserves player vertical position");
-assert.equal(player.energy, 3, "persistent player health is preserved by contract");
+assert.equal(player.shield, 3, "persistent player Shield is preserved by contract");
 assert.equal(player.bombs, 2, "persistent bomb count is preserved by contract");
 assert.equal(paused, true, "stop/paused seek leaves gameplay paused when requested");
 assert.equal(result.clearedEntities, 2, "transient cleanup path is called for old-location runtime entities");
