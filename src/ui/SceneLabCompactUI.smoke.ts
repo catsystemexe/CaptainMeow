@@ -65,9 +65,11 @@ assert(lab.includes('private readonly sceneContentsExpanded = new Set<string>')&
 assert(lab.includes('sceneContentsAggregateState(events.map(event=>event.enabled))')&&lab.includes('!=="all"'),"EVE category aggregates all/mixed/none and applies all-enable policy");
 assert(lab.includes("setV2EventsEnabled")&&lab.includes("updateV2SceneEvent(next,event.id,{enabled})"),"EVE bulk Power uses Event update authority");
 assert(lab.includes("const result=updateV2SceneEvent(scene,event.id,{enabled:!event.enabled})"),"per-Event Power uses the same invariant-preserving helper");
+assert(lab.includes('const ordinal=el("span","cm-scene-tree-ordinal");ordinal.textContent=`${index+1}.`')&&lab.includes("row.append(power,ordinal,label,type)"),"Event ordinal is independent of both editable signal names and level-end labels");
+assert(lab.includes("row.replaceChild(input,label)")&&!lab.includes("row.replaceChild(input,ordinal)"),"signal name editing preserves the visible ordinal");
 assert(lab.includes('sceneContentsRow("TRI","activation","none",0,()=>{},undefined,true,"reserved")')&&lab.includes('sceneContentsRow("MAR","activation","none",0,()=>{},undefined,true,"reserved")'),"TRI/MAR are disabled reserved rows without items");
 assert(!lab.includes("renderV2EventSurface")&&!lab.includes("renderV2ReservedInspector")&&!lab.includes('plainV2InspectorHeader("EVENT")'),"standalone EVENT/TRIGGER/MARKER blocks are removed");
 assert(lab.includes('private selectV2Event(eventId:string,render=true):void {this.v2SelectedEventId=eventId')&&lab.includes('private selectV2Segment(trackId:string,segmentId:string,render=true):void {this.v2SelectedTrackId=trackId'),"Event and visual selection remain independent");
-assert(lab.includes('el("input","cm-v2-logic-name-edit")') && lab.includes('updateV2SceneEvent(scene,event.id,{name:value})'), "inline Event editing remains wired");
+assert(lab.includes('el("input","cm-v2-logic-name-edit")') && lab.includes('updateV2SceneEvent(scene,event.id,{name:value})')&&lab.includes("input.onfocus=select"), "inline Event editing and focus selection remain wired");
 
 console.log("SceneLabCompactUI.smoke: PASS");
