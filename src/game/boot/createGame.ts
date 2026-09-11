@@ -470,11 +470,13 @@ export async function createGame(
     }
 
     enemyGroups.reset();
+    particleStore.clear();
+    vfx.clear();
 
     // reset player entity (same object)
     playerEnt.kind = "player";
-    const START_X = 16;            // px od levého okraje (tweak)
-    const START_Y = LOGIC_H * 0.5; // střed výšky
+    const START_X = Number(world.scrollX) + LOGIC_W * 0.225;
+    const START_Y = Number(world.scrollY) + LOGIC_H * 0.5;
     playerEnt.pos = { x: START_X, y: START_Y };
     (playerEnt as any).posPrev = { x: playerEnt.pos.x, y: playerEnt.pos.y };
     playerEnt.vel = { x: 0, y: 0 };
@@ -508,6 +510,15 @@ export async function createGame(
       (inputRt.actions as any).cycleW1LevelPressed = false;
       (inputRt.actions as any).cycleW2LevelPressed = false;
     } catch {}
+
+    session.tick = 0;
+    session.timeSec = 0;
+    session.score = 0;
+    session.lives = RESET_CFG.startLives;
+    session.wave = 1;
+    session.gameOver = false;
+    session.lastDeathPos = undefined;
+    respawn.reset();
 
     // director runtime reset (keeps same instance)
         director.reset();
@@ -599,6 +610,7 @@ export async function createGame(
         },
 
         flow: {
+  reset: resetGame,
           update: (ctx, events) => {
             flow.update(ctx, events as any);
           },

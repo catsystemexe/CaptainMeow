@@ -51,15 +51,22 @@ function main(): void {
   const kills = (bus.drainPhase(Phase.Flow) as any[]).filter((e) => e.type === EventType.ENTITY_KILLED && e.payload.isPlayer);
   assert.equal(kills.length, 1, "player kill event semantics must remain idempotent");
 
+  player.pos = { x: 777, y: 42 };
   const session = { lives: 2, gameOver: false };
-  const respawn = new RespawnSystem(session, store, () => playerRef, 896, 504);
+  const world = { scrollX: 320, scrollY: 96 };
+  const respawn = new RespawnSystem(session, store, () => playerRef, 896, 504, {
+    respawnDelayTicks: 60, invulnSec: 2.5, introSec: 0.8, world,
+  });
   respawn.onFlowEvents(kills);
   for (let i = 0; i < 60; i += 1) respawn.tick();
   assert.equal(player.invulnT, 2.5);
   assert.equal(player.invulnerabilityReason, "respawn");
   assert.equal(getPlayerShieldFieldPresentation(player).visible, true);
   assert.equal(player.respawnIntroT, 0.8);
-  assert(player.pos.x < player.respawnIntroTarget.x, "entrance must start left of its target");
+  assert.equal(player.respawnIntroTarget.x, world.scrollX + 896 * 0.225, "target is 22.5% from the current viewport left");
+  assert.equal(player.respawnIntroTarget.y, world.scrollY + 504 * 0.5, "target is current viewport vertical center");
+  assert.notEqual(player.respawnIntroTarget.y, 42, "target is independent of death Y");
+  assert(player.pos.x < world.scrollX, "entrance starts outside the current left viewport edge");
 
   const playerSystem = new PlayerSystem(bus, player, { bounds: { minX: 0, minY: 0, maxX: 896, maxY: 504 } });
   playerSystem.update(0.4, actions());

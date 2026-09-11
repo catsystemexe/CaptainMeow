@@ -486,7 +486,7 @@ function drawW2(
   ctx.globalAlpha = 1;
 }
 
-export function createHUDArcade(root: HTMLElement) {
+export function createHUDArcade(root: HTMLElement, options: { onPlayAgain?: () => void } = {}) {
   let mode: HudMode = "PLAY";
   let iconPhase = 0;
   let previousScore: number | undefined;
@@ -727,7 +727,18 @@ export function createHUDArcade(root: HTMLElement) {
       `text-align:center;font-family:${LABEL_FONT};font-weight:700;font-size:30px;` +
       "letter-spacing:3px;line-height:1.5;display:none;white-space:pre;",
   );
-  gameOver.textContent = "GAME OVER\nTry again? Y/N";
+  const gameOverTitle = mkChild(gameOver, "hudGameOverTitle", "margin-bottom:22px;");
+  gameOverTitle.textContent = "GAME OVER";
+  const playAgain = document.createElement("button");
+  playAgain.id = "hudPlayAgain";
+  playAgain.type = "button";
+  playAgain.textContent = "PLAY AGAIN?";
+  playAgain.style.cssText =
+    `pointer-events:auto;cursor:pointer;padding:14px 24px;border:2px solid ${COL_CYAN};` +
+    `background:rgba(0,18,28,.92);color:${COL_CYAN};font-family:${LABEL_FONT};font-weight:800;` +
+    "font-size:20px;letter-spacing:2px;box-shadow:0 0 16px rgba(0,255,238,.65);text-shadow:0 0 8px #00ffee;";
+  playAgain.addEventListener("click", () => options.onPlayAgain?.());
+  gameOver.appendChild(playAgain);
 
   const refs: HudRefs = {
     layer, panel, lives, energySegments, shieldBlock: energyBlock, shieldLabel: energyLabel,
