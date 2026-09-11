@@ -3,6 +3,10 @@
 Documentation for the Captain Meow background & render-stack effort (working branch lineage:
 `work` → `pixel_bgr`).
 
+## Current canonical contracts
+
+- [Background V2 entity model](BGR_V2_ENTITY_MODEL.md) — canonical Scene/Layer/SEG/OBJ/EVE identity, naming, lock, flip, and entity-command contract.
+
 ## Fable independent audit (B0, 2026-07-07)
 
 Independent audit of the actual state of the background/render stack at base

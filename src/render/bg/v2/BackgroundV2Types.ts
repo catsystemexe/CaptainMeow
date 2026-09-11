@@ -31,6 +31,10 @@ export interface BackgroundStaticBackdrop {
 
 export interface BackgroundSegment {
   id: string;
+  name?: string;
+  locked?: boolean;
+  flipX?: boolean;
+  flipY?: boolean;
   startTrackX: number;
   widthPx: number;
   asset: BackgroundAssetRef;
@@ -45,6 +49,10 @@ export interface BackgroundSegment {
 
 export interface BackgroundObject {
   id: string;
+  name?: string;
+  locked?: boolean;
+  flipX?: boolean;
+  flipY?: boolean;
   asset: BackgroundAssetRef;
   startTrackX: number;
   y: number;
@@ -70,8 +78,8 @@ export interface BackgroundTrack {
 
 /** Scene-global runtime-relevant datum authored directly in canonical world X. */
 export type BackgroundSceneEvent =
-  | { id: string; type: "level-end"; worldX: number; enabled: boolean }
-  | { id: string; type: "signal"; worldX: number; enabled: boolean; name: string };
+  | { id: string; type: "level-end"; worldX: number; enabled: boolean; name?: string; locked?: boolean }
+  | { id: string; type: "signal"; worldX: number; enabled: boolean; name: string; locked?: boolean };
 
 export interface BackgroundSceneV2 {
   version: 2;
@@ -100,6 +108,8 @@ export interface BackgroundRenderInstance {
   opacity: number;
   blend: BackgroundBlendMode;
   effectiveZ: number;
+  flipX?: boolean;
+  flipY?: boolean;
   sourceTrackId: string;
   sourceSegmentId?: string;
   sourceObjectId?: string;

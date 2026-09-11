@@ -4,10 +4,10 @@ import { snapTimelineValue } from "./PixelBgrTimeline";
 
 export const V2_EVENT_SNAP_WORLD_X = 16;
 export type V2SceneEventCreate = { type?: "signal"; name?: string } | { type: "level-end" };
-export type V2SceneEventPatch = { worldX?: number; enabled?: boolean; name?: string };
+export type V2SceneEventPatch = { worldX?: number; enabled?: boolean; name?: string; locked?: boolean };
 export type V2SceneEventEditResult =
   | { ok: true; scene: BackgroundSceneV2; eventId: string }
-  | { ok: false; scene: BackgroundSceneV2; code: "event-not-found" | "invalid-value" | "duplicate-level-end"; error: string };
+  | { ok: false; scene: BackgroundSceneV2; code: "event-not-found" | "locked" | "invalid-value" | "duplicate-level-end"; error: string };
 
 const fail = (scene: BackgroundSceneV2, code: V2SceneEventEditResult extends infer R ? R extends { ok: false; code: infer C } ? C : never : never, error: string): V2SceneEventEditResult => ({ ok: false, scene, code, error });
 const validated = (scene: BackgroundSceneV2, next: BackgroundSceneV2, eventId: string): V2SceneEventEditResult => {
@@ -43,23 +43,30 @@ export function createV2SceneEvent(scene: BackgroundSceneV2, playerWorldX: numbe
 export function updateV2SceneEvent(scene: BackgroundSceneV2, eventId: string, patch: V2SceneEventPatch): V2SceneEventEditResult {
   const source = (scene.events ?? []).find(event => event.id === eventId);
   if (!source) return fail(scene, "event-not-found", `Event '${eventId}' was not found.`);
-  if (source.type === "level-end" && Object.prototype.hasOwnProperty.call(patch, "name")) return fail(scene, "invalid-value", "A level-end event cannot have a signal name.");
-  const event = { ...source, ...patch } as BackgroundSceneEvent;
+  if (source.locked && Object.keys(patch).some(key => key !== "locked" && key !== "enabled")) return fail(scene, "locked", `Event '${eventId}' is locked.`);
+  const normalizedPatch = Object.prototype.hasOwnProperty.call(patch, "name")
+    ? { ...patch, name: patch.name?.trim() || (source.type === "signal" ? source.id : undefined) }
+    : patch;
+  const event = { ...source, ...normalizedPatch } as BackgroundSceneEvent;
   if (event.type === "level-end" && (scene.events ?? []).some(item => item.id !== eventId && item.type === "level-end")) return fail(scene, "duplicate-level-end", "Scene already has a level-end event.");
   const error = valid(event); if (error) return fail(scene, "invalid-value", error);
   return validated(scene, { ...scene, events: (scene.events ?? []).map(item => item.id === eventId ? event : item) }, eventId);
 }
 
 export function deleteV2SceneEvent(scene: BackgroundSceneV2, eventId: string): V2SceneEventEditResult {
-  if (!(scene.events ?? []).some(event => event.id === eventId)) return fail(scene, "event-not-found", `Event '${eventId}' was not found.`);
+  const source = (scene.events ?? []).find(event => event.id === eventId);
+  if (!source) return fail(scene, "event-not-found", `Event '${eventId}' was not found.`);
+  if (source.locked) return fail(scene, "locked", `Event '${eventId}' is locked.`);
   return validated(scene, { ...scene, events: (scene.events ?? []).filter(event => event.id !== eventId) }, "");
 }
 
 export function duplicateV2SceneEvent(scene: BackgroundSceneV2, eventId: string): V2SceneEventEditResult {
   const source = (scene.events ?? []).find(event => event.id === eventId);
   if (!source) return fail(scene, "event-not-found", `Event '${eventId}' was not found.`);
+  if (source.locked) return fail(scene, "locked", `Event '${eventId}' is locked.`);
   if (source.type === "level-end") return fail(scene, "duplicate-level-end", "Scene already has a level-end event.");
-  const event: BackgroundSceneEvent = { ...source, id: uniqueId(scene, source.id), worldX: source.worldX + V2_EVENT_SNAP_WORLD_X };
+  const { locked: _locked, ...copy } = source;
+  const event: BackgroundSceneEvent = { ...copy, id: uniqueId(scene, source.id), worldX: source.worldX + V2_EVENT_SNAP_WORLD_X };
   return validated(scene, { ...scene, events: [...(scene.events ?? []), event] }, event.id);
 }
 

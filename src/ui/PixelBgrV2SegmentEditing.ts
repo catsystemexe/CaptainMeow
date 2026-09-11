@@ -6,12 +6,12 @@ export const V2_SEGMENT_SNAP_PX = DEFAULT_CHUNK_TIMELINE_SNAP_PX;
 export const MIN_V2_SEGMENT_WIDTH = MIN_CHUNK_TIMELINE_LENGTH;
 export const V2_DUPLICATE_OFFSET_PX = DEFAULT_CHUNK_TIMELINE_SNAP_PX;
 
-export type V2SegmentEditErrorCode = "track-not-found" | "segment-not-found" | "sequence-required" | "invalid-value" | "duplicate-id" | "asset-required";
+export type V2SegmentEditErrorCode = "track-not-found" | "segment-not-found" | "sequence-required" | "locked" | "invalid-value" | "duplicate-id" | "asset-required";
 export type V2SegmentEditResult =
   | { ok: true; scene: BackgroundSceneV2; trackId: string; segmentId: string }
   | { ok: false; scene: BackgroundSceneV2; code: V2SegmentEditErrorCode; error: string };
 export type V2SegmentDragMode = "move" | "resize-left" | "resize-right";
-export type V2SegmentPatch = Partial<Pick<BackgroundSegment, "startTrackX" | "widthPx" | "offsetY" | "opacity" | "blend" | "localZ" | "fadeInPx" | "fadeOutPx" | "enabled">>;
+export type V2SegmentPatch = Partial<Pick<BackgroundSegment, "name" | "locked" | "flipX" | "flipY" | "startTrackX" | "widthPx" | "offsetY" | "opacity" | "blend" | "localZ" | "fadeInPx" | "fadeOutPx" | "enabled">>;
 export interface V2SegmentOverlap { startX: number; endX: number; segmentIds: string[] }
 
 const fail = (scene: BackgroundSceneV2, code: V2SegmentEditErrorCode, error: string): V2SegmentEditResult => ({ ok: false, scene, code, error });
@@ -74,12 +74,14 @@ export function createV2Segment(scene: BackgroundSceneV2, trackId: string, start
 export function duplicateV2Segment(scene: BackgroundSceneV2, trackId: string, segmentId: string): V2SegmentEditResult {
   const target = editable(scene, trackId, segmentId); if ("ok" in target) return target;
   const source = target.segment!;
+  if (source.locked) return fail(scene, "locked", `Segment '${segmentId}' is locked.`);
   const next = { ...source, asset: { ...source.asset }, id: uniqueSegmentId(scene, source.id), startTrackX: source.startTrackX + V2_DUPLICATE_OFFSET_PX };
   return success(replaceTrack(scene, { ...target.track, segments: [...target.track.segments, next] }), trackId, next.id);
 }
 
 export function deleteV2Segment(scene: BackgroundSceneV2, trackId: string, segmentId: string): V2SegmentEditResult {
   const target = editable(scene, trackId, segmentId); if ("ok" in target) return target;
+  if (target.segment!.locked) return fail(scene, "locked", `Segment '${segmentId}' is locked.`);
   const index = target.track.segments.findIndex(item => item.id === segmentId);
   const segments = target.track.segments.filter(item => item.id !== segmentId);
   const nextSelection = segments[Math.min(index, segments.length - 1)]?.id ?? "";
@@ -88,6 +90,7 @@ export function deleteV2Segment(scene: BackgroundSceneV2, trackId: string, segme
 
 export function updateV2Segment(scene: BackgroundSceneV2, trackId: string, segmentId: string, patch: V2SegmentPatch): V2SegmentEditResult {
   const target = editable(scene, trackId, segmentId); if ("ok" in target) return target;
+  if (target.segment!.locked && Object.keys(patch).some(key => key !== "locked" && key !== "enabled")) return fail(scene, "locked", `Segment '${segmentId}' is locked.`);
   const next = { ...target.segment!, ...patch, asset: { ...target.segment!.asset } };
   const invalid = validSegment(next); if (invalid) return fail(scene, "invalid-value", invalid);
   const segments = target.track.segments.map(item => item.id === segmentId ? next : item);

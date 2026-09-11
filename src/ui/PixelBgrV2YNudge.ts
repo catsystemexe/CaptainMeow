@@ -11,11 +11,11 @@ export function nudgeV2SelectionY(scene: BackgroundSceneV2, trackId: string, seg
   if (!track || !Number.isFinite(delta)) return null;
   if (segmentId) {
     const segment = track.segments.find(item => item.id === segmentId);
-    return segment ? updateV2Segment(scene, trackId, segmentId, { offsetY: segment.offsetY + delta }) : null;
+    return segment && !segment.locked ? updateV2Segment(scene, trackId, segmentId, { offsetY: segment.offsetY + delta }) : null;
   }
   if (objectId) {
     const object = track.objects.find(item => item.id === objectId);
-    return object ? updateV2Object(scene, trackId, objectId, { y: object.y + delta }) : null;
+    return object && !object.locked ? updateV2Object(scene, trackId, objectId, { y: object.y + delta }) : null;
   }
   return null;
 }
