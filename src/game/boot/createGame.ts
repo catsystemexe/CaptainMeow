@@ -475,7 +475,7 @@ export async function createGame(
 
     // reset player entity (same object)
     playerEnt.kind = "player";
-    const START_X = Number(world.scrollX) + LOGIC_W * 0.225;
+    const START_X = Number(world.scrollX) + LOGIC_W * 0.30;
     const START_Y = Number(world.scrollY) + LOGIC_H * 0.5;
     playerEnt.pos = { x: START_X, y: START_Y };
     (playerEnt as any).posPrev = { x: playerEnt.pos.x, y: playerEnt.pos.y };
