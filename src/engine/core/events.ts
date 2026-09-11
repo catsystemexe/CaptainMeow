@@ -120,6 +120,10 @@ export type CMEventMap = {
     amount: number;
     hpAfter: number;
     source: string;
+    resource?: "shield";
+    shieldAfter?: number;
+    shieldDepleted?: boolean;
+    lethal?: boolean;
   };
 
   [EventType.ENTITY_KILLED]: {

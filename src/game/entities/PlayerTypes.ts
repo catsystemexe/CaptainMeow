@@ -14,6 +14,13 @@ export type PlayerData = {
   id: number;
   flags: number;
   invulnT?: number;
+  invulnerabilityReason?: "hit" | "respawn" | null;
+  shield: number;
+  shieldMax: number;
+  /** Public/debug compatibility projection. Authoritative state is shield. */
+  energy?: number;
+  /** Public/debug compatibility projection. Authoritative state is shieldMax. */
+  energyMax?: number;
   deadT?: number;
   respawnIntroT?: number;
   respawnIntroDuration?: number;
@@ -21,3 +28,21 @@ export type PlayerData = {
   respawnIntroTarget?: Vec2;
   hitFlashT?: number;
 };
+
+/** Keep the legacy public/debug energy names as live projections, never duplicate state. */
+export function installPlayerEnergyCompatibility(player: PlayerData): void {
+  Object.defineProperties(player, {
+    energy: {
+      configurable: true,
+      enumerable: true,
+      get: () => player.shield,
+      set: (value: unknown) => { player.shield = Number(value); },
+    },
+    energyMax: {
+      configurable: true,
+      enumerable: true,
+      get: () => player.shieldMax,
+      set: (value: unknown) => { player.shieldMax = Number(value); },
+    },
+  });
+}

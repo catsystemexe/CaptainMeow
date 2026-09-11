@@ -17,8 +17,8 @@ function main(): void {
   const store = new EntityStore<any>(8);
   const playerRef = store.spawn((e: any) => {
     e.kind = "player";
-    e.energy = 1;
-    e.energyMax = 3;
+    e.shield = 1;
+    e.shieldMax = 3;
     e.bombs = 2;
     e.pendingKill = false;
   });
@@ -45,11 +45,11 @@ function main(): void {
   assert(weaponSystem.getLevel("w2") === 5, "w2 pickup at L5 must stay L5 without wrap");
 
   applyPickup(powerups, "energy");
-  assert(player.energy === 2, "energy pickup must raise energy by 1");
+  assert(player.shield === 2, "energy pickup must raise energy by 1");
 
   applyPickup(powerups, "energy");
   applyPickup(powerups, "energy");
-  assert(player.energy === 3, "energy pickup must clamp to energyMax");
+  assert(player.shield === 3, "energy pickup must clamp to shieldMax");
 
   applyPickup(powerups, "bomb");
   assert(player.bombs === 3, "bomb pickup must increment bomb inventory by 1");
@@ -58,7 +58,7 @@ function main(): void {
   assert(session.score === 60, "score pickup must add 50 points");
 
   applyPickup(powerups, "unknown");
-  assert(player.energy === 3 && player.bombs === 3 && session.score === 60 && weaponSystem.getLevel("w1") === 5 && weaponSystem.getLevel("w2") === 5, "unknown pickup must be ignored");
+  assert(player.shield === 3 && player.bombs === 3 && session.score === 60 && weaponSystem.getLevel("w1") === 5 && weaponSystem.getLevel("w2") === 5, "unknown pickup must be ignored");
 
   console.log("[SMOKE] PowerupSystem OK ✅");
 }
