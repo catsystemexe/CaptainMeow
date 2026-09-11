@@ -4,6 +4,11 @@ Status: CANONICAL IMPLEMENTATION AUDIT / PHASE A
 
 Audit snapshot: `pixel_bgr` remote HEAD `74688eb0e18c5125bd02bd8cb0a4a2a7e6d4d602` (2026-09-11).
 
+Historical-snapshot note: these findings describe the pre-implementation Phase A
+state. Phase B subsequently implemented the neutral core catalogue and derived
+BGR compatibility view; the persistence and renderer gaps recorded here remain
+pending for Phase C and later work.
+
 ## 1. Executive summary
 
 The current architecture is compatible with the direction in `07-asset-system.md`, but it has not reached that target. BGR V2 already separates an asset-shaped value (`BackgroundAssetRef`) from an instance (`BackgroundSegment`, `BackgroundObject`, or `BackgroundStaticBackdrop`), and Scene Lab already has a small shared list (`BACKGROUND_ASSET_CATALOG`). However, `BackgroundAssetRef` persists both `id` and `url`, the renderer resolves by `url`, and validation only proves that both strings are non-empty. Consequently the URL, not the ID, remains effective persistent and runtime identity.
