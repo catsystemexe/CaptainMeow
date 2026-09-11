@@ -14,6 +14,7 @@ const SMOKES = [
   "../game/systems/EnemyCapRespected.smoke",
   "../game/systems/EnemyCulling.smoke",
   "../game/systems/CollisionSystem.smoke",
+  "../game/systems/PlayerContactDamage.smoke",
   "../game/systems/ProjectileSystem.smoke",
   "../game/systems/ProjectileConsumedKillsSameTick.smoke",
   "../game/systems/ProjectileTTL.smoke",

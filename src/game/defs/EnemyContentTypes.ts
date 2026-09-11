@@ -10,6 +10,7 @@ export interface EnemyTypeContentDef {
   behaviorPresetId: string;
   behaviorGraphId?: string;
   attackProfileId?: string;
+  destroyOnPlayerContact?: boolean;
   render?: EnemyAppearanceDef;
   ai?: Record<string, unknown>;
   aiWeight?: number;
