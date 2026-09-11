@@ -377,14 +377,17 @@ void main() {
     outColor = vec4(clamp(c, vec3(0.0), vec3(1.0)), alpha);
     return;
   } else if (uShapeType == 11) {
-    // Thin elliptical energy shell. uHitFlash carries presentation strength.
+    // Thin elliptical energy shell. Keep the center clear and let the narrow
+    // perimeter plus its restrained halo carry the shield silhouette.
+    // uHitFlash carries presentation strength (hit briefly peaks above the
+    // continuously visible respawn field).
     float ring = abs(length(vec2(p.x, p.y * 1.18)) - 0.72);
-    float edge = 1.0 - smoothstep(0.025, 0.10, ring);
-    float aura = exp(-ring * 18.0) * 0.42;
-    float pulse = 0.88 + 0.12 * sin(uTime * 6.2831853);
+    float edge = 1.0 - smoothstep(0.012, 0.045, ring);
+    float aura = exp(-ring * 24.0) * 0.18;
+    float pulse = 0.94 + 0.06 * sin(uTime * 6.2831853);
     float strength = clamp(uHitFlash, 0.0, 1.0);
-    vec3 fieldColor = mix(uColor, vec3(0.82, 1.0, 1.0), edge * 0.55);
-    float alpha = clamp((edge + aura) * pulse * strength, 0.0, 0.9);
+    vec3 fieldColor = mix(uColor, vec3(0.72, 0.96, 1.0), edge * 0.38);
+    float alpha = clamp((edge * 0.48 + aura) * pulse * strength, 0.0, 0.62);
     if (alpha < 0.003) discard;
     outColor = vec4(fieldColor, alpha);
     return;
