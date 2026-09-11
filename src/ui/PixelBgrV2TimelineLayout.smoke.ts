@@ -27,10 +27,10 @@ assert.match(timelineRule, /height:155px/, "the visible timeline interaction ban
 assert.match(timelineRule, /pointer-events:auto/, "the timeline remains directly pointer-interactive");
 
 const gutterRule = cssRule(".cm-v2-timeline-gutter");
-assert.match(gutterRule, /width:100%;height:144px;display:grid;grid-template-rows:20px repeat\(4,27px\) 16px;overflow:visible/, "the full-width gutter shares the ruler, four visual lanes, and compact Events lane geometry");
+assert.match(gutterRule, /position:relative;width:100%;height:144px;display:grid;grid-template-rows:20px repeat\(4,27px\) 16px;overflow:visible/, "the full-width gutter shares the ruler, four visual lanes, and compact Events lane geometry");
 assert.match(gutterRule, /background:#000/, "the visible gutter uses compact monochrome presentation");
 assert.match(source, /this\.workspace\.gutter\.appendChild\(gutter\)/, "the gutter mounts into the left workspace region");
-assert.match(source, /panel\.appendChild\(scroll\)/, "the center timeline panel contains only the horizontal lane viewport");
+assert.match(source, /panel\.append\(rail,scroll\)/, "the center timeline panel contains the rail immediately before the horizontal lane viewport");
 assert.match(cssRule(".cm-v2-lane-track-select"), /position:sticky;left:3px/, "only the secondary multi-track selector stays visible with its timeline lane");
 assert.doesNotMatch(source, /cm-v2-track-label/, "same-role tracks do not create nested or additional visual rows");
 assert.match(source, /const labelTrack=lane\.tracks\.find[\s\S]*?button\(lane\.label,\(\)=>this\.selectV2Track\(labelTrack\.id\)\)/, "every gutter row keeps its canonical role label as the direct selection affordance");
