@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
-import { createHudBombFlashController, createHudBombSnapController, createHudEnergyFlashController, createHudEnergyShakeController, createHudScorePopController, createHudWaveFlashController, createHudWavePopController, createHudWeaponSnapController, detectHudWeaponChanges, getHudWeaponLevels, getHudWeaponPresentationSnapshot, isHudBombChange, isHudEnergyDecrease, isHudEnergyHeal, isHudScoreIncrease, isHudWaveIncrease, normalizeHudBombCount, normalizeHudWave, triggerHudBombEffects, triggerHudHitEffects, triggerHudWaveEffects } from "./HUDArcade";
+import { createHudBombFlashController, createHudBombSnapController, createHudEnergyFlashController, createHudEnergyShakeController, createHudScorePopController, createHudWaveFlashController, createHudWavePopController, createHudWeaponSnapController, detectHudWeaponChanges, getHudWeaponLevels, getHudWeaponPresentationSnapshot, isHudBombChange, isHudEnergyDecrease, isHudEnergyHeal, isHudShieldDown, isHudScoreIncrease, isHudWaveIncrease, normalizeHudBombCount, normalizeHudWave, triggerHudBombEffects, triggerHudHitEffects, triggerHudWaveEffects } from "./HUDArcade";
 
 const hudSource = readFileSync(new URL("./HUDArcade.ts", import.meta.url), "utf8");
 for (const obsoleteOuterScaling of [
@@ -34,7 +34,7 @@ for (const frameAsset of ["energy_icon.png", "score_icon.png", "wave_icon.png", 
   assert(!hudSource.includes(frameAsset), `${frameAsset} is not referenced by the active HUD`);
 }
 assert(!hudSource.includes("function mkFrame"), "the obsolete frame helper is removed");
-for (const label of ['"ENERGY"', '"WAVE"', '"SCORE"']) {
+for (const label of ['"SHIELD"', '"WAVE"', '"SCORE"']) {
   assert(hudSource.includes(`textContent = ${label}`), `${label} is an explicit DOM label`);
 }
 for (const label of ["W1", "W2", "B"]) {
@@ -56,7 +56,10 @@ assert.equal(isHudEnergyHeal(3, 3), false, "unchanged energy does not trigger HE
 assert.equal(isHudEnergyHeal(4, 3), false, "energy decrease does not trigger HEAL");
 assert.equal(isHudEnergyHeal(3, 4), true, "normal energy pickup triggers HEAL");
 assert.equal(isHudEnergyHeal(4, 5), true, "positive-to-higher energy triggers HEAL");
-assert.equal(isHudEnergyHeal(0, 5), false, "respawn restoration from zero does not trigger HEAL");
+assert.equal(isHudEnergyHeal(0, 1), true, "Shield recovery from zero triggers HEAL");
+assert.equal(isHudEnergyHeal(0, 5, { livesChanged: true }), false, "respawn restoration from zero does not trigger HEAL");
+assert.equal(isHudShieldDown(0), true, "zero Shield on a live player is critical, not death");
+assert.equal(isHudShieldDown(0, { deadT: 1 }), false, "dead player does not show SHIELD DOWN");
 assert.equal(isHudEnergyHeal(3, 5, { scoreReset: true }), false, "score reset suppresses HEAL");
 assert.equal(isHudEnergyHeal(3, 5, { livesChanged: true }), false, "lives transition suppresses HEAL");
 assert.equal(isHudBombChange(undefined, 2), false, "first bomb count establishes a baseline");
@@ -285,7 +288,9 @@ assert.match(hudSource, /const heal = loadHudFxLabState\(localStorage\)\.events\
 assert.match(hudSource, /isHudEnergyHeal\(previousEnergy, energyVal,[\s\S]*?loadHudFxLabState\(localStorage\)\.events\.heal/, "HEAL configuration is loaded only after a legitimate HEAL is detected");
 assert(hudSource.indexOf("segment.style.boxShadow") < hudSource.indexOf("if (isHudEnergyDecrease(previousEnergy, energyVal))"), "energy segment DOM state updates before HIT or HEAL dispatch");
 assert.match(hudSource, /eventId === "heal" && effectId === "flash"\) energyFlash\.trigger\(intensity, "heal"\)/, "real HEAL dispatches the HEAL FLASH variant");
-assert(!hudSource.includes("player.energy ="), "HUD reactions do not mutate gameplay energy");
+assert(hudSource.includes('energyLabel.textContent = "SHIELD"'), "visible resource label is SHIELD");
+assert(hudSource.includes('"SHIELD DOWN"'), "persistent critical label exists");
+assert(!hudSource.includes("player.shield ="), "HUD reactions do not mutate gameplay Shield");
 
 {
   const baseline = getHudWeaponPresentationSnapshot({ weapons: { slots: {

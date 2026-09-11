@@ -70,8 +70,8 @@ function runPickupChain(defId: PickupDefId) {
     e.kind = "player";
     e.pos = { x: 500, y: 500 };
     e.radius = 3;
-    e.energy = 0;
-    e.energyMax = 5;
+    e.shield = 0;
+    e.shieldMax = 5;
     e.bombs = 0;
     e.invulnT = 0;
     e.pendingKill = false;
@@ -178,8 +178,8 @@ function runPickupChain(defId: PickupDefId) {
 
 function main() {
   const energy = runPickupChain("energy");
-  assert(energy.player && energy.player.energy === 1,
-    "energy pickup must raise player.energy 0 -> 1 (got " + (energy.player ? energy.player.energy : "no player") + ")");
+  assert(energy.player && energy.player.shield === 1,
+    "energy pickup must raise player.shield 0 -> 1 (got " + (energy.player ? energy.player.shield : "no player") + ")");
   assert(energy.session.score === 10,
     "energy pickup must NOT change score beyond the kill reward (got " + energy.session.score + ")");
 

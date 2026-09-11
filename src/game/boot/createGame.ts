@@ -28,6 +28,7 @@ import { DamageSystem } from "../systems/DamageSystem";
 import { ParticleStore } from "../../engine/fx/ParticleStore";
 import { ImpactPhaseSystem } from "../systems/ImpactPhaseSystem";
 import type { WorldEntity } from "../systems/CollisionSystem";
+import { installPlayerEnergyCompatibility } from "../entities/PlayerTypes";
 import { EnemySystem } from "../systems/EnemySystem";
 import { EnemyGroupRegistry } from "../enemies/EnemyGroups";
 import { PlayerSystem } from "../systems/PlayerSystem";
@@ -104,14 +105,13 @@ export async function createGame(
     ent.bodyRadius = 20;
     ent.pendingKill = false;
 
-    ent.energyMax = 5;
-    ent.energy = 5;
+    ent.shieldMax = 5;
+    ent.shield = 5;
+    installPlayerEnergyCompatibility(ent as any);
     ent.bombs = 1;
 
-    // HP-ratio source for the SDF deform/redshift (player tracks energy as life).
-    ent.maxHp = 5;
-
     ent.invulnT = 0;
+      ent.invulnerabilityReason = null;
       ent.deadT = 0;
       ent.hitFlashT = 0;
 
@@ -157,8 +157,7 @@ export async function createGame(
     LOGIC_H,
     {
       respawnDelayTicks: 60,
-      invulnSec: 2.25,
-      spawnEnergy: 5,
+      invulnSec: 2.5,
       introSec: 0.8,
       world,
     }
@@ -487,11 +486,12 @@ export async function createGame(
       : 20;
     playerEnt.pendingKill = false;
 
-    playerEnt.energyMax = RESET_CFG.startEnergy;
-    playerEnt.energy = RESET_CFG.startEnergy;
+    playerEnt.shieldMax = RESET_CFG.startEnergy;
+    playerEnt.shield = playerEnt.shieldMax;
     playerEnt.bombs = RESET_CFG.startBombs;
 
     playerEnt.invulnT = RESET_CFG.invulnSec;
+    playerEnt.invulnerabilityReason = "respawn";
     playerEnt.deadT = 0;
     playerEnt.respawnIntroT = 0;
     (playerEnt as any).__playerDeathFxDone = false;

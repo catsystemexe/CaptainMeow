@@ -33,9 +33,9 @@ export class PowerupSystem {
 
       switch (defId) {
         case "energy": {
-          const max = Number(player.energyMax ?? 5);
-          const cur = Number(player.energy ?? 0);
-          player.energy = Math.min(max, cur + 1);
+          const max = Number(player.shieldMax ?? 5);
+          const cur = Number(player.shield ?? 0);
+          player.shield = Math.min(max, cur + 1);
           break;
         }
         case "bomb": {

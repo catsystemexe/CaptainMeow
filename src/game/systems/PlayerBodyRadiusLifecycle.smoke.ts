@@ -23,15 +23,14 @@ function testRespawnPreservesBodyRadius(): void {
     e.vel = { x: 1, y: 1 };
     e.radius = 3;
     e.bodyRadius = 20;
-    e.energyMax = 5;
-    e.energy = 0;
+    e.shieldMax = 5;
+    e.shield = 0;
     e.pendingKill = false;
   });
   const session = { lives: 2, gameOver: false };
   const respawn = new RespawnSystem(session, store, () => ref, 896, 504, {
     respawnDelayTicks: 1,
     invulnSec: 1,
-    spawnEnergy: 5,
   });
 
   respawn.onFlowEvents([{ type: EventType.ENTITY_KILLED, payload: { target: ref, source: "test", isPlayer: true } } as any]);
@@ -56,7 +55,6 @@ function testRespawnFallbackBodyRadius(): void {
   const respawn = new RespawnSystem(session, store, () => ref, 896, 504, {
     respawnDelayTicks: 1,
     invulnSec: 1,
-    spawnEnergy: 5,
   });
 
   respawn.onFlowEvents([{ type: EventType.ENTITY_KILLED, payload: { target: ref, source: "test", isPlayer: true } } as any]);
