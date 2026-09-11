@@ -20,7 +20,7 @@ export class RespawnSystem {
     private logicH: number,
     private cfg = {
       respawnDelayTicks: 60, // 1s @60Hz
-      invulnSec: 1.0,        // 1 sec invincible
+      invulnSec: 2.25,       // respawn protection; ordinary hit i-frames remain 0.75s
       spawnEnergy: 5,
     }
   ) {}

@@ -411,6 +411,7 @@ const r = (typeof def.radius === "number" && Number.isFinite(def.radius) && def.
             ent.vel = { x: 0, y: 0 };
             ent.hp = def.hp;
             ent.maxHp = def.hp;
+            ent.destroyOnPlayerContact = def.destroyOnPlayerContact;
             ent.radius = r;
             ent.render = materializeEnemyAppearance(def.render);
             ent.ai = (def as any).ai ? { ...(def as any).ai } : undefined;

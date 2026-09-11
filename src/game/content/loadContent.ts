@@ -26,6 +26,9 @@ export function validateEnemyTypes(list: any[]): EnemyTypeContentDef[] {
     assert(isNum(e.radius), `enemyTypes(${e.id}).radius must be number`);
     assert(isNum(e.scoreOnKill), `enemyTypes(${e.id}).scoreOnKill must be number`);
     assert(isStr(e.behaviorPresetId), `enemyTypes(${e.id}).behaviorPresetId must be string`);
+    if (e.destroyOnPlayerContact !== undefined) {
+      assert(typeof e.destroyOnPlayerContact === "boolean", `enemyTypes(${e.id}).destroyOnPlayerContact must be boolean if provided`);
+    }
 
     const sprite = e?.render?.sprite;
     if (sprite !== undefined) {
