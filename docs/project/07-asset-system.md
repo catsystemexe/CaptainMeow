@@ -1,16 +1,18 @@
 # Captain Meow — Asset System
 
-Status: DESIGN BASIS / PHASE B CORE IMPLEMENTED
+Status: DESIGN BASIS / PHASE C BGR V2 PERSISTENCE IMPLEMENTED
 Last updated: 2026-09-11
 
 This document defines the intended normative conventions and architecture for Captain Meow asset identity, preparation, cataloguing, validation, Scene Lab integration, and runtime resolution.
 
 Actual implementation remains authoritative for currently implemented behavior. Where this document describes target behavior not yet present in code, it must be treated as an approved design basis rather than a claim about current runtime state.
 
-Implementation status: Phase B now provides the neutral branded `AssetId`, image
+Implementation status: Phase B provides the neutral branded `AssetId`, image
 definition, duplicate-safe catalogue, pure resolver, and a catalogue-backed BGR
-Scene Lab compatibility view. BGR V1/V2 persistence and rendering still use their
-legacy URL-bearing contracts; reference migration remains Phase C work.
+Scene Lab compatibility view. Phase C persists BGR V2 segment/object references
+as stable Asset IDs and resolves them to URL-bearing runtime references while
+reading canonical or legacy scenes. Static-backdrop and BGR V1 persistence remain
+URL-bearing, and the renderer continues to consume resolved URLs internally.
 
 ## 1. Purpose
 
