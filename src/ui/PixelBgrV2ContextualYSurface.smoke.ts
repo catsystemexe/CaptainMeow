@@ -8,9 +8,11 @@ const scene:BackgroundSceneV2={version:2,id:"context-y",environment:{},tracks:[{
 const segment=updateV2Segment(scene,"mid","mid-a",{offsetY:-56});assert(segment.ok);if(segment.ok)assert.equal(segment.scene.tracks[0].segments[0].offsetY,-56);
 const object=updateV2Object(scene,"mid","rock",{y:13});assert(object.ok);if(object.ok)assert.equal(object.scene.tracks[0].objects[0].y,13);
 const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
-assert.match(source,/panel\.append\(contextualY,this\.renderV2YRail\(\),scroll\)/,"Y controls mount in visual order in the timeline panel");
-assert.doesNotMatch(source,/workspace\.left\.appendChild\(this\.renderV2YRail/);
+assert.match(source,/gutter\.appendChild\(this\.renderV2ContextualYSurface\(\)\)/,"the gutter structurally owns the Y readout");
+assert.match(source,/\.cm-v2-selected-y\{position:absolute;right:0;top:144px;width:24px/,"readout aligns to the gutter's lane-add column without affecting layout");
+assert.match(source,/if\(!segment&&!object\)\{surface\.dataset\.contextualY="neutral";readout\.textContent="Y —"/,"no visual selection, including Event-only selection, renders a neutral readout");
+assert.match(source,/surface\.dataset\.contextKind=segment\?"segment":"object"/);
 assert.match(source,/const value=segment\?\.segment\.offsetY\?\?object!\.object\.y/);
-assert.match(source,/readout\.textContent=`Y \${Math\.round\(value\)}`/);
+assert.match(source,/readout\.textContent=`Y \$\{Math\.round\(value\)\}`/);
 assert.doesNotMatch(source.slice(source.indexOf("private renderV2ContextualYSurface"),source.indexOf("private renderV2YRail")),/numericStepper|cm-pixel-stepper/,"no permanent Y stepper remains beside the timeline");
 console.log("[SMOKE] PixelBgrV2ContextualYSurface OK ✅");
