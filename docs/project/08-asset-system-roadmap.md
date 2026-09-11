@@ -1,9 +1,10 @@
 # Captain Meow — Asset System Implementation Roadmap
 
-Status: ACTIVE DESIGN ROADMAP / PRE-IMPLEMENTATION
+Status: ACTIVE IMPLEMENTATION ROADMAP / PHASE B COMPLETE
 Last updated: 2026-09-11
 
-This roadmap turns `07-asset-system.md` into a staged implementation plan. It does not claim that the target Asset System already exists.
+This roadmap turns `07-asset-system.md` into a staged implementation plan. The
+Phase B core contract exists, but the broader target Asset System does not yet.
 
 Implementation truth remains current code. The roadmap must be updated when repository evidence changes the required sequence or scope.
 
@@ -89,6 +90,9 @@ No broad asset reorganisation before this audit is complete.
 ## 4. Phase B — Core contract
 
 Priority: P1
+
+Status: COMPLETE. The neutral core and BGR compatibility view are implemented;
+persisted references and renderer URL ownership remain deliberately unchanged.
 
 ### Goal
 
