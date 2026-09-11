@@ -13,6 +13,9 @@ assert.match(source, /if\(this\.sceneMenuOpen\)return/, "opening an already-open
 assert.match(source, /document\.addEventListener\("pointerdown",this\.onSceneMenuOutside\)/, "outside pointer dismissal is installed");
 assert.match(source, /event\.key==="Escape"/, "Escape dismisses the menu");
 assert.match(source, /private selectScene[\s\S]*?this\.closeSceneMenu\(false\)[\s\S]*?setBackgroundSceneV2/, "selection closes before loading through background state");
+assert.match(source, /private selectScene[\s\S]*?rememberSceneLabCatalogEntry\(entry\)[\s\S]*?setBackgroundSceneV2/, "catalog selection remembers the stable entry before canonical loading");
+assert.match(source, /resolveSceneLabV2Entry\(getBackgroundSceneV2\(globalThis\)\)[\s\S]*?setBackgroundSceneV2\(resolution\.entry\.create\(\), globalThis\)/, "DEV entry resolves through catalog and canonical background APIs");
+assert(!source.includes('querySelector(\'button[aria-label="Open scene"]\').click()') && !source.includes("setTimeout(()=>this.openSceneMenu"), "DEV entry does not use timers or synthetic menu clicks");
 assert.match(source, /dataset\.timelineMode = v2Scene \? "v2" : "disabled"/, "V2 expands and non-V2 collapses the center timeline");
 assert.match(source, /if \(shouldApplyPixelBgrV1Draft\(activeState\)\) this\.applyIfValid\(\)/, "constructor only applies an already-active V1 scene");
 assert.match(main, /desert: \(\) => enableBackgroundV2DesertTest\(globalThis\)/, "the bgrVerify Desert hook is preserved");

@@ -33,6 +33,7 @@ import { createHudFxLabUI } from "../dev/HudFxLabUI";
 import { createRightLabHost } from "../dev/RightLabHost";
 import { createV2SceneEvent, deleteV2SceneEvent, duplicateV2SceneEvent, orderedV2SceneEvents, updateV2SceneEvent, type V2SceneEventEditResult } from "./PixelBgrV2SceneEvents";
 import { v2YRailValue, type V2YRailDrag } from "./PixelBgrV2YRail";
+import { rememberSceneLabCatalogEntry, resolveSceneLabV2Entry } from "./SceneLabLastScene";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -142,6 +143,10 @@ export class PixelBgrLabUI {
   isOpen(): boolean { return this.visible; }
   setDisplayMode(mode: PixelBgrDisplayMode): void {
     const changed = this.displayMode !== mode || this.visible !== (mode === "dev");
+    if (mode === "dev" && changed) {
+      const resolution = resolveSceneLabV2Entry(getBackgroundSceneV2(globalThis));
+      if (resolution.source !== "active") setBackgroundSceneV2(resolution.entry.create(), globalThis);
+    }
     this.displayMode = mode;
     this.visible = mode === "dev";
     setPixelBgrWorkspaceDisplayMode(this.workspace.root, mode);
@@ -215,7 +220,9 @@ export class PixelBgrLabUI {
     const h = el("h3"); h.textContent = "Scene Lab [F8]";
     const v2Scene = getBackgroundSceneV2(globalThis);
     this.workspace.root.dataset.timelineMode = v2Scene ? "v2" : "disabled";
-    const summary = el("span", "cm-pixel-scene-summary"); summary.textContent = v2Scene?.id ?? this.draft.id ?? "untitled scene";
+    const summary = el("div", "cm-scene-environment-row cm-pixel-scene-summary");
+    const sceneEye=this.iconButton("Scene visibility is controlled by its BGR and ENV sources",Eye,"Eye",()=>{});
+    sceneEye.className="cm-v2-eye";sceneEye.disabled=true;summary.append(sceneEye,`SCENE: ${v2Scene?.id ?? this.draft.id ?? "untitled scene"}`);
     titlebar.append(h);
     if (v2Scene) {
       const projection=projectBackgroundV2Timeline(v2Scene,{},this.currentX());
@@ -300,7 +307,7 @@ export class PixelBgrLabUI {
   private closeSceneMenu(render=true):void {if(!this.sceneMenuOpen)return;this.sceneMenuOpen=false;document.removeEventListener("pointerdown",this.onSceneMenuOutside);document.removeEventListener("keydown",this.onSceneMenuKeydown);if(render)this.render();}
   private onSceneMenuOutside=(event:PointerEvent):void=>{const target=event.target;if(!(target instanceof Element)||(!target.closest(".cm-scene-menu")&&!target.closest('button[aria-label="Open scene"]')))this.closeSceneMenu();};
   private onSceneMenuKeydown=(event:KeyboardEvent):void=>{if(event.key==="Escape"){event.preventDefault();this.closeSceneMenu();}};
-  private selectScene(entry:SceneLabCatalogEntry):void {this.closeSceneMenu(false);this.message="";if(entry.version===2)setBackgroundSceneV2(entry.create(),globalThis);else{this.owner={kind:"global"};this.selectedLayerId="";this.setDraft(entry.create());}}
+  private selectScene(entry:SceneLabCatalogEntry):void {this.closeSceneMenu(false);this.message="";rememberSceneLabCatalogEntry(entry);if(entry.version===2)setBackgroundSceneV2(entry.create(),globalThis);else{this.owner={kind:"global"};this.selectedLayerId="";this.setDraft(entry.create());}}
   private renderSceneMenu():HTMLElement {const menu=el("div","cm-scene-menu");menu.setAttribute("role","menu");menu.setAttribute("aria-label","Available scenes");for(const entry of SCENE_LAB_SCENE_CATALOG){const item=button(entry.label,()=>this.selectScene(entry));item.setAttribute("role","menuitem");menu.appendChild(item);}const saved=loadBackgroundSceneV2(localStorage);if(saved.ok){const item=button(`Saved: ${saved.scene.id}`,()=>{this.closeSceneMenu(false);this.loadV2();});item.setAttribute("role","menuitem");menu.appendChild(item);}return menu;}
   private deleteSavedV2():void {if(!confirm("Delete the saved Scene Lab scene? The active scene will remain unchanged."))return;clearBackgroundSceneV2(localStorage);this.message="deleted saved scene (active scene unchanged)";this.render();}
   private duplicateV2():void {const scene=getBackgroundSceneV2(globalThis);if(!scene)return;setBackgroundSceneV2({...structuredClone(scene),id:`${scene.id||"scene"}-copy`},globalThis);}
