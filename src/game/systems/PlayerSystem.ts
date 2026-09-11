@@ -68,6 +68,32 @@ export class PlayerSystem {
       return;
     }
 
+    // Scripted respawn entrance owns movement until the ship reaches its target.
+    // invulnT remains independent and continues to count down during the entrance.
+    const introT = Number(this.player.respawnIntroT ?? 0);
+    if (Number.isFinite(introT) && introT > 0) {
+      const duration = Math.max(dtSec, Number(this.player.respawnIntroDuration ?? introT));
+      const start = this.player.respawnIntroStart ?? this.player.pos;
+      const target = this.player.respawnIntroTarget ?? this.player.pos;
+      const remaining = Math.max(0, introT - dtSec);
+      const progress = Math.min(1, 1 - remaining / duration);
+      const eased = 1 - (1 - progress) * (1 - progress);
+
+      const pAny = this.player as any;
+      if (!pAny.posPrev) pAny.posPrev = { x: this.player.pos.x, y: this.player.pos.y };
+      else { pAny.posPrev.x = this.player.pos.x; pAny.posPrev.y = this.player.pos.y; }
+      this.player.pos.x = start.x + (target.x - start.x) * eased;
+      this.player.pos.y = start.y + (target.y - start.y) * eased;
+      this.player.vel.x = 0;
+      this.player.vel.y = 0;
+      this.player.respawnIntroT = remaining;
+      if (remaining <= 0) {
+        this.player.pos.x = target.x;
+        this.player.pos.y = target.y;
+      }
+      return;
+    }
+
     // --- World->screen for this tick.
     // player.pos is WORLD space; input/aim targets are SCREEN space.
     const sx = Number(this.cfg.world?.scrollX ?? 0);

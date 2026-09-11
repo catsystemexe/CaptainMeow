@@ -48,6 +48,23 @@ export class DamageSystem<T extends BaseEntity> {
     }
   }
 
+  private spawnExplosion(x: number, y: number, vel = { x: 0, y: 0 }): void {
+    this.trySpawnCosmeticEntity((fx: any) => {
+      fx.kind = "fx";
+      fx.pos = { x, y };
+      fx.posPrev = { x, y };
+      fx.vel = { x: vel.x, y: vel.y };
+      fx.ttl = 0.5;
+      fx.fxAge = 0;
+      fx.spawnT = 0;
+      fx.animId = DEFAULT_ENEMY_DEATH_VISUAL.explosionId;
+      fx.spriteId = `${DEFAULT_ENEMY_DEATH_VISUAL.explosionId}.0`;
+      fx.explosionScale = DEFAULT_ENEMY_DEATH_VISUAL.explosionScale;
+      fx.radius = 40 * DEFAULT_ENEMY_DEATH_VISUAL.explosionScale;
+      fx.render = {};
+    });
+  }
+
   update(eventsOverride?: any[]): void {
     const phase = (this.bus as any).getCurrentPhase?.();
     if (phase && phase !== Phase.Impact) {
@@ -137,6 +154,7 @@ export class DamageSystem<T extends BaseEntity> {
     const p: any = this.store.get(playerRef);
     if (!p) return false;
     if (p.pendingKill) return false;
+    if (Number(p.deadT ?? 0) > 0) return false;
 
     // i-frame gate (extra safety; Collision also gates)
     const inv = Number(p.invulnT ?? 0);
@@ -167,7 +185,12 @@ export class DamageSystem<T extends BaseEntity> {
     if (Number(p.energy) <= 0) {
       // player entity stays (stable ref). Switch to dead state.
       p.deadT = Math.max(Number(p.deadT ?? 0), 1.0); // respawn delay
-      p.invulnT = Math.max(Number(p.invulnT ?? 0), 999);
+      p.invulnT = 0;
+
+      if (!p.__playerDeathFxDone) {
+        p.__playerDeathFxDone = true;
+        this.spawnExplosion(Number(p.pos?.x ?? 0), Number(p.pos?.y ?? 0));
+      }
 
       this.bus.emit(EventType.ENTITY_KILLED, {
         target: playerRef,
@@ -241,23 +264,7 @@ if (ent?.pos) {
   // Legacy enemy-death flash/shard visuals temporarily disabled.
 
   // Animated sprite explosion FX. Uses local fxAge for deterministic renderer timing.
-  this.trySpawnCosmeticEntity((fx: any) => {
-      fx.kind = "fx";
-      fx.pos = { x: ex, y: ey };
-      fx.posPrev = { x: ex, y: ey };
-      fx.vel = {
-        x: 95,
-        y: deathVel.y * 1.20,
-      };
-      fx.ttl = 0.5;
-      fx.fxAge = 0;
-      fx.spawnT = 0;
-      fx.animId = DEFAULT_ENEMY_DEATH_VISUAL.explosionId;
-      fx.spriteId = `${DEFAULT_ENEMY_DEATH_VISUAL.explosionId}.0`;
-      fx.explosionScale = DEFAULT_ENEMY_DEATH_VISUAL.explosionScale;
-      fx.radius = 40 * DEFAULT_ENEMY_DEATH_VISUAL.explosionScale;
-      fx.render = {};
-    });
+  this.spawnExplosion(ex, ey, { x: 95, y: deathVel.y * 1.20 });
 
   // Render-only enemy death ghost FX. Optional cosmetic; explosion has priority.
   if (deathSnapshot) {
