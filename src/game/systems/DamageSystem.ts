@@ -160,32 +160,39 @@ export class DamageSystem<T extends BaseEntity> {
     const inv = Number(p.invulnT ?? 0);
     if (Number.isFinite(inv) && inv > 0) return false;
 
-    const dmg = Math.max(0, Number(amount ?? 1));
+    const dmg = Number(amount);
+    if (!Number.isFinite(dmg) || dmg <= 0) return false;
 
-    // init energy if missing
-    const max = Number(p.energyMax ?? 5);
-    if (!Number.isFinite(max) || max <= 0) p.energyMax = 5;
+    const max = Number(p.shieldMax);
+    if (!Number.isFinite(max) || max <= 0) p.shieldMax = 5;
+    const current = Number(p.shield);
+    if (!Number.isFinite(current)) p.shield = Number(p.shieldMax);
+    const shieldBefore = Math.max(0, Number(p.shield));
+    const lethal = shieldBefore === 0;
+    p.shield = lethal ? 0 : Math.max(0, shieldBefore - dmg);
 
-    const cur = Number(p.energy);
-    if (!Number.isFinite(cur)) p.energy = Number(p.energyMax);
-
-    p.energy = Math.max(0, Number(p.energy) - dmg);
-
-    // set i-frames + flash
-    p.invulnT = Math.max(Number(p.invulnT ?? 0), 0.75);
-    p.hitFlashT = Math.max(Number(p.hitFlashT ?? 0), 0.1);
+    if (!lethal) {
+      p.invulnT = 0.75;
+      p.invulnerabilityReason = "hit";
+      p.hitFlashT = Math.max(Number(p.hitFlashT ?? 0), 0.1);
+    }
 
     this.bus.emit(EventType.ENTITY_DAMAGED, {
       target: playerRef,
       amount: dmg,
-      hpAfter: Number(p.energy), // reuse hpAfter as energyAfter
+      hpAfter: Number(p.shield), // legacy compatibility for generic listeners
       source: "contact",
+      resource: "shield",
+      shieldAfter: Number(p.shield),
+      shieldDepleted: !lethal && shieldBefore > 0 && Number(p.shield) === 0,
+      lethal,
     });
 
-    if (Number(p.energy) <= 0) {
+    if (lethal) {
       // player entity stays (stable ref). Switch to dead state.
       p.deadT = Math.max(Number(p.deadT ?? 0), 1.0); // respawn delay
       p.invulnT = 0;
+      p.invulnerabilityReason = null;
 
       if (!p.__playerDeathFxDone) {
         p.__playerDeathFxDone = true;

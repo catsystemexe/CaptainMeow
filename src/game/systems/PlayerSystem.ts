@@ -55,6 +55,7 @@ export class PlayerSystem {
 
     // --- timers
     this.player.invulnT = Math.max(0, Number(this.player.invulnT ?? 0) - dtSec);
+    if (this.player.invulnT <= 0) this.player.invulnerabilityReason = null;
     this.player.deadT = Math.max(0, Number(this.player.deadT ?? 0) - dtSec);
 
     const hf0 = Number((this.player as any).hitFlashT ?? 0);

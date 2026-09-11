@@ -211,16 +211,25 @@ export function isPickupRenderEligible(entity: any): boolean {
     finitePositive(entity.radius) !== null && typeof entity.defId === "string" && entity.defId.length > 0;
 }
 
-const PLAYER_BLINK_HALF_PERIOD_SEC = 0.1;
-
 /** Pure presentation rule; gameplay timers remain authoritative and unmodified. */
 export function isPlayerRenderVisible(entity: any, presentationTimeSec: number): boolean {
+  void presentationTimeSec;
   if (!entity || readKind(entity) !== "player" || entity.pendingKill) return false;
   if (Number(entity.deadT ?? 0) > 0) return false;
-  const invulnT = Number(entity.invulnT ?? 0);
-  if (!Number.isFinite(invulnT) || invulnT <= 0) return true;
-  const time = Math.max(0, Number.isFinite(presentationTimeSec) ? presentationTimeSec : 0);
-  return Math.floor(time / PLAYER_BLINK_HALF_PERIOD_SEC) % 2 === 0;
+  return true;
+}
+
+export type PlayerShieldFieldPresentation = { visible: boolean; strength: number; reason: "hit" | "respawn" | null };
+
+/** Pure presentation projection; gameplay immunity continues to be owned by invulnT. */
+export function getPlayerShieldFieldPresentation(entity: any): PlayerShieldFieldPresentation {
+  const invulnT = Number(entity?.invulnT ?? 0);
+  const reason = entity?.invulnerabilityReason === "hit" || entity?.invulnerabilityReason === "respawn"
+    ? entity.invulnerabilityReason
+    : null;
+  if (!(invulnT > 0) || !reason || Number(entity?.deadT ?? 0) > 0) return { visible: false, strength: 0, reason };
+  const strength = reason === "respawn" ? 0.72 : Math.max(0.12, Math.min(1, invulnT / 0.75));
+  return { visible: true, strength, reason };
 }
 
 export type FxRenderLayerKind = "normal" | "deathGhost" | "explosion";
@@ -1338,6 +1347,18 @@ export class WebGLSceneRenderer {
           ? (e as any).spawnOrdinal
           : ((e as any).id ?? 0);
 
+      if (kind === "player" && this.sdfPass) {
+        const field = getPlayerShieldFieldPresentation(e);
+        if (field.visible) {
+          const bodyRadius = safeNum((e as any).bodyRadius, 20);
+          this.sdfPass.draw({
+            ix, iy, radius: bodyRadius, sizeX: bodyRadius * 2.8, sizeY: bodyRadius * 2.15,
+            shape: "energyField", color: field.reason === "hit" ? "#7fffff" : "#36dfff",
+            hpRatio: 1, time: tSec, hitFlash: field.strength, thrust: 0,
+          });
+        }
+      }
+
       // ── Mesh rendering (low-poly 3D) ──
       const rm = (e as any).render?.mesh;
       if (rm && this.meshPass && this.modelCache.has(rm.modelId)) {
@@ -1480,9 +1501,9 @@ export class WebGLSceneRenderer {
       // Skipped entirely if the pass failed to compile (this.sdfPass === null).
       const sdf = (e as any).render?.sdf;
       if (this.sdfPass && sdf && typeof sdf.shape === "string") {
-        // HP ratio drives deformation; fall back to player energy when no hp.
-        const hpNow = safeNum((e as any).hp ?? (e as any).energy, 1);
-        const hpMax = safeNum((e as any).maxHp ?? (e as any).energyMax, 1);
+        // Player deformation follows authoritative Shield; enemies continue to use HP.
+        const hpNow = safeNum(kind === "player" ? (e as any).shield : (e as any).hp, 1);
+        const hpMax = safeNum(kind === "player" ? (e as any).shieldMax : (e as any).maxHp, 1);
         const hpRatio = hpMax > 0 ? Math.max(0, Math.min(1, hpNow / hpMax)) : 1;
         const sizeMult = safeNum(sdf.size, 1);
         const velX = safeNum((e as any).vel?.x, 0);

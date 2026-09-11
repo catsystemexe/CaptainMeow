@@ -19,8 +19,8 @@ export interface PlayerEntity {
   pendingKill: boolean;
 
   invulnT?: number; // seconds
-  energy?: number;
-  energyMax?: number;
+  shield?: number;
+  shieldMax?: number;
 }
 
 export interface EnemyEntity {

@@ -16,6 +16,8 @@ type HudRefs = {
   panel: HTMLDivElement;
   lives: HTMLDivElement;
   energySegments: HTMLDivElement[];
+  shieldBlock: HTMLDivElement;
+  shieldLabel: HTMLDivElement;
   wave: HTMLDivElement;
   score: HTMLDivElement;
   w1: HTMLCanvasElement;
@@ -35,8 +37,10 @@ type WeaponSlotHudLike = { level?: number; maxLevel?: number; weaponId?: string;
 type WeaponSnapshotHudLike = { slots?: { w1?: WeaponSlotHudLike; w2?: WeaponSlotHudLike } };
 
 type PlayerLike = {
-  energy?: number;
-  energyMax?: number;
+  shield?: number;
+  shieldMax?: number;
+  deadT?: number;
+  pendingKill?: boolean;
   bombs?: number;
   weapon?: "W1" | "W2";
   w2?: W2State;
@@ -98,10 +102,13 @@ export function isHudEnergyHeal(
   resetContext: HudEnergyResetContext = {},
 ): boolean {
   return previousEnergy !== undefined
-    && previousEnergy > 0
     && currentEnergy > previousEnergy
     && !resetContext.scoreReset
     && !resetContext.livesChanged;
+}
+
+export function isHudShieldDown(shield: number, player: { deadT?: number; pendingKill?: boolean } = {}): boolean {
+  return shield <= 0 && Number(player.deadT ?? 0) <= 0 && !player.pendingKill;
 }
 
 export function normalizeHudBombCount(value: unknown): number {
@@ -495,6 +502,7 @@ export function createHUDArcade(root: HTMLElement) {
     st.id = "hudArcadeStyles";
     st.textContent = `
       @keyframes hudRainbow { 0%{background-position:0% 0} 100%{background-position:200% 0} }
+      @keyframes hudShieldCritical { 0%,100%{opacity:.72;text-shadow:0 0 4px #ff174f} 50%{opacity:1;text-shadow:0 0 10px #ff174f} }
       #hudScan {
         position:absolute; inset:0; pointer-events:none; z-index:2;
         background:repeating-linear-gradient(
@@ -522,7 +530,7 @@ export function createHUDArcade(root: HTMLElement) {
   energyBlock.className = "hud-block hud-energy-block";
   const energyLabel = mkChild(energyBlock, "hudEnergyLabel", `font-size:${LABEL_FONT_SIZE}px;letter-spacing:1.5px;color:${COL_CYAN};`);
   energyLabel.className = "hud-label hud-energy-label";
-  energyLabel.textContent = "ENERGY";
+  energyLabel.textContent = "SHIELD";
   const energy = mkChild(
     energyBlock,
     "hudEnergy",
@@ -722,7 +730,8 @@ export function createHUDArcade(root: HTMLElement) {
   gameOver.textContent = "GAME OVER\nTry again? Y/N";
 
   const refs: HudRefs = {
-    layer, panel, lives, energySegments, wave, score, w1, w2, w1Level, w2Level, bomb, cdFill, pause, gameOver, title,
+    layer, panel, lives, energySegments, shieldBlock: energyBlock, shieldLabel: energyLabel,
+    wave, score, w1, w2, w1Level, w2Level, bomb, cdFill, pause, gameOver, title,
   };
 
   function applyMode() {
@@ -805,18 +814,30 @@ export function createHUDArcade(root: HTMLElement) {
       }
       previousScore = currentScore;
 
-      // Energy segments are persistent DOM primitives; updates only change state.
-      const energyVal = p.energy ?? 0;
-      const energyMax = p.energyMax ?? 5;
+      // Shield segments are persistent DOM primitives; updates only change state.
+      const energyVal = p.shield ?? 0;
+      const energyMax = p.shieldMax ?? 5;
       const energyRatio = energyMax > 0 ? energyVal / energyMax : 0;
+      const shieldDown = isHudShieldDown(energyVal, p);
+      const justDepleted = previousEnergy !== undefined && previousEnergy > 0 && shieldDown;
+      refs.shieldLabel.textContent = shieldDown ? "SHIELD DOWN" : "SHIELD";
+      refs.shieldLabel.style.color = shieldDown ? "#ff174f" : COL_CYAN;
+      refs.shieldBlock.dataset.shieldDown = String(shieldDown);
+      refs.shieldLabel.style.animation = shieldDown ? "hudShieldCritical 1s ease-in-out infinite" : "none";
+      if (justDepleted) refs.shieldBlock.animate([
+        { transform: "translateX(0)", filter: "brightness(1)" },
+        { transform: "translateX(-3px)", filter: "brightness(2)" },
+        { transform: "translateX(3px)", filter: "brightness(1.5)" },
+        { transform: "translateX(0)", filter: "brightness(1)" },
+      ], { duration: 400, easing: "ease-out" });
       const totalSegs = 6;
       const filledSegs = Math.round(energyRatio * totalSegs);
       for (let i = 0; i < refs.energySegments.length; i++) {
         const filled = i < filledSegs;
         const segment = refs.energySegments[i];
         segment.dataset.filled = String(filled);
-        segment.style.background = filled ? COL_CYAN : "rgba(0,255,238,0.12)";
-        segment.style.boxShadow = filled ? `0 0 4px ${COL_CYAN}` : "none";
+        segment.style.background = shieldDown ? "rgba(255,23,79,0.18)" : filled ? COL_CYAN : "rgba(0,255,238,0.12)";
+        segment.style.boxShadow = shieldDown ? "0 0 4px #ff174f" : filled ? `0 0 4px ${COL_CYAN}` : "none";
       }
       if (isHudEnergyDecrease(previousEnergy, energyVal)) {
         const hit = loadHudFxLabState(localStorage).events.hit;
