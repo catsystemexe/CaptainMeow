@@ -90,7 +90,7 @@ assert(a.move.x > 0.9 && a.move.y > 0.2, "keyboard + gamepad movement composes")
 
 const primary = makeInput();
 keys(primary).add("ShiftRight");
-assert.deepEqual(DEFAULT_BINDINGS.firePrimary,["ShiftRight"],"only Right Shift is the keyboard primary-fire binding");
+assert(DEFAULT_BINDINGS.firePrimary.length===1&&DEFAULT_BINDINGS.firePrimary[0]==="ShiftRight","only Right Shift is the keyboard primary-fire binding");
 setGamepads([pad({ buttons: [0] })]);
 a = sample(primary);
 assert(a.firePrimary === true, "keyboard primary OR gamepad A sets primary");
