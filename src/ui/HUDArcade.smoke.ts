@@ -291,6 +291,9 @@ assert.match(hudSource, /eventId === "heal" && effectId === "flash"\) energyFlas
 assert(hudSource.includes('energyLabel.textContent = "SHIELD"'), "visible resource label is SHIELD");
 assert(hudSource.includes('"SHIELD DOWN"'), "persistent critical label exists");
 assert(!hudSource.includes("player.shield ="), "HUD reactions do not mutate gameplay Shield");
+assert(hudSource.includes('playAgain.textContent = "PLAY AGAIN?"'), "game-over HUD exposes a prominent play-again action");
+assert(hudSource.includes('playAgain.addEventListener("click"'), "play-again action is mouse clickable");
+assert(!hudSource.includes("Try again? Y/N"), "game-over HUD has no Y/N prompt");
 
 {
   const baseline = getHudWeaponPresentationSnapshot({ weapons: { slots: {

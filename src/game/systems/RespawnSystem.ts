@@ -26,6 +26,10 @@ export class RespawnSystem {
     }
   ) {}
 
+  reset(): void {
+    this.respawnInTicks = 0;
+  }
+
   onFlowEvents(events: AnyCMEvent[]): void {
     for (const e of events) {
       if (e.type !== EventType.ENTITY_KILLED) continue;
@@ -73,14 +77,16 @@ export class RespawnSystem {
     const p: any = this.store.get(pref);
     if (!p) return;
 
-    const fallback = { x: this.logicW * 0.5, y: this.logicH * 0.8 };
-    const spawnPos = this.session.lastDeathPos ?? fallback;
-
     // ✅ reset player state in-place
     p.kind = "player";
-    const target = { x: spawnPos.x, y: spawnPos.y };
+    const viewportLeft = Number(this.cfg.world?.scrollX ?? 0);
+    const viewportTop = Number(this.cfg.world?.scrollY ?? 0);
+    const target = {
+      x: viewportLeft + this.logicW * 0.225,
+      y: viewportTop + this.logicH * 0.5,
+    };
     const start = {
-      x: Number(this.cfg.world?.scrollX ?? 0) - Math.max(1, Number(p.bodyRadius ?? p.radius ?? 20)),
+      x: viewportLeft - Math.max(1, Number(p.bodyRadius ?? p.radius ?? 20)),
       y: target.y,
     };
     p.pos = { x: start.x, y: start.y };
