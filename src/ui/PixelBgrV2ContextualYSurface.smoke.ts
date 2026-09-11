@@ -9,7 +9,8 @@ const segment=updateV2Segment(scene,"mid","mid-a",{offsetY:-56});assert(segment.
 const object=updateV2Object(scene,"mid","rock",{y:13});assert(object.ok);if(object.ok)assert.equal(object.scene.tracks[0].objects[0].y,13);
 const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
 assert.match(source,/gutter\.appendChild\(this\.renderV2ContextualYSurface\(\)\)/,"the gutter structurally owns the Y readout");
-assert.match(source,/\.cm-v2-selected-y\{position:absolute;right:0;top:144px;width:24px/,"readout aligns to the gutter's lane-add column without affecting layout");
+assert.match(source,/\.cm-v2-timeline-gutter\{position:relative;[^}]*grid-template-rows:20px repeat\(4,27px\) 16px/,"the gutter reserves a header row above its lane rows");
+assert.match(source,/\.cm-v2-selected-y\{position:absolute;right:0;top:0;width:24px/,"readout occupies the gutter header directly above the lane-add column without affecting layout");
 assert.match(source,/if\(!segment&&!object\)\{surface\.dataset\.contextualY="neutral";readout\.textContent="Y —"/,"no visual selection, including Event-only selection, renders a neutral readout");
 assert.match(source,/surface\.dataset\.contextKind=segment\?"segment":"object"/);
 assert.match(source,/const value=segment\?\.segment\.offsetY\?\?object!\.object\.y/);
