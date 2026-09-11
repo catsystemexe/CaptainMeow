@@ -63,7 +63,7 @@ function main(): void {
   assert.equal(player.invulnerabilityReason, "respawn");
   assert.equal(getPlayerShieldFieldPresentation(player).visible, true);
   assert.equal(player.respawnIntroT, 0.8);
-  assert.equal(player.respawnIntroTarget.x, world.scrollX + 896 * 0.225, "target is 22.5% from the current viewport left");
+  assert.equal(player.respawnIntroTarget.x, world.scrollX + 896 * 0.30, "target is 30% from the current viewport left");
   assert.equal(player.respawnIntroTarget.y, world.scrollY + 504 * 0.5, "target is current viewport vertical center");
   assert.notEqual(player.respawnIntroTarget.y, 42, "target is independent of death Y");
   assert(player.pos.x < world.scrollX, "entrance starts outside the current left viewport edge");

@@ -16,6 +16,7 @@ for (const resetStatement of [
   assert(createGameSource.includes(resetStatement), `reset includes ${resetStatement}`);
 }
 assert(mainSource.includes("game.reset();"), "Play Again invokes the canonical game reset");
+assert(createGameSource.includes("LOGIC_W * 0.30"), "game reset restores the player at 30% of viewport width");
 assert(!mainSource.includes('e.code === "KeyY"'), "game over no longer installs a Y restart key");
 assert(!mainSource.includes('e.code === "KeyN"'), "game over no longer installs an N decision key");
 
@@ -24,5 +25,7 @@ const shieldDraw = rendererSource.indexOf('shape: "energyField"');
 const meshReturn = rendererSource.indexOf("return;", shieldDraw);
 assert(meshDraw >= 0 && shieldDraw > meshDraw && meshReturn > shieldDraw,
   "the active mesh player path composites the Shield field after the ship and before returning");
+assert(rendererSource.includes("sizeX: bodyRadius * 8.0, sizeY: bodyRadius * 6.25"),
+  "the Shield presentation uses the enlarged elliptical field footprint");
 
 console.log("PlayerRuntimeRepair.smoke passed");

@@ -1429,7 +1429,7 @@ export class WebGLSceneRenderer {
           if (field.visible) {
             const bodyRadius = safeNum((e as any).bodyRadius, 20);
             this.sdfPass.draw({
-              ix, iy, radius: bodyRadius, sizeX: bodyRadius * 3.2, sizeY: bodyRadius * 2.5,
+              ix, iy, radius: bodyRadius, sizeX: bodyRadius * 8.0, sizeY: bodyRadius * 6.25,
               shape: "energyField", color: field.reason === "hit" ? "#7fffff" : "#36dfff",
               hpRatio: 1, time: tSec, hitFlash: field.strength, thrust: 0,
             });

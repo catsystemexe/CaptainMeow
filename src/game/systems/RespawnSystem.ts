@@ -82,7 +82,7 @@ export class RespawnSystem {
     const viewportLeft = Number(this.cfg.world?.scrollX ?? 0);
     const viewportTop = Number(this.cfg.world?.scrollY ?? 0);
     const target = {
-      x: viewportLeft + this.logicW * 0.225,
+      x: viewportLeft + this.logicW * 0.30,
       y: viewportTop + this.logicH * 0.5,
     };
     const start = {
