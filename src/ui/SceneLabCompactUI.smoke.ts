@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createPixelBgrDevWorkspaceShell } from "./PixelBgrDevWorkspaceLayout";
+import { sceneContentsAggregateState } from "./PixelBgrLabUI";
+
+assert.equal(sceneContentsAggregateState([]),"none");
+assert.equal(sceneContentsAggregateState([true,true]),"all");
+assert.equal(sceneContentsAggregateState([false,false]),"none");
+assert.equal(sceneContentsAggregateState([true,false]),"mixed");
 
 const lab = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 const layout = readFileSync(new URL("./PixelBgrDevWorkspaceLayout.ts", import.meta.url), "utf8");
@@ -24,7 +30,7 @@ assert.match(layout,/\.cm-bgr-workspace-left-canvas \{[\s\S]*?display: flex;[\s\
 assert.match(layout,/\.cm-bgr-workspace-left-canvas > \.cm-pixel-bgr-lab \{[\s\S]*?flex: 1 1 0;[\s\S]*?height: auto;/,"Scene Lab stretches as a flex item instead of relying on an unresolved percentage height");
 assert.match(layout, /data-timeline-mode="v2"\] \.cm-bgr-workspace-left \{\s*grid-template-rows: minmax\(0, 1fr\) 176px;/, "the canvas-height left panel ends directly above the multitrack gutter");
 assert(lab.includes('transportBlock.append(this.renderPreview([],projection.bounds,true))'), "only the V2 bottom-owned transport receives primary sizing");
-assert.match(lab, /const upperContent=el\("div","cm-v2-upper-content"\);[\s\S]*?upperContent\.appendChild\(inspectorStack\);[\s\S]*?this\.root\.append\(upperContent,transportBlock\);\s*this\.syncOverlay\(\);\s*return;/, "all V2 header, source, Event, Trigger, and Marker content is contained above the transport sibling");
+assert.match(lab, /const upperContent=el\("div","cm-v2-upper-content"\);[\s\S]*?this\.root\.append\(upperContent,transportBlock\);\s*this\.syncOverlay\(\);\s*return;/, "all V2 Scene Contents content remains above the transport sibling");
 assert.equal((lab.match(/this\.root\.append\(upperContent,transportBlock\)/g) ?? []).length, 1, "transport is the final Scene Lab child with no trailing content");
 assert(lab.indexOf('className="cm-v2-transport-block"') < lab.indexOf('const zoomControls=el("div","cm-v2-zoom-controls")'), "transport is rendered above the multitrack zoom row");
 assert(lab.includes("Reset to scene start") && lab.includes("setPaused?.(!paused)") && lab.includes("setPaused?.(true);this.setCurrentX(start,true)") && !lab.includes("Stop and return to scene start"), "transport provides reset plus a single play/pause toggle");
@@ -46,16 +52,24 @@ const workspace = createPixelBgrDevWorkspaceShell(fakeDocument);
 assert.deepEqual(workspace.left.children, [workspace.leftCanvas, workspace.gutter], "gutter is the immediate sibling below the canvas-height left region");
 assert.deepEqual(workspace.center.children, [workspace.viewport, workspace.timeline], "left and center use matching canvas/timeline row ownership");
 
-const title = lab.indexOf('h.textContent = "Scene Lab [F8]"');
-const scene = lab.indexOf('summary.append(sceneEye,`SCENE:');
-const backdrop = lab.indexOf('backdropRow.append(backdropEye,`BGR:');
-const environment = lab.indexOf('row.append(environmentEye,"ENV: starfield")');
-assert(title >= 0 && lab.includes('headerBlock.append(titlebar,this.renderV2Toolbar(),summary)'), "Scene Lab header renders title, toolbar, then SCENE row");
-assert(scene >= 0 && backdrop > scene && environment > backdrop, "identity rows retain SCENE, BGR, ENV source order");
-assert(lab.includes("summary.append(sceneEye") && lab.includes("backdropRow.append(backdropEye") && lab.includes("row.append(environmentEye"), "SCENE, BGR, and ENV rows render eye-first");
-assert(lab.includes("sceneEye.disabled=true"), "SCENE eye is presentation-only rather than inventing scene visibility authority");
-assert.match(lab, /upperContent\.append\(headerBlock,this\.v2Spacer\(\),sourceBlock,this\.v2Spacer\(\)\);[\s\S]*?upperContent\.appendChild\(inspectorStack\)/, "env and bgr source block precedes EVENT with compact spacer rows");
-assert(lab.includes('this.renderV2ReservedInspector("TRIGGER"),this.renderV2ReservedInspector("MARKER")'), "TRIGGER and MARKER reserved placeholders remain visible");
-assert(lab.includes('el("input","cm-v2-logic-name-edit")') && lab.includes('updateV2SceneEvent(scene,event.id,{name:value})'), "inline Event editing remains wired");
+const scene = lab.indexOf('summary.append(`SCENE:');
+assert(scene >= 0, "SCENE identity remains visible");
+assert(!lab.includes("summary.append(sceneEye") && !lab.includes("Scene visibility is controlled"), "SCENE has no Eye or Power action");
+const categories=["BGR","ENV","SEG","OBJ","EVE","TRI","MAR"];
+let cursor=-1;for(const category of categories){const next=lab.indexOf(`this.sceneContentsRow("${category}"`,cursor+1);assert(next>cursor,`${category} appears in exact tree order`);cursor=next;}
+for(const category of ["BGR","ENV","SEG","OBJ"])assert.match(lab,new RegExp(`sceneContentsRow\\("${category}","visibility"`),`${category} uses Eye visibility semantics`);
+for(const category of ["EVE","TRI","MAR"])assert.match(lab,new RegExp(`sceneContentsRow\\("${category}","activation"`),`${category} uses Power activation semantics`);
+assert(lab.includes('action.dataset.action=kind')&&lab.includes('labelButton.dataset.accordionAction="true"')&&lab.includes('toggle.dataset.accordionAction="true"'),"action icon and accordion targets are distinct");
+assert(lab.includes("const expandable=count>=2")&&lab.includes("count===1||open"),"two-plus item categories expose accordion while a single item stays inline");
+assert(lab.includes('private readonly sceneContentsExpanded = new Set<string>')&&!lab.includes("scene.contentsExpanded"),"accordion state is UI-only");
+assert(lab.includes('sceneContentsAggregateState(events.map(event=>event.enabled))')&&lab.includes('!=="all"'),"EVE category aggregates all/mixed/none and applies all-enable policy");
+assert(lab.includes("setV2EventsEnabled")&&lab.includes("updateV2SceneEvent(next,event.id,{enabled})"),"EVE bulk Power uses Event update authority");
+assert(lab.includes("const result=updateV2SceneEvent(scene,event.id,{enabled:!event.enabled})"),"per-Event Power uses the same invariant-preserving helper");
+assert(lab.includes('const ordinal=el("span","cm-scene-tree-ordinal");ordinal.textContent=`${index+1}.`')&&lab.includes("row.append(power,ordinal,label,type)"),"Event ordinal is independent of both editable signal names and level-end labels");
+assert(lab.includes("row.replaceChild(input,label)")&&!lab.includes("row.replaceChild(input,ordinal)"),"signal name editing preserves the visible ordinal");
+assert(lab.includes('sceneContentsRow("TRI","activation","none",0,()=>{},undefined,true,"reserved")')&&lab.includes('sceneContentsRow("MAR","activation","none",0,()=>{},undefined,true,"reserved")'),"TRI/MAR are disabled reserved rows without items");
+assert(!lab.includes("renderV2EventSurface")&&!lab.includes("renderV2ReservedInspector")&&!lab.includes('plainV2InspectorHeader("EVENT")'),"standalone EVENT/TRIGGER/MARKER blocks are removed");
+assert(lab.includes('private selectV2Event(eventId:string,render=true):void {this.v2SelectedEventId=eventId')&&lab.includes('private selectV2Segment(trackId:string,segmentId:string,render=true):void {this.v2SelectedTrackId=trackId'),"Event and visual selection remain independent");
+assert(lab.includes('el("input","cm-v2-logic-name-edit")') && lab.includes('updateV2SceneEvent(scene,event.id,{name:value})')&&lab.includes("input.onfocus=select"), "inline Event editing and focus selection remain wired");
 
 console.log("SceneLabCompactUI.smoke: PASS");
