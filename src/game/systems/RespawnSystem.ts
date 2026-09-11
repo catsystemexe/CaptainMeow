@@ -22,6 +22,8 @@ export class RespawnSystem {
       respawnDelayTicks: 60, // 1s @60Hz
       invulnSec: 2.25,       // respawn protection; ordinary hit i-frames remain 0.75s
       spawnEnergy: 5,
+      introSec: 0.8,
+      world: undefined as { scrollX: number; scrollY: number } | undefined,
     }
   ) {}
 
@@ -50,6 +52,8 @@ export class RespawnSystem {
 
       if (this.session.lives === 0) {
         this.session.gameOver = true;
+        const finalPlayer: any = this.store.get(this.getPlayerRef());
+        if (finalPlayer) finalPlayer.deadT = Number.POSITIVE_INFINITY;
         return;
       }
 
@@ -75,7 +79,13 @@ export class RespawnSystem {
 
     // ✅ reset player state in-place
     p.kind = "player";
-    p.pos = { x: spawnPos.x, y: spawnPos.y };
+    const target = { x: spawnPos.x, y: spawnPos.y };
+    const start = {
+      x: Number(this.cfg.world?.scrollX ?? 0) - Math.max(1, Number(p.bodyRadius ?? p.radius ?? 20)),
+      y: target.y,
+    };
+    p.pos = { x: start.x, y: start.y };
+    p.posPrev = { x: start.x, y: start.y };
     p.vel = { x: 0, y: 0 };
 
     p.radius = Number.isFinite(Number(p.radius)) ? Number(p.radius) : 3;
@@ -87,10 +97,16 @@ export class RespawnSystem {
     p.energy = this.cfg.spawnEnergy;
 
     p.pendingKill = false;
+    p.__playerDeathFxDone = false;
 
 
     // ✅ spawn i-frames
     p.invulnT = this.cfg.invulnSec;
+
+    p.respawnIntroDuration = this.cfg.introSec;
+    p.respawnIntroT = this.cfg.introSec;
+    p.respawnIntroStart = start;
+    p.respawnIntroTarget = target;
 
     // ✅ clear death gate
     p.deadT = 0;

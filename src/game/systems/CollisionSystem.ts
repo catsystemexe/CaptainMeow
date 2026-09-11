@@ -250,7 +250,7 @@ export class CollisionSystem {
     });
 
     // 2.5) player -> pickup (both WORLD space => compare directly)
-    if (playerRef && player && player.kind === "player") {
+    if (playerRef && player && player.kind === "player" && Number((player as any).deadT ?? 0) <= 0 && Number((player as any).respawnIntroT ?? 0) <= 0) {
       const pwx = Number(player.pos?.x ?? 0);
       const pwy = Number(player.pos?.y ?? 0);
       const pr = playerBodyRadius(player as PlayerEntity);
@@ -275,6 +275,8 @@ export class CollisionSystem {
 
     // 3) player -> enemy (CONTACT) (both WORLD space => compare directly)
     if (!playerRef || !player || player.kind !== "player") return;
+
+    if (Number(player.deadT ?? 0) > 0 || Number((player as any).respawnIntroT ?? 0) > 0) return;
 
     const inv = Number(player.invulnT ?? 0);
     if (Number.isFinite(inv) && inv > 0) return;
