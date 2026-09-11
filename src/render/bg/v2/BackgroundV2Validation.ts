@@ -67,8 +67,10 @@ export function validateBackgroundSceneV2(value: unknown): BackgroundV2Validatio
         const ids = new Set<string>();
         items.forEach((item, ii) => {
           const ip = `${path}.${kind}[${ii}]`; if (!object(item)) { issue(ip, "must be an object"); return; }
-          rejectUnknown(item, kind === "segments" ? ["id", "startTrackX", "widthPx", "asset", "offsetY", "opacity", "blend", "localZ", "fadeInPx", "fadeOutPx", "enabled"] : ["id", "asset", "startTrackX", "y", "width", "height", "localZ", "opacity", "blend", "enabled"], ip, issue);
+          rejectUnknown(item, kind === "segments" ? ["id", "name", "locked", "flipX", "flipY", "startTrackX", "widthPx", "asset", "offsetY", "opacity", "blend", "localZ", "fadeInPx", "fadeOutPx", "enabled"] : ["id", "name", "locked", "flipX", "flipY", "asset", "startTrackX", "y", "width", "height", "localZ", "opacity", "blend", "enabled"], ip, issue);
           if (!nonEmpty(item.id)) issue(`${ip}.id`, "must be a non-empty string"); else if (ids.has(item.id)) issue(`${ip}.id`, `must be unique within ${kind}`); else ids.add(item.id);
+          if (item.name !== undefined && typeof item.name !== "string") issue(`${ip}.name`, "must be a string when present");
+          for (const key of ["locked", "flipX", "flipY"]) if (item[key] !== undefined && typeof item[key] !== "boolean") issue(`${ip}.${key}`, "must be boolean when present");
           if (!object(item.asset) || !nonEmpty(item.asset.id) || !nonEmpty(item.asset.url)) issue(`${ip}.asset`, "id and url must be non-empty strings");
           else rejectUnknown(item.asset, ["id", "url"], `${ip}.asset`, issue);
           const required = kind === "segments" ? ["startTrackX", "widthPx", "offsetY", "opacity", "localZ"] : ["startTrackX", "y", "opacity", "localZ"];
@@ -92,11 +94,13 @@ export function validateBackgroundSceneV2(value: unknown): BackgroundV2Validatio
         const path = `events[${index}]`;
         if (!object(raw)) { issue(path, "must be an object"); return; }
         const type = raw.type;
-        rejectUnknown(raw, type === "signal" ? ["id", "type", "worldX", "enabled", "name"] : ["id", "type", "worldX", "enabled"], path, issue);
+        rejectUnknown(raw, ["id", "type", "worldX", "enabled", "name", "locked"], path, issue);
         if (!nonEmpty(raw.id)) issue(`${path}.id`, "must be a non-empty string");
         else if (ids.has(raw.id)) issue(`${path}.id`, "must be unique scene-wide"); else ids.add(raw.id);
         if (!finite(raw.worldX) || raw.worldX < 0) issue(`${path}.worldX`, "must be a finite non-negative number");
         if (typeof raw.enabled !== "boolean") issue(`${path}.enabled`, "must be boolean");
+        if (raw.locked !== undefined && typeof raw.locked !== "boolean") issue(`${path}.locked`, "must be boolean when present");
+        if (raw.name !== undefined && typeof raw.name !== "string") issue(`${path}.name`, "must be a string when present");
         if (type === "signal") { if (!nonEmpty(raw.name)) issue(`${path}.name`, "must be a non-empty string"); }
         else if (type === "level-end") levelEnds += 1;
         else issue(`${path}.type`, "is invalid");
