@@ -14,7 +14,7 @@ assert.doesNotMatch(ui, /margin-left:-100px|calc\(100% \+ (?:100px|var\(--cm-v2-
 assert.doesNotMatch(cssRule(layout, ".cm-bgr-workspace-timeline"), /z-index/, "gutter visibility does not depend on a timeline stacking layer");
 assert.match(layout, /data-timeline-mode="v2"\] \.cm-bgr-workspace-left \{\s*grid-template-rows: minmax\(0, 1fr\) 176px;/, "V2 reserves a fixed 176px bottom left-region surface");
 assert.match(layout, /data-timeline-mode="disabled"\] \.cm-bgr-workspace-left \{\s*grid-template-rows: minmax\(0, 1fr\) 0;/, "non-V2 restores the full Scene Lab height");
-assert.match(cssRule(ui, ".cm-v2-timeline-gutter"), /width:100%;height:144px/, "the canonical gutter uses the available left-region width without filling the 176px row");
+assert.match(cssRule(ui, ".cm-v2-timeline-gutter"), /position:relative;width:100%;height:144px/, "the canonical gutter uses the available left-region width without filling the 176px row");
 assert.match(cssRule(ui, ".cm-v2-panel"), /width:100%/, "timeline content begins at the center/canvas origin");
 
 const projection = projectBackgroundV2Timeline(createBackgroundV2DesertTestScene());
