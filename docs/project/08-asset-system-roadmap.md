@@ -1,10 +1,11 @@
 # Captain Meow — Asset System Implementation Roadmap
 
-Status: ACTIVE IMPLEMENTATION ROADMAP / PHASE B COMPLETE
+Status: ACTIVE IMPLEMENTATION ROADMAP / PHASE C BGR V2 PORTION COMPLETE
 Last updated: 2026-09-11
 
 This roadmap turns `07-asset-system.md` into a staged implementation plan. The
-Phase B core contract exists, but the broader target Asset System does not yet.
+Phase B core contract and the Phase C BGR V2 segment/object persistence migration
+exist, but the broader target Asset System does not yet.
 
 Implementation truth remains current code. The roadmap must be updated when repository evidence changes the required sequence or scope.
 
@@ -121,6 +122,10 @@ Introduce the minimum stable identity model without redesigning artwork.
 ## 5. Phase C — Existing reference migration
 
 Priority: P1
+
+Status: BGR V2 segment/object persistence COMPLETE. New writes store Asset ID
+only, legacy `{id,url}` reads resolve through the catalogue, and static backdrop,
+BGR V1, and renderer/runtime-reference migration remain outside this portion.
 
 ### Goal
 

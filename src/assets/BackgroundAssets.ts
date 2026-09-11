@@ -35,6 +35,10 @@ export const BACKGROUND_ASSET_DECLARATIONS: readonly BackgroundAssetDeclaration[
   backgroundImage("desert-test-mid-mesas-b", "Technical test: desert mid mesas B", "/assets/bg/test/desert/desert_mid_mesas_b.png"),
   backgroundImage("desert-test-near-band", "Technical test: desert near band", "/assets/bg/test/desert/desert_near_band.png"),
   backgroundImage("desert-test-sun", "Technical test: desert sun", "/assets/bg/test/desert/desert_sun.png"),
+  backgroundImage("shared-solid", "Technical verification: solid", "/assets/debug/bgr/bgr-test-solid.svg"),
+  backgroundImage("blend-backdrop", "Technical verification: blend backdrop", "/assets/debug/bgr/bgr-test-backdrop.svg"),
+  backgroundImage("finite-stripes", "Technical verification: finite stripes", "/assets/debug/bgr/bgr-test-stripes.svg"),
+  backgroundImage("foreground-marker", "Technical verification: foreground marker", "/assets/debug/bgr/bgr-test-marker.svg"),
 ];
 
 export const ASSET_CATALOG = createAssetCatalog(

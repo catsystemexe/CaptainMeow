@@ -6,8 +6,9 @@ Audit snapshot: `pixel_bgr` remote HEAD `74688eb0e18c5125bd02bd8cb0a4a2a7e6d4d60
 
 Historical-snapshot note: these findings describe the pre-implementation Phase A
 state. Phase B subsequently implemented the neutral core catalogue and derived
-BGR compatibility view; the persistence and renderer gaps recorded here remain
-pending for Phase C and later work.
+BGR compatibility view. Phase C then migrated BGR V2 segment/object persistence
+to Asset-ID-only writes with catalogue-resolved legacy reads; static backdrop,
+BGR V1, and runtime renderer URL ownership remain later work.
 
 ## 1. Executive summary
 
