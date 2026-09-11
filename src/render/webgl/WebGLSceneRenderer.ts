@@ -1347,18 +1347,6 @@ export class WebGLSceneRenderer {
           ? (e as any).spawnOrdinal
           : ((e as any).id ?? 0);
 
-      if (kind === "player" && this.sdfPass) {
-        const field = getPlayerShieldFieldPresentation(e);
-        if (field.visible) {
-          const bodyRadius = safeNum((e as any).bodyRadius, 20);
-          this.sdfPass.draw({
-            ix, iy, radius: bodyRadius, sizeX: bodyRadius * 2.8, sizeY: bodyRadius * 2.15,
-            shape: "energyField", color: field.reason === "hit" ? "#7fffff" : "#36dfff",
-            hpRatio: 1, time: tSec, hitFlash: field.strength, thrust: 0,
-          });
-        }
-      }
-
       // ── Mesh rendering (low-poly 3D) ──
       const rm = (e as any).render?.mesh;
       if (rm && this.meshPass && this.modelCache.has(rm.modelId)) {
@@ -1430,6 +1418,20 @@ export class WebGLSceneRenderer {
               color: '#ff9900', hpRatio: 1.0,
               time: this.accumTime, hitFlash: 0,
               thrust: wingThr,
+            });
+          }
+        }
+
+        // Composite the translucent field after the opaque ship so its shell
+        // remains readable instead of being depth/paint-order obscured.
+        if (this.sdfPass) {
+          const field = getPlayerShieldFieldPresentation(e);
+          if (field.visible) {
+            const bodyRadius = safeNum((e as any).bodyRadius, 20);
+            this.sdfPass.draw({
+              ix, iy, radius: bodyRadius, sizeX: bodyRadius * 3.2, sizeY: bodyRadius * 2.5,
+              shape: "energyField", color: field.reason === "hit" ? "#7fffff" : "#36dfff",
+              hpRatio: 1, time: tSec, hitFlash: field.strength, thrust: 0,
             });
           }
         }
