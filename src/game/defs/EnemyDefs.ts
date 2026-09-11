@@ -26,6 +26,7 @@ export interface EnemyDef {
   scoreOnKill: number;
   behaviorPreset: string; // content-driven (string); runtime resolves preset map
   behaviorGraphId?: string;
+  destroyOnPlayerContact: boolean;
   render?: EnemyAppearanceDef; // OPTIONAL
 
   // OPTIONAL AI overlay (future-ready; no runtime effect unless EnemySystem uses it)
@@ -316,6 +317,7 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = (() => {
     const scoreOnKill = numOr(scoreRaw, 0);
     const behaviorPreset = typeof presetRaw === "string" && presetRaw.length ? presetRaw : "none.hold";
     const behaviorGraphId = strOrUndef(t?.behaviorGraphId);
+    const destroyOnPlayerContact = t?.destroyOnPlayerContact !== false;
 
     // ai overlay (optional)
     const aiRaw = t?.ai;
@@ -354,6 +356,7 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = (() => {
       radius,
       scoreOnKill,
       behaviorPreset,
+      destroyOnPlayerContact,
       ...(behaviorGraphId ? { behaviorGraphId } : {}),
       ...(appearance ? { render: appearance } : {}),
       ...(ai ? { ai } : {}),

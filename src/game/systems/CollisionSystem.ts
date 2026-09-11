@@ -29,6 +29,7 @@ export interface EnemyEntity {
   pos: { x: number; y: number };
   radius: number;
   hp: number;
+  destroyOnPlayerContact?: boolean;
   pendingKill: boolean;
 }
 

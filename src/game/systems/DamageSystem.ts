@@ -84,8 +84,12 @@ export class DamageSystem<T extends BaseEntity> {
         }
 
         case EventType.PLAYER_HIT_ENEMY: {
-          const { player } = e.payload as { player: EntityRef; enemy: EntityRef };
-          this.applyPlayerContact(player, this.rules.playerHitEnemyDamage);
+          const { player, enemy } = e.payload as { player: EntityRef; enemy: EntityRef };
+          const accepted = this.applyPlayerContact(player, this.rules.playerHitEnemyDamage);
+          const enemyEnt: any = this.store.get(enemy);
+          if (accepted && enemyEnt?.destroyOnPlayerContact !== false) {
+            this.applyHpDamage(enemy, Number(enemyEnt.hp), "contact");
+          }
           break;
         }
 
@@ -129,14 +133,14 @@ export class DamageSystem<T extends BaseEntity> {
     }
   }
 
-  private applyPlayerContact(playerRef: EntityRef, amount: number): void {
+  private applyPlayerContact(playerRef: EntityRef, amount: number): boolean {
     const p: any = this.store.get(playerRef);
-    if (!p) return;
-    if (p.pendingKill) return;
+    if (!p) return false;
+    if (p.pendingKill) return false;
 
     // i-frame gate (extra safety; Collision also gates)
     const inv = Number(p.invulnT ?? 0);
-    if (Number.isFinite(inv) && inv > 0) return;
+    if (Number.isFinite(inv) && inv > 0) return false;
 
     const dmg = Math.max(0, Number(amount ?? 1));
 
@@ -171,6 +175,7 @@ export class DamageSystem<T extends BaseEntity> {
         isPlayer: true,
       });
     }
+    return true;
   }
 
   private applyHpDamage(target: EntityRef, amount: number, source: string): void {
