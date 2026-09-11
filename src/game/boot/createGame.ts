@@ -157,8 +157,10 @@ export async function createGame(
     LOGIC_H,
     {
       respawnDelayTicks: 60,
-      invulnSec: 1.0,
+      invulnSec: 2.25,
       spawnEnergy: 5,
+      introSec: 0.8,
+      world,
     }
   );
 
@@ -491,6 +493,8 @@ export async function createGame(
 
     playerEnt.invulnT = RESET_CFG.invulnSec;
     playerEnt.deadT = 0;
+    playerEnt.respawnIntroT = 0;
+    (playerEnt as any).__playerDeathFxDone = false;
     playerEnt.hitFlashT = 0;
     (playerEnt as any).aimDir = (playerEnt as any).aimDir ?? { x: 1, y: 0 };
     (playerEnt as any).rot = 0;
@@ -538,13 +542,8 @@ export async function createGame(
         pickupSystem.update(ctx.dt);
         playerSystem.update(ctx.dt, inputRt.actions as any);
 
-          // ✅ decay i-frames here (single authority, dt-stable)
-          if (Number(playerEnt.invulnT ?? 0) > 0) {
-            playerEnt.invulnT = Math.max(0, Number(playerEnt.invulnT) - ctx.dt);
-          }
-
           worldScroll.update(ctx.dt);
-        if (Number(playerEnt.deadT ?? 0) <= 0) {
+        if (Number(playerEnt.deadT ?? 0) <= 0 && Number(playerEnt.respawnIntroT ?? 0) <= 0) {
           if ((inputRt.actions as any).toggleW1WeaponPressed) {
             weaponSystem.toggleW1Weapon();
           }

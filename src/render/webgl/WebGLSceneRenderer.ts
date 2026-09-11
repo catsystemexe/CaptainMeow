@@ -211,6 +211,18 @@ export function isPickupRenderEligible(entity: any): boolean {
     finitePositive(entity.radius) !== null && typeof entity.defId === "string" && entity.defId.length > 0;
 }
 
+const PLAYER_BLINK_HALF_PERIOD_SEC = 0.1;
+
+/** Pure presentation rule; gameplay timers remain authoritative and unmodified. */
+export function isPlayerRenderVisible(entity: any, presentationTimeSec: number): boolean {
+  if (!entity || readKind(entity) !== "player" || entity.pendingKill) return false;
+  if (Number(entity.deadT ?? 0) > 0) return false;
+  const invulnT = Number(entity.invulnT ?? 0);
+  if (!Number.isFinite(invulnT) || invulnT <= 0) return true;
+  const time = Math.max(0, Number.isFinite(presentationTimeSec) ? presentationTimeSec : 0);
+  return Math.floor(time / PLAYER_BLINK_HALF_PERIOD_SEC) % 2 === 0;
+}
+
 export type FxRenderLayerKind = "normal" | "deathGhost" | "explosion";
 
 export function classifyFxRenderLayer(entity: { kind?: unknown; type?: unknown; tag?: unknown; deathVisual?: unknown }): FxRenderLayerKind {
@@ -1210,6 +1222,7 @@ export class WebGLSceneRenderer {
       const kind = readKind(e);
       const pos = (e as HasPos).pos;
       if (!pos || !kind) return;
+      if (kind === "player" && !isPlayerRenderVisible(e, tSec)) return;
 
       const r =
         typeof (e as HasRadius).radius === "number" ? (e as HasRadius).radius : null;
