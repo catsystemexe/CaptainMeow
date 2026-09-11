@@ -2,7 +2,7 @@ import type { BackgroundAssetRef, BackgroundObject, BackgroundSceneV2, Backgroun
 
 export const V2_OBJECT_DUPLICATE_OFFSET_PX = 16;
 
-export type V2ObjectEditErrorCode = "track-not-found" | "object-not-found" | "invalid-value" | "duplicate-id" | "asset-required";
+export type V2ObjectEditErrorCode = "track-not-found" | "object-not-found" | "locked" | "invalid-value" | "duplicate-id" | "asset-required";
 export type V2ObjectEditResult =
   | { ok: true; scene: BackgroundSceneV2; trackId: string; objectId: string }
   | { ok: false; scene: BackgroundSceneV2; code: V2ObjectEditErrorCode; error: string };
@@ -57,12 +57,14 @@ export function createV2Object(scene: BackgroundSceneV2, trackId: string, asset:
 export function duplicateV2Object(scene: BackgroundSceneV2, trackId: string, objectId: string): V2ObjectEditResult {
   const target = editable(scene, trackId, objectId); if ("ok" in target) return target;
   const source = target.object!;
+  if (source.locked) return fail(scene, "locked", `Object '${objectId}' is locked.`);
   const object = { ...source, asset: { ...source.asset }, id: uniqueObjectId(scene, source.id), startTrackX: source.startTrackX + V2_OBJECT_DUPLICATE_OFFSET_PX, y: source.y + V2_OBJECT_DUPLICATE_OFFSET_PX };
   return success(replaceTrack(scene, { ...target.track, objects: [...target.track.objects, object] }), trackId, object.id);
 }
 
 export function deleteV2Object(scene: BackgroundSceneV2, trackId: string, objectId: string): V2ObjectEditResult {
   const target = editable(scene, trackId, objectId); if ("ok" in target) return target;
+  if (target.object!.locked) return fail(scene, "locked", `Object '${objectId}' is locked.`);
   const index = target.track.objects.findIndex(item => item.id === objectId);
   const objects = target.track.objects.filter(item => item.id !== objectId);
   return success(replaceTrack(scene, { ...target.track, objects }), trackId, objects[Math.min(index, objects.length - 1)]?.id ?? "");
@@ -70,6 +72,7 @@ export function deleteV2Object(scene: BackgroundSceneV2, trackId: string, object
 
 export function updateV2Object(scene: BackgroundSceneV2, trackId: string, objectId: string, patch: V2ObjectPatch): V2ObjectEditResult {
   const target = editable(scene, trackId, objectId); if ("ok" in target) return target;
+  if (target.object!.locked && Object.keys(patch).some(key => key !== "locked" && key !== "enabled")) return fail(scene, "locked", `Object '${objectId}' is locked.`);
   const object = { ...target.object!, ...patch, asset: { ...(patch.asset ?? target.object!.asset) } };
   const invalid = validateObject(object); if (invalid) return fail(scene, "invalid-value", invalid);
   return success(replaceTrack(scene, { ...target.track, objects: target.track.objects.map(item => item.id === objectId ? object : item) }), trackId, objectId);

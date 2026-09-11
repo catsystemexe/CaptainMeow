@@ -13,15 +13,15 @@ assert.match(eventSurface,/cm-scene-tree-child cm-scene-tree-event/);assert.matc
 assert.match(eventSurface,/const ordinal=el\("span","cm-scene-tree-ordinal"\);ordinal\.textContent=`\$\{index\+1\}\.`/,"every ordered Event receives a separate visible ordinal");
 assert.match(eventSurface,/row\.append\(power,ordinal,label,type\)/,"signal and level-end rows share the numbered structure before signal editing is applied");
 assert.match(eventSurface,/aria-label.*Event/);assert.match(eventSurface,/cm-v2-logic-name-edit/,"signal names are directly editable without replacing the ordinal");
-assert.match(eventSurface,/input\.onfocus=select/);assert.match(eventSurface,/selectV2Event\(event\.id,false\)/,"focusing the signal name selects only that Event");
-assert.match(eventSurface,/type\.textContent=event\.type/);assert.doesNotMatch(eventSurface,/updateV2SceneEvent\([^;]*type/,"Event type remains immutable");
+assert.match(eventSurface,/v2RenameInput/,"Event rename uses the unified inline state");
+assert.match(eventSurface,/type\.textContent=event\.locked/);assert.doesNotMatch(eventSurface,/updateV2SceneEvent\([^;]*type/,"Event type remains immutable");
 for(const label of ["TRI","MAR"])assert.match(source,new RegExp(`sceneContentsRow\\(\\"${label}\\",\\"activation\\"`));
 assert.doesNotMatch(source,/type V2(?:Trigger|Marker)|createV2(?:Trigger|Marker)/);
 assert.match(source,/oncontextmenu=e=>this\.openV2VisualContextMenu/,"visual entities open a context menu");
 assert.match(source,/oncontextmenu=e=>this\.openV2EventContextMenu/,"Events open a context menu");
 assert.match(source,/document\.addEventListener\("pointerdown",outside\)/);assert.match(source,/event\.key==="Escape"/);
 const visualMenu=method("openV2VisualContextMenu","openV2EventContextMenu");assert.match(visualMenu,/duplicateV2Segment/);assert.match(visualMenu,/deleteV2Segment/);assert.match(visualMenu,/duplicateV2Object/);assert.match(visualMenu,/deleteV2Object/);assert.doesNotMatch(visualMenu,/startTrackX|offsetY|worldX/,"context actions do not alter position");
-const eventMenu=method("openV2EventContextMenu","applyV2EventEdit");assert.match(eventMenu,/enabled:!event\.enabled/);assert.match(eventMenu,/deleteV2SceneEvent/);assert.doesNotMatch(eventMenu,/worldX:/,"Event menu does not alter X");
+const eventMenu=method("openV2EventContextMenu","applyV2EventEdit");assert.match(eventMenu,/duplicateV2SceneEvent/);assert.match(eventMenu,/deleteV2SceneEvent/);assert.doesNotMatch(eventMenu,/worldX:/,"Event menu does not alter X");
 const scene:BackgroundSceneV2={version:2,id:"order",environment:{},tracks:[],events:[{id:"z",type:"signal",name:"later tie",worldX:20,enabled:true},{id:"a",type:"signal",name:"first tie",worldX:20,enabled:true},{id:"m",type:"signal",name:"first",worldX:10,enabled:true}]};
 assert.deepEqual(orderedV2SceneEvents(scene).map(event=>event.id),["m","a","z"]);
 assert.equal(Object.prototype.hasOwnProperty.call(scene.events![0],"number"),false,"presentation number is not schema data");

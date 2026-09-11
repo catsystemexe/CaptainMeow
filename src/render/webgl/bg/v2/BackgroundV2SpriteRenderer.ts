@@ -13,6 +13,7 @@ export class BackgroundV2SpriteRenderer {
   private uSize: WebGLUniformLocation;
   private uOpacity: WebGLUniformLocation;
   private uTexture: WebGLUniformLocation;
+  private uFlip: WebGLUniformLocation;
   private resources = new Map<BackgroundTextureResourceKey, Resource>();
   private generation = 0;
 
@@ -27,7 +28,7 @@ export class BackgroundV2SpriteRenderer {
     const position = gl.getAttribLocation(this.program, "aPos");
     gl.enableVertexAttribArray(position); gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
     const uniform = (name: string) => { const value = gl.getUniformLocation(this.program, name); if (!value) throw new Error(`BackgroundV2SpriteRenderer uniform missing: ${name}`); return value; };
-    this.uLogic = uniform("uLogic"); this.uPos = uniform("uPos"); this.uSize = uniform("uSize"); this.uOpacity = uniform("uOpacity"); this.uTexture = uniform("uTex");
+    this.uLogic = uniform("uLogic"); this.uPos = uniform("uPos"); this.uSize = uniform("uSize"); this.uOpacity = uniform("uOpacity"); this.uTexture = uniform("uTex"); this.uFlip = uniform("uFlip");
     gl.bindVertexArray(null); gl.bindBuffer(gl.ARRAY_BUFFER, null);
   }
 
@@ -43,6 +44,7 @@ export class BackgroundV2SpriteRenderer {
       const gl = this.gl;
       gl.useProgram(this.program); gl.bindVertexArray(this.vao); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, resource.texture);
       gl.uniform1i(this.uTexture, 0); gl.uniform2f(this.uLogic, args.logicW, args.logicH); gl.uniform1f(this.uOpacity, command.opacity);
+      gl.uniform2i(this.uFlip, "flipX" in command && command.flipX ? 1 : 0, "flipY" in command && command.flipY ? 1 : 0);
       gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, command.blend === "additive" ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA);
       if ("clip" in command && command.clip) {
         const height = Number.isFinite(command.clip.height) ? command.clip.height : args.logicH;
@@ -84,7 +86,7 @@ export class BackgroundV2SpriteRenderer {
     const gl = this.gl;
     const compile = (type: number, source: string) => { const shader = gl.createShader(type); if (!shader) throw new Error("shader allocation failed"); gl.shaderSource(shader, source); gl.compileShader(shader); if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || "shader compile failed"); return shader; };
     const vertex = compile(gl.VERTEX_SHADER, `#version 300 es\nin vec2 aPos; uniform vec2 uLogic,uPos,uSize; out vec2 vUv; void main(){vec2 p=uPos+(aPos-vec2(.5))*uSize;vUv=aPos;gl_Position=vec4((p.x/uLogic.x)*2.-1.,1.-(p.y/uLogic.y)*2.,0.,1.);}`);
-    const fragment = compile(gl.FRAGMENT_SHADER, `#version 300 es\nprecision mediump float; uniform sampler2D uTex; uniform float uOpacity; in vec2 vUv; out vec4 outColor; void main(){vec4 c=texture(uTex,vUv);outColor=vec4(c.rgb,c.a*uOpacity);}`);
+    const fragment = compile(gl.FRAGMENT_SHADER, `#version 300 es\nprecision mediump float; uniform sampler2D uTex; uniform float uOpacity; uniform ivec2 uFlip; in vec2 vUv; out vec4 outColor; void main(){vec2 uv=vec2(uFlip.x==1?1.-vUv.x:vUv.x,uFlip.y==1?1.-vUv.y:vUv.y);vec4 c=texture(uTex,uv);outColor=vec4(c.rgb,c.a*uOpacity);}`);
     const program = gl.createProgram(); if (!program) throw new Error("program allocation failed"); gl.attachShader(program, vertex); gl.attachShader(program, fragment); gl.linkProgram(program); gl.deleteShader(vertex); gl.deleteShader(fragment); if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "program link failed"); return program;
   }
 }
