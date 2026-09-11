@@ -22,8 +22,8 @@ assert.match(layout, /\.cm-bgr-workspace-mode-toggle \{[\s\S]*?border:\s*0;[\s\S
 assert.match(lab, /\.cm-v2-workspace\{[^}]*overflow:visible/, "Scene Lab workspace does not create a nested vertical scroller");
 assert(!lab.includes('el("div","cm-pixel-panel cm-scene-toolbar")\n    const badge'), "compact V2 sections do not depend on decorative pixel panels or badges");
 assert(lab.includes("cm-v2-transport-block .cm-transport-button{width:72px;min-width:72px;height:72px;min-height:72px}"), "transport buttons meet the primary 72px hit target");
-assert(lab.includes("cm-v2-transport-block .cm-transport-icon{width:60px;height:60px}") && lab.includes("const iconSize=primary?60:16"), "the actual transport SVG inline size and selector both meet the 60px target");
-assert(lab.includes("cm-v2-upper-content{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden}"), "V2 upper content shrinks and owns vertical overflow");
+assert(lab.includes("cm-v2-transport-block .cm-transport-icon{width:30px;height:30px}") && lab.includes("const iconSize=primary?30:16"), "the actual transport SVG inline size and selector both meet the 30px target");
+assert(lab.includes("cm-v2-upper-content{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}"), "V2 upper content scrolls vertically without a visible scrollbar");
 assert(lab.includes("cm-v2-transport-block{flex:0 0 72px;height:72px;overflow:hidden}") && lab.includes("cm-scene-transport{flex-wrap:nowrap;margin:0}"), "transport owns a fixed non-shrinking bottom slot");
 assert(layout.includes("left.append(leftCanvas, gutter)") && lab.includes("this.workspace.leftCanvas.appendChild(this.root)"), "the left canvas region owns Scene Lab above its sibling multitrack gutter");
 assert.match(layout,/\.cm-bgr-workspace-left-canvas \{[\s\S]*?display: flex;[\s\S]*?overflow: hidden;/,"the canvas-height region provides the flex containing block for bottom ownership");
@@ -33,7 +33,7 @@ assert(lab.includes('transportBlock.append(this.renderPreview([],projection.boun
 assert.match(lab, /const upperContent=el\("div","cm-v2-upper-content"\);[\s\S]*?this\.root\.append\(upperContent,transportBlock\);\s*this\.syncOverlay\(\);\s*return;/, "all V2 Scene Contents content remains above the transport sibling");
 assert.equal((lab.match(/this\.root\.append\(upperContent,transportBlock\)/g) ?? []).length, 1, "transport is the final Scene Lab child with no trailing content");
 assert(lab.indexOf('className="cm-v2-transport-block"') < lab.indexOf('const zoomControls=el("div","cm-v2-zoom-controls")'), "transport is rendered above the multitrack zoom row");
-assert(lab.includes("Reset to scene start") && lab.includes("setPaused?.(!paused)") && lab.includes("setPaused?.(true);this.setCurrentX(start,true)") && !lab.includes("Stop and return to scene start"), "transport provides reset plus a single play/pause toggle");
+assert(lab.includes("Reset to scene start") && lab.includes("toggleGameplayPaused()") && lab.includes("setPaused?.(true);this.setCurrentX(start,true)") && !lab.includes("Stop and return to scene start"), "transport provides reset plus a single play/pause toggle");
 assert(lab.includes("Drag Player X cursor") && lab.includes("seekGameplayToPlayerX"), "timeline Player X mapping remains authoritative");
 
 type FakeElement = {

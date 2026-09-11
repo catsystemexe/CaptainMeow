@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import type { BackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Types";
 import { createV2Object, deleteV2Object, duplicateV2Object, moveV2Object, updateV2Object, V2_OBJECT_DUPLICATE_OFFSET_PX } from "./PixelBgrV2ObjectEditing";
@@ -18,3 +19,10 @@ const updated=updateV2Object(moved.scene,"front",copy.id,{width:64,height:32,loc
 for(const patch of [{width:0},{height:-1},{opacity:2},{localZ:Number.NaN},{startTrackX:Number.POSITIVE_INFINITY},{y:Number.NaN}])assert.equal(updateV2Object(updated.scene,"front",copy.id,patch).ok,false);
 const deleted=deleteV2Object(updated.scene,"front",copy.id);assert.equal(deleted.ok,true);if(!deleted.ok)throw new Error(deleted.error);assert.deepEqual(deleted.scene.tracks[1].objects.map(item=>item.id),[made.id]);assert.equal(deleted.scene.tracks[0],updated.scene.tracks[0]);
 console.log("[SMOKE] PixelBgrV2ObjectEditing OK ✅");
+
+const uiSource=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
+assert.match(uiSource,/marker\.onpointerdown=e=>\{this\.v2PlacementTarget=null;if\(e\.button===2\)[\s\S]*?beginV2ObjectDrag\(e,track\.id,object\.id,scale\)/,"object pointerdown selects through canonical drag path while right click only selects");
+assert(uiSource.includes("setPointerCapture?.(e.pointerId)") && uiSource.includes("object.startTrackX+timelinePointerDeltaWorld(drag.startClientX,e.clientX,drag.scale),object.y"),"object drag maps timeline scale and delegates X-only movement to moveV2Object");
+assert.match(uiSource,/endV2ObjectDrag[\s\S]*?releasePointerCapture[\s\S]*?removeEventListener\("pointermove",this\.onV2ObjectPointerMove\)/,"object drag releases capture and listeners");
+const objectDragSource=uiSource.slice(uiSource.indexOf("private beginV2ObjectDrag"),uiSource.indexOf("private beginV2SegmentDrag"));
+assert(!objectDragSource.includes("v2SelectedEventId="),"object drag leaves Event selection untouched");

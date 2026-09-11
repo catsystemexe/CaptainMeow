@@ -3,6 +3,7 @@
  * Run: tsx src/engine/input/InputManager.smoke.ts
  */
 import { InputManager } from "./InputManager";
+import { DEFAULT_BINDINGS } from "./InputBindings";
 import { makeDefaultActions } from "../../game/data/InputRuntime";
 
 function assert(cond: unknown, msg: string): void {
@@ -88,7 +89,8 @@ assert(Math.hypot(a.move.x, a.move.y) <= 1.000001, "keyboard + gamepad movement 
 assert(a.move.x > 0.9 && a.move.y > 0.2, "keyboard + gamepad movement composes");
 
 const primary = makeInput();
-keys(primary).add("Space");
+keys(primary).add("ShiftRight");
+assert(DEFAULT_BINDINGS.firePrimary.length===1&&DEFAULT_BINDINGS.firePrimary[0]==="ShiftRight","only Right Shift is the keyboard primary-fire binding");
 setGamepads([pad({ buttons: [0] })]);
 a = sample(primary);
 assert(a.firePrimary === true, "keyboard primary OR gamepad A sets primary");
