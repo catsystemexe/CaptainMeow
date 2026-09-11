@@ -1,11 +1,16 @@
 # Captain Meow — Asset System
 
-Status: DESIGN BASIS / NOT YET FULLY IMPLEMENTED
+Status: DESIGN BASIS / PHASE B CORE IMPLEMENTED
 Last updated: 2026-09-11
 
 This document defines the intended normative conventions and architecture for Captain Meow asset identity, preparation, cataloguing, validation, Scene Lab integration, and runtime resolution.
 
 Actual implementation remains authoritative for currently implemented behavior. Where this document describes target behavior not yet present in code, it must be treated as an approved design basis rather than a claim about current runtime state.
+
+Implementation status: Phase B now provides the neutral branded `AssetId`, image
+definition, duplicate-safe catalogue, pure resolver, and a catalogue-backed BGR
+Scene Lab compatibility view. BGR V1/V2 persistence and rendering still use their
+legacy URL-bearing contracts; reference migration remains Phase C work.
 
 ## 1. Purpose
 

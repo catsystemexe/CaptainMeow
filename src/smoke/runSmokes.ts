@@ -1,5 +1,6 @@
 // src/smoke/runSmokes.ts
 const SMOKES = [
+  "../assets/AssetCatalog.smoke",
   "../engine/core/EventBus.smoke",
   "../engine/ecs/EntityStore.smoke",
   "../game/systems/PlayerSystem.smoke",
