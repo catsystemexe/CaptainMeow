@@ -47,11 +47,13 @@ assert.deepEqual(workspace.left.children, [workspace.leftCanvas, workspace.gutte
 assert.deepEqual(workspace.center.children, [workspace.viewport, workspace.timeline], "left and center use matching canvas/timeline row ownership");
 
 const title = lab.indexOf('h.textContent = "Scene Lab [F8]"');
+const scene = lab.indexOf('summary.append(sceneEye,`SCENE:');
 const backdrop = lab.indexOf('backdropRow.append(backdropEye,`BGR:');
 const environment = lab.indexOf('row.append(environmentEye,"ENV: starfield")');
-assert(title >= 0 && lab.includes('headerBlock.append(titlebar,this.renderV2Toolbar(),summary)'), "Scene Lab header renders title, toolbar, then scene name");
-assert(backdrop >= 0 && environment > backdrop, "background and environment render as compact BGR then ENV rows");
-assert(lab.includes("backdropRow.append(backdropEye") && lab.includes("row.append(environmentEye"), "BGR and ENV rows render their eye controls first");
+assert(title >= 0 && lab.includes('headerBlock.append(titlebar,this.renderV2Toolbar(),summary)'), "Scene Lab header renders title, toolbar, then SCENE row");
+assert(scene >= 0 && backdrop > scene && environment > backdrop, "identity rows retain SCENE, BGR, ENV source order");
+assert(lab.includes("summary.append(sceneEye") && lab.includes("backdropRow.append(backdropEye") && lab.includes("row.append(environmentEye"), "SCENE, BGR, and ENV rows render eye-first");
+assert(lab.includes("sceneEye.disabled=true"), "SCENE eye is presentation-only rather than inventing scene visibility authority");
 assert.match(lab, /upperContent\.append\(headerBlock,this\.v2Spacer\(\),sourceBlock,this\.v2Spacer\(\)\);[\s\S]*?upperContent\.appendChild\(inspectorStack\)/, "env and bgr source block precedes EVENT with compact spacer rows");
 assert(lab.includes('this.renderV2ReservedInspector("TRIGGER"),this.renderV2ReservedInspector("MARKER")'), "TRIGGER and MARKER reserved placeholders remain visible");
 assert(lab.includes('el("input","cm-v2-logic-name-edit")') && lab.includes('updateV2SceneEvent(scene,event.id,{name:value})'), "inline Event editing remains wired");
