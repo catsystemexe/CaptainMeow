@@ -13,7 +13,7 @@ export const DEFAULT_BINDINGS: KeyBindings = {
   right: ["ArrowRight", "KeyD"],
   up: ["ArrowUp", "KeyW"],
   down: ["ArrowDown", "KeyS"],
-  firePrimary: ["Space"],
+  firePrimary: ["ShiftRight"],
   fireBomb: ["KeyX"],
   pause: ["Escape", "KeyP"],
 };
