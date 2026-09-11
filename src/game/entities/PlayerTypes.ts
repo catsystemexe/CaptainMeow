@@ -15,5 +15,9 @@ export type PlayerData = {
   flags: number;
   invulnT?: number;
   deadT?: number;
+  respawnIntroT?: number;
+  respawnIntroDuration?: number;
+  respawnIntroStart?: Vec2;
+  respawnIntroTarget?: Vec2;
   hitFlashT?: number;
 };
