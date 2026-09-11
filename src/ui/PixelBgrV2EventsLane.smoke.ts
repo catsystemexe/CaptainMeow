@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import type { BackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Types";
 import { projectBackgroundV2Timeline } from "./PixelBgrV2TimelineProjection";
 const scene:BackgroundSceneV2={version:2,id:"lane",environment:{},tracks:[],events:[{id:"boss",type:"signal",name:"boss-start",worldX:8200,enabled:true},{id:"end",type:"level-end",worldX:12000,enabled:true}]};
-const projection=projectBackgroundV2Timeline(scene,{},400);assert.equal(projection.lanes.length,4);assert.deepEqual(projection.events.map(event=>[event.label,event.worldX]),[["boss-start",8200],["END",12000]]);assert.equal(projection.bounds.endX,12000);
+const projection=projectBackgroundV2Timeline(scene,{},400);assert.equal(projection.lanes.length,4);assert.deepEqual(projection.events.map(event=>[event.label,event.worldX]),[["boss-start",8200],["end",12000]]);assert.equal(projection.bounds.endX,12000);
 const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");assert.match(source,/eventsLabel\.textContent="Events"/);assert.match(source,/marker\.textContent=String\(index\+1\)/);assert.match(source,/marker\.title=event\.label/);assert.match(source,/aria-label.*event\.worldX/);assert.doesNotMatch(source,/eventsGutter[\s\S]{0,300}cm-v2-parallax/);
 assert.match(source,/const eventRowHeight=16/,"Events lane uses the reduced 16px presentation height");
 assert.match(source,/cm-v2-event-row::before\{[^}]*border-top:1px/,"Events lane renders a thin horizontal line");
