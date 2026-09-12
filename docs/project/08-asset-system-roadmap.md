@@ -317,14 +317,16 @@ Actual order depends on Phase A findings and active product work.
 
 Priority: P3
 
-Status: **PARTIALLY COMPLETE. Phase H2a — lifecycle / reference UX COMPLETE.**
+Status: **SAFETY SCOPE COMPLETE. Phase H2b — DEV missing-asset placeholder COMPLETE.**
 H1 implements live lifecycle metadata, removed-ID tombstones, replacement graph
 validation, deterministic known-reference queries, unused-candidate reporting,
 and known-reference removal assessment. H2a exposes lifecycle, separate blocking
 and informational counts, expandable provenance, scoped removal assessment, and
-the canonical limitation in the read-only Scene Asset Context. Phase H remains
-partially complete: H2b DEV missing-asset presentation and richer destructive
-deprecation, replacement, and safe-removal workflows remain pending.
+the canonical limitation in the read-only Scene Asset Context. H2b adds DEV-only,
+bounds-preserving diagnostics for confirmed unresolved or failed BGR V2 segment,
+object, and static-backdrop resources. H1 + H2a + H2b exhaust the currently defined
+Phase H safety scope. Destructive deprecation, replacement, reference rewriting,
+and safe-removal workflows remain outside that completed scope.
 
 ### Goal
 

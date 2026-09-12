@@ -544,6 +544,7 @@ export class WebGLSceneRenderer {
     this.starfieldBackgroundV2 = new BackgroundV2StarfieldRenderer(gl);
     (globalThis as any).__CM_BGR_SPRITE_TEXTURES__ = () => this.spriteBackground.getTextureInfoSnapshot();
     (globalThis as any).__CM_BGR_V2_TEXTURES__ = () => this.spriteBackgroundV2.getTextureInfoSnapshot();
+    (globalThis as any).__CM_BGR_V2_MISSING_ASSETS__ = () => this.spriteBackgroundV2.getMissingAssetDiagnostics();
     this.atmosphericFX = createAtmosphericFXPass(gl);
     // SDF vector pass — restores to the main program/VAO/uLogic after each draw.
     // Defensive: a shader compile/link failure must NOT blank the whole scene —
@@ -1139,6 +1140,8 @@ export class WebGLSceneRenderer {
     const v2Commands = v2Frame
       ? materializeBackgroundFrameCommands(v2Frame, { playerWorldX: levelX })
       : { staticBackdrop: undefined, behindGameplay: [] as BackgroundSpriteDrawCommand[], foreground: [] as BackgroundSpriteDrawCommand[] };
+    const bgrDevMode = (globalThis as any).__CM_PIXEL_BGR_LAB_UI__?.isOpen?.() === true;
+    this.spriteBackgroundV2.beginFrame();
     const resetSerial = consumeBackgroundMarkerRuntimeReset(globalThis);
     if (resetSerial !== this.seenMarkerResetSerial) {
       this.seenMarkerResetSerial = resetSerial;
@@ -1172,8 +1175,8 @@ export class WebGLSceneRenderer {
     if (sceneV2 && backgroundState?.enabled) {
       this.spriteBackground.retainLayerIds(new Set());
       this.starfieldBackgroundV2.draw(v2Frame?.environment.starfield, { logicW: this.logicW, logicH: this.logicH }, this.prog, this.vao, { logic: this.uLogic, pos: this.uPos, size: this.uSize, color: this.uColor });
-      if (v2Commands.staticBackdrop) this.spriteBackgroundV2.draw([v2Commands.staticBackdrop], { logicW: this.logicW, logicH: this.logicH });
-      this.spriteBackgroundV2.draw(v2Commands.behindGameplay, { logicW: this.logicW, logicH: this.logicH });
+      if (v2Commands.staticBackdrop) this.spriteBackgroundV2.draw([v2Commands.staticBackdrop], { logicW: this.logicW, logicH: this.logicH, devMode: bgrDevMode });
+      this.spriteBackgroundV2.draw(v2Commands.behindGameplay, { logicW: this.logicW, logicH: this.logicH, devMode: bgrDevMode });
     } else if (selectBackgroundFallback(backgroundState) === "layers") {
       this.drawBackgroundLayers(resolveBackgroundLayers({ enabled: true, source: { kind: "layers", layers } }), tSec, sx, sy);
     } else {
@@ -1755,7 +1758,7 @@ export class WebGLSceneRenderer {
 
     this.drawDebugCollisionRings(debugCollisionCircles);
 
-    this.spriteBackgroundV2.draw(v2Commands.foreground, { logicW: this.logicW, logicH: this.logicH });
+    this.spriteBackgroundV2.draw(v2Commands.foreground, { logicW: this.logicW, logicH: this.logicH, devMode: bgrDevMode });
     this.spriteBackgroundV2.retainCommands([...(v2Commands.staticBackdrop ? [v2Commands.staticBackdrop] : []), ...v2Commands.behindGameplay, ...v2Commands.foreground]);
     gl.bindVertexArray(null);
   }

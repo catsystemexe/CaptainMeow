@@ -1,4 +1,5 @@
 import { activeBackgroundResourceKeys, resolveBackgroundCommandTiles, type BackgroundV2DrawCommand, type BackgroundTextureResourceKey } from "./BackgroundV2RenderCommands";
+import { claimMissingAssetWarning, projectMissingAssetPresentation, type MissingAssetDiagnostic } from "./BackgroundV2MissingAssetPresentation";
 
 type Resource = { url: string; texture: WebGLTexture; state: "loading" | "ready" | "error"; width: number; height: number; generation: number; warned?: boolean };
 export type BackgroundV2TextureInfo = { resourceKey: string; url: string; state: Resource["state"]; width: number; height: number; generation: number };
@@ -15,6 +16,9 @@ export class BackgroundV2SpriteRenderer {
   private uTexture: WebGLUniformLocation;
   private uFlip: WebGLUniformLocation;
   private resources = new Map<BackgroundTextureResourceKey, Resource>();
+  private placeholderTexture: WebGLTexture;
+  private diagnostics: MissingAssetDiagnostic[] = [];
+  private warnedMissing = new Set<string>();
   private generation = 0;
 
   constructor(private readonly gl: WebGL2RenderingContext) {
@@ -23,6 +27,19 @@ export class BackgroundV2SpriteRenderer {
     const buffer = gl.createBuffer();
     if (!vao || !buffer) throw new Error("BackgroundV2SpriteRenderer allocation failed");
     this.vao = vao; this.buffer = buffer;
+    const placeholderTexture = gl.createTexture();
+    if (!placeholderTexture) throw new Error("BackgroundV2SpriteRenderer placeholder allocation failed");
+    this.placeholderTexture = placeholderTexture;
+    const pixels = new Uint8Array(8 * 8 * 4);
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+      const bright = x === y || x + y === 7 || ((x >> 1) + (y >> 1)) % 2 === 0;
+      const offset = (y * 8 + x) * 4;
+      pixels.set(bright ? [255, 0, 220, 210] : [70, 0, 55, 150], offset);
+    }
+    gl.bindTexture(gl.TEXTURE_2D, placeholderTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 8, 8, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0, 1,0, 0,1, 0,1, 1,0, 1,1]), gl.STATIC_DRAW);
     const position = gl.getAttribLocation(this.program, "aPos");
@@ -32,11 +49,19 @@ export class BackgroundV2SpriteRenderer {
     gl.bindVertexArray(null); gl.bindBuffer(gl.ARRAY_BUFFER, null);
   }
 
-  draw(commands: readonly BackgroundV2DrawCommand[], args: { logicW: number; logicH: number }): void {
+  beginFrame(): void { this.diagnostics = []; }
+
+  draw(commands: readonly BackgroundV2DrawCommand[], args: { logicW: number; logicH: number; devMode?: boolean }): void {
     for (const command of commands) {
       const resource = this.ensureResource(command.resourceKey, command.url);
-      if (resource.state !== "ready") {
-        if (resource.state === "error" && !resource.warned) { console.warn(`[BGR V2] texture failed: ${resource.url}`); resource.warned = true; }
+      const metadata = resource.width > 0 && resource.height > 0 ? resource : command.expectedTextureSize;
+      const missing = projectMissingAssetPresentation(command, resource.state, args.devMode === true, { width: args.logicW, height: args.logicH }, metadata);
+      if (command.assetResolved === false && claimMissingAssetWarning(this.warnedMissing, command.assetId)) {
+        console.warn(`[BGR V2] unresolved Asset ID: ${command.assetId} (${command.url}; instance ${command.instanceId})`);
+      }
+      if (resource.state !== "ready" || command.assetResolved === false) {
+        if (resource.state === "error" && !resource.warned) { console.warn(`[BGR V2] texture failed: ${command.assetId} (${resource.url}; instance ${command.instanceId})`); resource.warned = true; }
+        if (missing.length) { this.diagnostics.push(...missing); this.drawPlaceholder(command, missing.map(({ bounds }) => bounds), args); }
         continue;
       }
       const tiles = resolveBackgroundCommandTiles(command, resource, args.logicW, args.logicH);
@@ -67,6 +92,21 @@ export class BackgroundV2SpriteRenderer {
     const snapshot: Record<string, BackgroundV2TextureInfo> = {};
     for (const [resourceKey, resource] of this.resources) snapshot[resourceKey] = { resourceKey, url: resource.url, state: resource.state, width: resource.width, height: resource.height, generation: resource.generation };
     return snapshot;
+  }
+  getMissingAssetDiagnostics(): readonly MissingAssetDiagnostic[] { return this.diagnostics.map((entry) => ({ ...entry, bounds: { ...entry.bounds } })); }
+
+  private drawPlaceholder(command: BackgroundV2DrawCommand, tiles: Array<{ x: number; y: number; width: number; height: number }>, args: { logicW: number; logicH: number }): void {
+    const gl = this.gl;
+    gl.useProgram(this.program); gl.bindVertexArray(this.vao); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.placeholderTexture);
+    gl.uniform1i(this.uTexture, 0); gl.uniform2f(this.uLogic, args.logicW, args.logicH); gl.uniform1f(this.uOpacity, 1); gl.uniform2i(this.uFlip, 0, 0);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    if ("clip" in command && command.clip) {
+      const height = Number.isFinite(command.clip.height) ? command.clip.height : args.logicH;
+      gl.enable(gl.SCISSOR_TEST); gl.scissor(Math.floor(command.clip.x), Math.floor(args.logicH - command.clip.y - height), Math.ceil(command.clip.width), Math.ceil(height));
+    }
+    for (const tile of tiles) { gl.uniform2f(this.uPos, tile.x + tile.width / 2, tile.y + tile.height / 2); gl.uniform2f(this.uSize, tile.width, tile.height); gl.drawArrays(gl.TRIANGLES, 0, 6); }
+    if ("clip" in command && command.clip) gl.disable(gl.SCISSOR_TEST);
+    gl.disable(gl.BLEND); gl.bindTexture(gl.TEXTURE_2D, null); gl.bindVertexArray(null);
   }
 
   private ensureResource(key: string, url: string): Resource {
