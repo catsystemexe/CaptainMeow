@@ -1,6 +1,6 @@
 # Captain Meow — Asset System
 
-Status: DESIGN BASIS / PHASE H2a LIFECYCLE AND REFERENCE UX IMPLEMENTED
+Status: DESIGN BASIS / PHASE H2b DEV MISSING-ASSET PRESENTATION IMPLEMENTED
 Last updated: 2026-09-12
 
 This document defines the intended normative conventions and architecture for Captain Meow asset identity, preparation, cataloguing, validation, Scene Lab integration, and runtime resolution.
@@ -256,7 +256,11 @@ read-only Scene Asset Context. The selected asset shows separate blocking and
 informational counts, expandable deterministic provenance records, scoped removal
 wording, and the canonical limitation above. Deprecated definitions can also show
 their advisory replacement ID. This UI adds no deletion, replacement, migration,
-or reference-rewrite action; the DEV missing-asset placeholder remains deferred.
+or reference-rewrite action. Phase H2b adds procedural, bounds-preserving BGR V2
+placeholders for confirmed unresolved IDs and failed texture loads in the existing
+DEV presentation. Pending loads and GAME rendering remain unchanged. Structured
+identity/bounds diagnostics are exposed by `__CM_BGR_V2_MISSING_ASSETS__`, while
+destructive lifecycle actions remain deferred.
 
 ## 8. Implemented current BGR preparation convention (Phase F1)
 

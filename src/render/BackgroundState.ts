@@ -1,7 +1,7 @@
 import { createB1SpriteParallaxDemoState, createB2BackgroundSceneDemoState, type BackgroundState } from "./webgl/bg/layers/BackgroundLayerTypes";
 import type { BackgroundScene } from "./webgl/bg/layers/BackgroundSceneTypes";
 import type { BackgroundSceneV2 } from "./bg/v2/BackgroundV2Types";
-import { createBackgroundV2VisualVerificationScene } from "./bg/v2/BackgroundV2VisualVerificationScene";
+import { createBackgroundV2MissingAssetVerificationScene, createBackgroundV2VisualVerificationScene } from "./bg/v2/BackgroundV2VisualVerificationScene";
 import { createBackgroundV2DesertTestScene } from "./bg/v2/BackgroundV2DesertTestScene";
 
 const STATE_KEY = "__CM_BACKGROUND_STATE__";
@@ -181,6 +181,10 @@ export function enableM4BackgroundV2Demo(root: any = globalThis): BackgroundStat
 /** Enables the reusable visual acceptance scene without bypassing typed background state. */
 export function enableBackgroundV2VisualVerification(root: any = globalThis): BackgroundState {
   return setBackgroundSceneV2(createBackgroundV2VisualVerificationScene(), root);
+}
+
+export function enableBackgroundV2MissingAssetVerification(root: any = globalThis): BackgroundState {
+  return setBackgroundSceneV2(createBackgroundV2MissingAssetVerificationScene(), root);
 }
 
 export const BACKGROUND_V2_DESERT_VERIFICATION_START_X = 0;

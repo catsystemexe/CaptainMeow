@@ -63,3 +63,15 @@ export function createBackgroundV2VisualVerificationScene(): BackgroundSceneV2 {
     ],
   };
 }
+
+/** Ephemeral DEV fixture: explicit bounds make both unresolved-ID placeholders deterministic. */
+export function createBackgroundV2MissingAssetVerificationScene(): BackgroundSceneV2 {
+  const unavailable = asset("__bgr-v2-missing-verification__", "/__cm_test__/missing-bgr-v2.png");
+  const unavailableSegment = asset("finite-stripes", "/__cm_test__/missing-bgr-v2-segment.png");
+  return { version: 2, id: "bgr-v2-missing-asset-verification", environment: {}, tracks: [{
+    id: "missing-assets", name: "Missing asset diagnostics", role: "near", mode: "sequence", enabled: true,
+    parallax: { x: 0, y: 0 }, zBase: 0,
+    segments: [{ id: "missing-segment", startTrackX: 180, widthPx: 220, asset: unavailableSegment, offsetY: 180, opacity: 1, blend: "normal", localZ: 0, enabled: true }],
+    objects: [{ id: "missing-object", asset: unavailable, startTrackX: 480, y: 220, width: 160, height: 120, localZ: 1, opacity: 1, blend: "normal", enabled: true }],
+  }] };
+}
