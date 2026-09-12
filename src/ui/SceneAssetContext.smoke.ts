@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { BACKGROUND_ASSET_DECLARATIONS } from "../assets/BackgroundAssets";
-import { SCENE_ASSET_CONTEXT_ITEMS, sceneAssetUsageLabel } from "./SceneAssetContext";
+import {
+  DEFAULT_SCENE_ASSET_FILTER,
+  filterSceneAssetContextItems,
+  SCENE_ASSET_CONTEXT_ITEMS,
+  SCENE_ASSET_FILTERS,
+  sceneAssetUsageLabel,
+  type SceneAssetContextItem,
+} from "./SceneAssetContext";
 
 assert.equal(SCENE_ASSET_CONTEXT_ITEMS.length, BACKGROUND_ASSET_DECLARATIONS.length, "right catalogue represents every canonical declaration");
 assert.deepEqual(SCENE_ASSET_CONTEXT_ITEMS, BACKGROUND_ASSET_DECLARATIONS.map(({ definition, background }) => ({
@@ -17,12 +24,34 @@ assert.deepEqual([sceneAssetUsageLabel("segment"), sceneAssetUsageLabel("object"
 const multiRole = SCENE_ASSET_CONTEXT_ITEMS.find(item => item.usage.length > 1);
 assert(multiRole, "canonical catalogue contains a multi-role asset");
 assert.equal(multiRole.usage.map(sceneAssetUsageLabel).length, multiRole.usage.length, "all usage roles are retained");
+assert.deepEqual(SCENE_ASSET_FILTERS, ["all", "segment", "object", "static-backdrop"], "filter model contains exactly the four presentation filters");
+assert.equal(DEFAULT_SCENE_ASSET_FILTER, "all", "catalogue defaults to ALL");
+assert.strictEqual(filterSceneAssetContextItems(SCENE_ASSET_CONTEXT_ITEMS, "all"), SCENE_ASSET_CONTEXT_ITEMS, "ALL returns the complete canonical projection");
+for (const usage of ["segment", "object", "static-backdrop"] as const) {
+  const filtered = filterSceneAssetContextItems(SCENE_ASSET_CONTEXT_ITEMS, usage);
+  assert(filtered.every((item) => item.usage.includes(usage)), `${sceneAssetUsageLabel(usage)} contains only matching canonical usage`);
+  assert.deepEqual(filtered, SCENE_ASSET_CONTEXT_ITEMS.filter((item) => item.usage.includes(usage)), `${sceneAssetUsageLabel(usage)} preserves canonical order`);
+}
+for (const usage of multiRole.usage) assert(filterSceneAssetContextItems(SCENE_ASSET_CONTEXT_ITEMS, usage).includes(multiRole), "multi-role asset appears in every applicable filter");
+const noMatches = filterSceneAssetContextItems([
+  { ...multiRole, usage: ["segment"] },
+] satisfies readonly SceneAssetContextItem[], "static-backdrop");
+assert.equal(noMatches.length, 0, "filter helper supports an empty category without fallback");
 
 const contextSource = readFileSync(new URL("./SceneAssetContext.ts", import.meta.url), "utf8");
 assert.match(contextSource, /className = "cm-scene-context"/);
 assert.match(contextSource, /dataset\.sceneContext = "assets"/);
 assert.match(contextSource, /card\.setAttribute\("aria-pressed", String\(item\.id === selectedAssetId\)\)/);
 assert.match(contextSource, /card\.onclick = \(\) => onSelect\(item\.id\)/);
+assert.match(contextSource, /filterBar\.setAttribute\("role", "group"\)/);
+assert.match(contextSource, /filterBar\.setAttribute\("aria-label", "Asset usage filter"\)/);
+assert.match(contextSource, /button\.type = "button"/);
+assert.match(contextSource, /button\.setAttribute\("aria-pressed", String\(filter === activeSceneAssetFilter\)\)/, "active filter is exposed accessibly");
+assert.match(contextSource, /activeSceneAssetFilter = filter;[\s\S]*renderCatalog\(\)/, "filter changes only presentation state before rerendering cards");
+assert.match(contextSource, /empty\.textContent = "No assets in this category"/, "empty filter result is diagnosed");
+assert.match(contextSource, /const selected = SCENE_ASSET_CONTEXT_ITEMS\.find\(\(item\) => item\.id === selectedAssetId\)/, "selected detail remains sourced independently of filtered cards");
+const filterClickHandler = contextSource.match(/button\.onclick = \(\) => \{([\s\S]*?)\n    \};/)?.[1] ?? "";
+assert.doesNotMatch(filterClickHandler, /onSelect|selectedAssetId/, "filter changes do not invoke or replace selection authority");
 assert.match(contextSource, /card\.title = item\.displayName/, "card title preserves the full canonical display name");
 assert.match(contextSource, /name\.textContent = item\.displayName/, "card caption uses the canonical display name");
 assert.match(contextSource, /image\.src = item\.runtimeUrl/);
@@ -46,7 +75,7 @@ for (const provenance of ["reference.sourceId", "reference.sourceKind", "referen
 assert.match(contextSource, /reference\.impact === "blocking" \? "BLOCKING" : "INFO"/);
 assert.match(contextSource, /limitation\.textContent = UNUSED_CANDIDATE_LIMITATION/, "the canonical limitation remains discoverable");
 for (const destructive of ["Delete Asset", "Apply Replacement", "Rewrite References", "Fix References"]) assert(!contextSource.includes(destructive), `${destructive} is absent`);
-assert.doesNotMatch(contextSource, /contextmenu|ALL \| SEG \| OBJ \| BGR/, "no filtering or context-menu UI is introduced");
+assert.doesNotMatch(contextSource, /contextmenu/, "no context-menu UI is introduced");
 
 const cardRule = contextSource.match(/\.cm-scene-asset-card\{([^}]*)\}/)?.[1] ?? "";
 assert.match(cardRule, /padding:0 0 3px/, "thumbnail frame has no horizontal card inset");

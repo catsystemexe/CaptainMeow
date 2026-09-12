@@ -12,6 +12,20 @@ export interface SceneAssetContextItem {
   readonly lifecycle: { readonly state: AssetLifecycleState; readonly replacementId?: AssetId };
 }
 
+export const SCENE_ASSET_FILTERS = ["all", "segment", "object", "static-backdrop"] as const;
+export type SceneAssetFilter = (typeof SCENE_ASSET_FILTERS)[number];
+export const DEFAULT_SCENE_ASSET_FILTER: SceneAssetFilter = "all";
+
+// Presentation-only state intentionally survives Scene context DOM rebuilds and lab visibility changes.
+let activeSceneAssetFilter: SceneAssetFilter = DEFAULT_SCENE_ASSET_FILTER;
+
+export function filterSceneAssetContextItems(
+  items: readonly SceneAssetContextItem[],
+  filter: SceneAssetFilter,
+): readonly SceneAssetContextItem[] {
+  return filter === "all" ? items : items.filter((item) => item.usage.includes(filter));
+}
+
 /** Read-only authoring projection; canonical declarations remain the sole metadata owner. */
 export const SCENE_ASSET_CONTEXT_ITEMS: readonly SceneAssetContextItem[] = BACKGROUND_ASSET_DECLARATIONS.map(
   ({ definition, background }) => ({
@@ -129,24 +143,51 @@ export function createSceneAssetContext(
 
   const title = documentRef.createElement("h2");
   title.textContent = "ASSETS";
+  const filterBar = documentRef.createElement("div");
+  filterBar.className = "cm-scene-asset-filter";
+  filterBar.setAttribute("role", "group");
+  filterBar.setAttribute("aria-label", "Asset usage filter");
   const catalog = documentRef.createElement("div");
   catalog.className = "cm-scene-asset-catalog";
   catalog.setAttribute("aria-label", "Scene asset catalogue");
-  for (const item of SCENE_ASSET_CONTEXT_ITEMS) {
-    const card = documentRef.createElement("button");
-    card.type = "button";
-    card.className = "cm-scene-asset-card";
-    card.title = item.displayName;
-    card.setAttribute("aria-label", `Select asset: ${item.displayName}`);
-    card.setAttribute("aria-pressed", String(item.id === selectedAssetId));
-    card.dataset.assetId = item.id;
-    const name = documentRef.createElement("span");
-    name.className = "cm-scene-asset-name";
-    name.textContent = item.displayName;
-    card.append(preview(documentRef, item, "cm-scene-asset-thumb", true), name);
-    card.onclick = () => onSelect(item.id);
-    catalog.appendChild(card);
+  const renderCatalog = () => {
+    catalog.replaceChildren();
+    for (const item of filterSceneAssetContextItems(SCENE_ASSET_CONTEXT_ITEMS, activeSceneAssetFilter)) {
+      const card = documentRef.createElement("button");
+      card.type = "button";
+      card.className = "cm-scene-asset-card";
+      card.title = item.displayName;
+      card.setAttribute("aria-label", `Select asset: ${item.displayName}`);
+      card.setAttribute("aria-pressed", String(item.id === selectedAssetId));
+      card.dataset.assetId = item.id;
+      const name = documentRef.createElement("span");
+      name.className = "cm-scene-asset-name";
+      name.textContent = item.displayName;
+      card.append(preview(documentRef, item, "cm-scene-asset-thumb", true), name);
+      card.onclick = () => onSelect(item.id);
+      catalog.appendChild(card);
+    }
+    if (catalog.childElementCount === 0) {
+      const empty = documentRef.createElement("p");
+      empty.className = "cm-scene-asset-empty";
+      empty.textContent = "No assets in this category";
+      catalog.appendChild(empty);
+    }
+  };
+  for (const filter of SCENE_ASSET_FILTERS) {
+    const button = documentRef.createElement("button");
+    button.type = "button";
+    button.className = "cm-scene-asset-filter-button";
+    button.textContent = filter === "all" ? "ALL" : sceneAssetUsageLabel(filter);
+    button.setAttribute("aria-pressed", String(filter === activeSceneAssetFilter));
+    button.onclick = () => {
+      activeSceneAssetFilter = filter;
+      for (const peer of filterBar.children) peer.setAttribute("aria-pressed", String(peer === button));
+      renderCatalog();
+    };
+    filterBar.appendChild(button);
   }
+  renderCatalog();
 
   const detailTitle = documentRef.createElement("h2");
   detailTitle.textContent = "SELECTED ASSET";
@@ -172,7 +213,7 @@ export function createSceneAssetContext(
   } else {
     detail.textContent = selectedAssetId ? `Unknown / unresolved asset: ${selectedAssetId}` : "Catalogue empty";
   }
-  context.append(title, catalog, detailTitle, detail);
+  context.append(title, filterBar, catalog, detailTitle, detail);
   return context;
 }
 
@@ -180,7 +221,12 @@ export const SCENE_ASSET_CONTEXT_CSS = `
 .cm-scene-context{min-height:100%;box-sizing:border-box;padding:8px;overflow:visible;color:#eaf6ff;font:11px/1.25 ui-monospace,Menlo,Consolas,monospace}
 .cm-scene-context h2{margin:0 0 6px;padding-bottom:4px;border-bottom:1px solid rgba(142,232,255,.2);color:#8ee8ff;font-size:11px;letter-spacing:.08em}
 .cm-scene-context h2:not(:first-child){margin-top:10px}
+.cm-scene-asset-filter{display:flex;gap:3px;margin:0 0 4px}
+.cm-scene-asset-filter-button{padding:2px 6px;border:1px solid rgba(142,232,255,.2);border-radius:2px;background:#071521;color:#8f9da7;font:9px/1.2 ui-monospace,Menlo,Consolas,monospace;cursor:pointer}
+.cm-scene-asset-filter-button[aria-pressed="true"]{border-color:#ffe66d;color:#ffe66d}
+.cm-scene-asset-filter-button:focus-visible{outline:1px solid #8ee8ff;outline-offset:1px}
 .cm-scene-asset-catalog{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.cm-scene-asset-empty{grid-column:1/-1;margin:2px 0;color:#8f9da7;font-size:9px}
 .cm-scene-asset-card{display:grid;grid-template-rows:48px minmax(0,1fr);gap:3px;min-width:0;padding:0 0 3px;border:1px solid rgba(142,232,255,.18);border-radius:2px;background:#071521;color:#eaf6ff;font:inherit;text-align:left;cursor:pointer}
 .cm-scene-asset-card[aria-pressed="true"]{border-color:#ffe66d;box-shadow:inset 0 0 0 1px rgba(255,230,109,.45)}
 .cm-scene-asset-card:focus-visible{outline:1px solid #8ee8ff;outline-offset:1px}
