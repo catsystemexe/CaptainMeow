@@ -286,6 +286,13 @@ Only when needed:
 
 Priority: P2–P3
 
+Status: G0 AUDIT COMPLETE for the current canonical BGR scope. The evidence-based
+inventory in `10-asset-normalization-candidate-audit.md` classifies all 15 current
+BGR declarations as technical/test-only and finds no normalization candidate or
+concrete normalization value. G1 is therefore a no-op for current BGR assets;
+proceed to Phase H. Other presentation domains remain separately deferred and are
+not declared normalized by this result.
+
 ### Goal
 
 Bring selected legacy assets into the approved preparation convention without unnecessary churn.
