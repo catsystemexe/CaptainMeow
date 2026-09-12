@@ -8,7 +8,10 @@ Historical-snapshot note: these findings describe the pre-implementation Phase A
 state. Phase B subsequently implemented the neutral core catalogue and derived
 BGR compatibility view. Phase C then migrated BGR V2 segment/object persistence
 to Asset-ID-only writes with catalogue-resolved legacy reads; static backdrop,
-BGR V1, and runtime renderer URL ownership remain later work.
+BGR V1, and runtime renderer URL ownership remain later work. Phase D subsequently
+added repository-local static validation for current catalogue shape and files and
+for derived migrated V2 segment/object references; the Phase A findings below
+remain a historical snapshot.
 
 ## 1. Executive summary
 
