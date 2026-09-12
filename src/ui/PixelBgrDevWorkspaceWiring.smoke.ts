@@ -5,6 +5,7 @@ const source = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf
 
 assert.equal(source.match(/createPixelBgrDevWorkspaceShell\(\)/g)?.length, 1, "Lab creates one stable workspace shell during construction");
 assert(source.includes("this.workspace.leftCanvas.appendChild(this.devLabHost.root)"), "one unified Lab host owns the left dock");
+assert(!source.includes("this.workspace.leftCanvas.appendChild(this.root)"), "the Scene body is not reparented out of the unified host");
 assert(source.includes("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))"), "V2 timeline is mounted in the center-owned timeline region");
 assert.match(source, /sourceBlock\.append\(this\.renderV2SceneContents\(v2Scene\)\);[\s\S]*?upperContent\.append\(headerBlock,this\.v2Spacer\(\),sourceBlock/, "the Scene contents remain within the grouped BGR Lab composition");
 assert(source.includes("while (this.root.childNodes.length > 1)") && source.includes("this.workspace.timeline.replaceChildren()"), "rerenders replace owned BGR and timeline contents without duplicating nodes or the shell");
