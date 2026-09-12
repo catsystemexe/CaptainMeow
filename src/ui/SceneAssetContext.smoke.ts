@@ -23,8 +23,12 @@ assert.match(contextSource, /className = "cm-scene-context"/);
 assert.match(contextSource, /dataset\.sceneContext = "assets"/);
 assert.match(contextSource, /card\.setAttribute\("aria-pressed", String\(item\.id === selectedAssetId\)\)/);
 assert.match(contextSource, /card\.onclick = \(\) => onSelect\(item\.id\)/);
+assert.match(contextSource, /card\.title = item\.displayName/, "card title preserves the full canonical display name");
+assert.match(contextSource, /name\.textContent = item\.displayName/, "card caption uses the canonical display name");
 assert.match(contextSource, /image\.src = item\.runtimeUrl/);
 assert.match(contextSource, /image\.onerror = \(\) =>/);
+assert.match(contextSource, /nativeSize\.textContent = `\$\{item\.nativeSize\.width\}×\$\{item\.nativeSize\.height\}`/, "thumbnail size overlay uses canonical native dimensions");
+assert.match(contextSource, /nativeSize\.setAttribute\("aria-hidden", "true"\)/);
 assert.match(contextSource, /field\("ID", selected\.id\)/);
 assert.match(contextSource, /field\("SIZE", `\$\{selected\.nativeSize\.width\} × \$\{selected\.nativeSize\.height\}`\)/);
 assert.match(contextSource, /field\("USAGE", selected\.usage\.map\(sceneAssetUsageLabel\)\.join\("  "\)\)/);
@@ -42,6 +46,21 @@ for (const provenance of ["reference.sourceId", "reference.sourceKind", "referen
 assert.match(contextSource, /reference\.impact === "blocking" \? "BLOCKING" : "INFO"/);
 assert.match(contextSource, /limitation\.textContent = UNUSED_CANDIDATE_LIMITATION/, "the canonical limitation remains discoverable");
 for (const destructive of ["Delete Asset", "Apply Replacement", "Rewrite References", "Fix References"]) assert(!contextSource.includes(destructive), `${destructive} is absent`);
+assert.doesNotMatch(contextSource, /contextmenu|ALL \| SEG \| OBJ \| BGR/, "no filtering or context-menu UI is introduced");
+
+const cardRule = contextSource.match(/\.cm-scene-asset-card\{([^}]*)\}/)?.[1] ?? "";
+assert.match(cardRule, /padding:0 0 3px/, "thumbnail frame has no horizontal card inset");
+const thumbRule = contextSource.match(/\.cm-scene-asset-thumb\{([^}]*)\}/)?.[1] ?? "";
+assert.match(thumbRule, /position:relative/, "thumbnail positions its native-size overlay");
+const imageRule = contextSource.match(/\.cm-scene-asset-thumb img,\.cm-scene-asset-preview img\{([^}]*)\}/)?.[1] ?? "";
+assert.match(imageRule, /object-fit:contain/, "thumbnail preserves aspect ratio without cropping");
+const pixelatedRule = contextSource.match(/\.cm-scene-asset-thumb img\.pixelated,\.cm-scene-asset-preview img\.pixelated\{([^}]*)\}/)?.[1] ?? "";
+assert.match(pixelatedRule, /image-rendering:pixelated/, "pixel-art rendering is preserved");
+const captionRule = contextSource.match(/\.cm-scene-asset-name\{([^}]*)\}/)?.[1] ?? "";
+assert.match(captionRule, /font-size:9px/, "caption font is reduced from 11px to 9px");
+assert.match(captionRule, /white-space:nowrap/, "caption remains on exactly one line");
+assert.match(captionRule, /overflow:hidden/, "long captions are clipped");
+assert.match(captionRule, /text-overflow:ellipsis/, "long captions use an ellipsis");
 
 const layoutSource = readFileSync(new URL("./PixelBgrDevWorkspaceLayout.ts", import.meta.url), "utf8");
 const rightRule = layoutSource.match(/\.cm-bgr-workspace-right \{([^}]*)\}/)?.[1] ?? "";
