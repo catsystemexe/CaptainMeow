@@ -155,6 +155,11 @@ Gameplay sprites separately use per-content/per-instance numeric sprite scale ap
 
 Not covered: general ID uniqueness, ID→URL resolution, BGR file existence, duplicate file registration, catalogue-to-persistence resolution, alpha bounds, browser image decode/WebGL appearance, visible missing placeholders, or Scene Lab thumbnails. No runtime/visual verification was performed in this audit.
 
+Implementation-history note (2026-09-12): Phase F1 subsequently added canonical
+BGR preparation metadata, deterministic PNG/SVG intrinsic-size inspection, and
+repository validation of declared dimensions, roles, placement convention, and
+repeat/seam state. This note does not rewrite the historical findings above.
+
 ## 12. CURRENT → TARGET → GAP → RISK matrix
 
 | Area | CURRENT | TARGET | GAP | RISK |
