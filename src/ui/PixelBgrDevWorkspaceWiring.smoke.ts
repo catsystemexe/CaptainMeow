@@ -55,6 +55,15 @@ assert.match(timelineRule, /flex-direction:\s*column/, "the timeline region give
 assert.match(timelineRule, /overflow-x:\s*hidden/);
 assert.match(timelineRule, /overflow-y:\s*hidden/, "the compact timeline region never introduces vertical scrolling");
 
+const disabledTimelineRule = cssRule('[data-timeline-mode="disabled"] .cm-bgr-workspace-timeline');
+assert.match(disabledTimelineRule, /display:\s*none/, "disabled mode explicitly removes the center timeline from rendering and layout");
+assert.match(disabledTimelineRule, /pointer-events:\s*none/, "disabled timeline content cannot receive pointer input");
+const disabledGutterRule = cssRule('[data-timeline-mode="disabled"] .cm-bgr-workspace-gutter');
+assert.match(disabledGutterRule, /display:\s*none/, "disabled mode explicitly removes the paired Scene multitrack gutter");
+assert.match(disabledGutterRule, /pointer-events:\s*none/, "disabled gutter content cannot receive pointer input");
+assert.match(cssRule('[data-timeline-mode="v2"] .cm-bgr-workspace-timeline'), /display:\s*flex/, "V2 mode restores the existing timeline presentation");
+assert.match(cssRule('[data-timeline-mode="v2"] .cm-bgr-workspace-gutter'), /display:\s*block/, "V2 mode restores the paired Scene multitrack gutter");
+
 assert(layoutSource.includes('viewport: "cm-bgr-workspace-viewport"'), "the transparent center keeps its stable viewport class");
 assert(layoutSource.includes('timeline: "cm-bgr-workspace-timeline"'), "the bottom region keeps its stable timeline class");
 assert(!source.includes("Timeline unavailable for this scene format"), "non-V2 scenes do not render a disabled workspace band");
