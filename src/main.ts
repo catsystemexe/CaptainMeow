@@ -327,7 +327,7 @@ async function main() {
       return;
     }
 
-    // Pixel BGR Lab toggle (F8): typed background scene authoring.
+    // F8 toggles the DEV Lab workspace; the last SCENE/ENEMY/HUD selection is preserved.
     if (e.code === "F8") {
       const ui = (globalThis as any).__CM_PIXEL_BGR_LAB_UI__;
       if (ui && typeof ui.toggle === "function") togglePixelBgrLab(ui);
@@ -369,7 +369,7 @@ async function main() {
   window.addEventListener(
     "pointerdown",
     (e) => {
-      if (Boolean((globalThis as any).__CM_SCENE_TIMELINE_DRAG_ACTIVE__) || (e.target instanceof HTMLElement && Boolean(e.target.closest(".cm-pixel-bgr-lab")))) return;
+      if (Boolean((globalThis as any).__CM_SCENE_TIMELINE_DRAG_ACTIVE__) || (e.target instanceof HTMLElement && Boolean(e.target.closest(".cm-dev-lab-host")))) return;
       // First tap arms the Web Audio context (iPad's only gesture path).
       void armAudio();
       // start only from TITLE; also prevent wrapper drag/select
