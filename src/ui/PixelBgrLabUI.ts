@@ -30,7 +30,7 @@ import { setV2StaticBackdropEnabled } from "./PixelBgrV2StaticBackdropEditing";
 import { insertV2LaneObject, insertV2LaneSegment, resolveV2LaneInsertTrack } from "./PixelBgrV2LaneInsert";
 import { isV2YNudgeTextTarget, nudgeV2SelectionY } from "./PixelBgrV2YNudge";
 import { createHudFxLabUI } from "../dev/HudFxLabUI";
-import { createRightLabHost } from "../dev/RightLabHost";
+import { createUnifiedDevLabHost, type DevLabMode, type UnifiedDevLabHost } from "../dev/UnifiedDevLabHost";
 import { createV2SceneEvent, deleteV2SceneEvent, duplicateV2SceneEvent, orderedV2SceneEvents, updateV2SceneEvent, type V2SceneEventEditResult } from "./PixelBgrV2SceneEvents";
 import { v2YRailValue, type V2YRailDrag } from "./PixelBgrV2YRail";
 import { rememberSceneLabCatalogEntry, resolveSceneLabV2Entry } from "./SceneLabLastScene";
@@ -104,6 +104,7 @@ export class PixelBgrLabUI {
   private readonly renderCoordinator = new PixelBgrRenderCoordinator();
   private enemyLabPanel: HTMLElement | null = null;
   private enemyLabOriginalStyle = "";
+  private readonly devLabHost: UnifiedDevLabHost;
   private sceneMenuOpen = false;
   private readonly sceneContentsExpanded = new Set<string>(["SEG", "OBJ", "EVE"]);
   private closeLaneInsertMenu: (() => void) | null = null;
@@ -128,7 +129,9 @@ export class PixelBgrLabUI {
     this.workspace.modeToggle.append(gameLabel, modeSwitch, devLabel);
     this.workspace.root.append(workspaceStyle);
     this.root = el("div", "cm-pixel-bgr-lab");
-    this.root.style.display = "none";
+    this.devLabHost = createUnifiedDevLabHost(this.root, createHudFxLabUI(), document, mode => this.setActiveDevLab(mode));
+    this.workspace.leftCanvas.appendChild(this.devLabHost.root);
+    this.workspace.root.dataset.activeLab = this.devLabHost.getActive();
     const style = el("style");
     style.textContent = `.cm-bgr-placement-overlay{position:fixed;z-index:100000;pointer-events:none;overflow:hidden;box-sizing:border-box}.cm-bgr-placement-box{position:absolute;border:2px solid #ffe66d;box-sizing:border-box}.cm-bgr-placement-origin{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;background:#ff4d6d;border-radius:50%}.cm-bgr-placement-chunk{position:absolute;top:0;bottom:0;border-left:2px dashed #66e3ff;border-right:2px dashed #66e3ff;background:rgba(102,227,255,.04)}.cm-bgr-placement-label{position:absolute;left:4px;top:4px;color:#eaf6ff;background:rgba(0,0,0,.65);font:12px monospace;padding:2px 4px}.cm-pixel-bgr-lab{position:relative;width:100%;height:100%;background:#040810;color:#eaf6ff;font:11px/1.2 ui-monospace,Menlo,Consolas,monospace;padding:4px;box-sizing:border-box;overflow:visible;display:flex;flex-direction:column;min-height:0;pointer-events:none}.cm-pixel-bgr-lab>:not(style){pointer-events:auto}.cm-pixel-bgr-lab h3{margin:0;color:#8ee8ff}.cm-pixel-bgr-lab button{margin:0;min-height:22px;padding:1px 3px;background:transparent;color:#eaf6ff;border:0;border-radius:0}.cm-pixel-bgr-lab input,.cm-pixel-bgr-lab select,.cm-pixel-bgr-lab textarea{min-height:26px;background:#071521;color:#eaf6ff;border:1px solid #28516d;border-radius:3px;font:inherit;box-sizing:border-box;max-width:100%}.cm-pixel-titlebar{display:block;min-width:0}.cm-pixel-titlebar h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cm-pixel-scene-summary{opacity:.72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cm-pixel-tabs{display:flex;flex-direction:column;align-items:flex-start;gap:0;margin:2px 0}.cm-pixel-tab[aria-selected="true"]{color:#fff;text-decoration:underline}.cm-pixel-tab-body{flex:0 0 auto;min-height:0;overflow:visible}.cm-pixel-panel{padding:4px 0;overflow:visible;min-height:0;margin-bottom:4px;box-sizing:border-box}.cm-pixel-props{overflow:visible}.cm-pixel-row{display:flex;gap:3px;flex-wrap:wrap;align-items:center;margin:3px 0;min-width:0}.cm-pixel-row label{min-width:68px;opacity:.78}.cm-pixel-row input,.cm-pixel-row select{flex:1 1 auto;min-width:0}.cm-pixel-list button{display:block;width:100%;text-align:left;margin:1px 0;padding:2px 5px;overflow:hidden;text-overflow:ellipsis}.cm-pixel-list button.sel{background:#235b80}.cm-pixel-msg{white-space:pre-wrap;color:#ffd166;overflow-wrap:anywhere;border:1px solid rgba(255,209,102,.18);border-radius:4px;padding:3px 5px;margin:3px 0}.cm-pixel-summary{width:100%;text-align:left}.cm-pixel-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:4px 0;min-width:0}.cm-pixel-toolbar input{width:min(190px,100%)}.cm-pixel-stepper{display:grid;grid-template-columns:28px minmax(72px,1fr) 28px;gap:3px;align-items:center;width:100%}.cm-pixel-stepper input{width:100%;text-align:right}.cm-pixel-stepper button{min-width:28px;padding:0}.cm-pixel-visual{margin-top:6px;padding-top:5px}.cm-pixel-nudges button{min-width:32px}.cm-pixel-preview{margin-top:5px}.cm-scene-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap}.cm-scene-toolbar input[type=text]{width:min(160px,100%)}.cm-timeline{position:relative;height:138px;border:1px solid rgba(120,220,255,.22);border-radius:6px;margin:6px 0;background:rgba(3,12,22,.78);overflow:hidden;user-select:none}.cm-ruler{position:absolute;left:0;right:0;top:0;height:26px;border-bottom:1px solid rgba(120,220,255,.16)}.cm-ruler-tick{position:absolute;top:0;height:100%;border-left:1px solid rgba(120,220,255,.22);font-size:10px;color:#9fdff2;padding-left:3px}.cm-chunk-line{position:absolute;left:0;right:0;top:42px;height:42px;border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.035)}.cm-chunk-block{position:absolute;top:46px;height:34px;cursor:grab;border:1px solid #52d7ff;border-radius:5px;background:rgba(45,132,180,.72);color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px;box-sizing:border-box;font-size:11px}.cm-chunk-block:hover{filter:brightness(1.18)}.cm-chunk-block.dragging{cursor:grabbing;filter:brightness(1.3)}.cm-chunk-block.sel{border-color:#ffe66d;box-shadow:0 0 0 2px rgba(255,230,109,.28);background:rgba(72,153,211,.9)}.cm-chunk-handle{position:absolute;top:0;bottom:0;width:10px;background:rgba(255,255,255,.22);border:0;padding:0;min-height:0;margin:0}.cm-chunk-handle.left{left:0;cursor:ew-resize}.cm-chunk-handle.right{right:0;cursor:ew-resize}.cm-overlap{position:absolute;top:42px;height:42px;background:repeating-linear-gradient(135deg,rgba(255,75,90,.65),rgba(255,75,90,.65) 4px,rgba(255,75,90,.28) 4px,rgba(255,75,90,.28) 8px);border-left:1px solid #ff4d6d;border-right:1px solid #ff4d6d;pointer-events:none}.cm-marker-row{position:absolute;left:0;right:0;top:96px;height:30px;border-top:1px solid rgba(120,220,255,.16)}.cm-marker-dot{position:absolute;top:6px;width:8px;height:18px;margin-left:-4px;border-radius:4px;background:#a78bfa}.cm-marker-dot.chunk{background:#4ade80}.cm-transport-button{display:inline-grid;place-items:center;min-width:28px;width:28px;padding:0}.cm-transport-button svg{width:16px;height:16px}.cm-mode-pill{padding:2px 6px;border:1px solid rgba(255,209,102,.35);border-radius:999px;color:#ffd166}.cm-current-x{font-weight:700;color:#fff}.cm-cursor{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #45a3ff;pointer-events:auto;cursor:ew-resize}.cm-cursor::after{content:"";position:absolute;top:25px;left:-5px;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #45a3ff}.cm-chunk-inspector{border-color:rgba(255,230,109,.28)}`
     style.textContent += `.cm-scene-contents{display:flex;flex-direction:column}.cm-scene-tree-row{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;min-height:22px}.cm-scene-tree-action,.cm-scene-tree-toggle{display:inline-grid;place-items:center;min-width:22px;width:22px;height:22px;min-height:22px!important;padding:0!important}.cm-scene-tree-action svg,.cm-scene-tree-toggle svg{width:15px;height:15px}.cm-scene-tree-action[data-state="mixed"]{opacity:.6}.cm-scene-tree-action[data-state="none"],.cm-scene-tree-action:disabled{opacity:.3}.cm-scene-tree-label{text-align:left!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cm-scene-tree-meta{display:flex;align-items:center;opacity:.6;font-size:9px}.cm-scene-tree-children{padding-left:24px}.cm-scene-tree-child{display:grid;grid-template-columns:22px minmax(0,1fr) max-content;align-items:center;min-height:20px}.cm-scene-tree-child.cm-scene-tree-event{grid-template-columns:22px 22px minmax(0,1fr) max-content}.cm-scene-tree-child.sel{background:rgba(142,232,255,.14)}.cm-scene-tree-child-label{text-align:left!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cm-scene-tree-ordinal{text-align:right;padding-right:3px;opacity:.72}`;
@@ -163,7 +166,6 @@ export class PixelBgrLabUI {
     setPixelBgrWorkspaceDisplayMode(this.workspace.root, mode);
     const modeSwitch=this.workspace.modeToggle.querySelector<HTMLButtonElement>("button[data-mode=toggle]");
     modeSwitch?.setAttribute("aria-checked",String(mode === "dev"));
-    this.root.style.display = mode === "dev" ? "" : "none";
     if (mode === "game") {
       this.closeSceneMenu(false);
       this.endTimelineDrag(); this.endV2SegmentDrag(); this.endV2ObjectDrag(); this.endV2EventDrag(); this.endV2YRailDrag(); this.endCursorDrag(); this.endDrag(); this.removeOverlay();
@@ -184,9 +186,16 @@ export class PixelBgrLabUI {
     panel.style.maxHeight = "none";
     panel.style.height = "100%";
     panel.style.borderRadius = "0";
-    const hudLab = createHudFxLabUI();
-    this.workspace.right.appendChild(createRightLabHost(panel, hudLab).root);
+    this.devLabHost.mount("enemy", panel);
   }
+  setActiveDevLab(mode: DevLabMode): void {
+    if (this.devLabHost.getActive() === mode) return;
+    this.devLabHost.setActive(mode);
+    this.workspace.root.dataset.activeLab = mode;
+    this.updateLabLayout();
+    this.notifyPresentationChange();
+  }
+  getActiveDevLab(): DevLabMode { return this.devLabHost.getActive(); }
   getDisplayMode(): PixelBgrDisplayMode { return this.displayMode; }
   getPresentationVerticalAlign(): "top" | "center" { return this.displayMode === "dev" ? "top" : "center"; }
   getGamePresentationRect(): GamePresentationRect {
@@ -207,6 +216,11 @@ export class PixelBgrLabUI {
   dispose(): void { window.removeEventListener("keydown",this.onV2YNudgeKeydown); window.removeEventListener("keydown",this.onDevTransportKeydown); this.closeSceneMenu(false); this.endTimelineDrag(); this.endV2SegmentDrag(); this.endV2ObjectDrag(); this.endV2EventDrag(); this.endV2YRailDrag(); this.endCursorDrag(); this.endDrag(); this.removeOverlay(); this.clearV2TimelineIndicatorRefs(); this.unsub(); this.viewportResizeObserver?.disconnect(); this.openListeners.clear(); this.presentationListeners.clear(); if (this.enemyLabPanel) { this.enemyLabPanel.style.cssText = this.enemyLabOriginalStyle; document.body.appendChild(this.enemyLabPanel); this.enemyLabPanel = null; } this.workspace.root.remove(); }
   private notifyOpenChange(): void { for (const listener of [...this.openListeners]) listener(this.visible); }
   private notifyPresentationChange(): void { for (const listener of [...this.presentationListeners]) listener(); }
+  private updateLabLayout(): void {
+    const sceneActive = this.getActiveDevLab() === "scene";
+    this.workspace.root.dataset.activeLab = this.getActiveDevLab();
+    this.workspace.root.dataset.timelineMode = sceneActive && getBackgroundSceneV2(globalThis) ? "v2" : "disabled";
+  }
   private setTimelineInputGuard(active: boolean): void { (globalThis as any).__CM_SCENE_TIMELINE_DRAG_ACTIVE__ = active; }
   private setDraft(scene: BackgroundScene, persist = true): void { this.draft = cloneScene(scene); if (persist) saveDraft(localStorage, this.draft); this.applyIfValid(); this.render(); this.syncOverlay(); }
   private applyIfValid(): void { if (validateBackgroundScene(this.draft).valid) setBackgroundScene(cloneScene(this.draft), globalThis); }
@@ -228,12 +242,10 @@ export class PixelBgrLabUI {
     this.activeTab = normalizePixelBgrLabTab(this.activeTab, pixelBgrLabTabForSelection(Boolean(this.selectedLayer()), this.selectedLayer()?.kind));
     if (!PIXEL_BGR_LEFT_TOOLS.includes(this.activeTab)) this.activeTab = "scene";
     const titlebar = el("div", "cm-pixel-titlebar");
-    const h = el("h3"); h.textContent = "Scene Lab [F8]";
     const v2Scene = getBackgroundSceneV2(globalThis);
-    this.workspace.root.dataset.timelineMode = v2Scene ? "v2" : "disabled";
+    this.updateLabLayout();
     const summary = el("div", "cm-scene-environment-row cm-pixel-scene-summary");
     summary.append(`SCENE: ${v2Scene?.id ?? this.draft.id ?? "untitled scene"}`);
-    titlebar.append(h);
     if (v2Scene) {
       const projection=projectBackgroundV2Timeline(v2Scene,{},this.currentX());
       this.workspace.timeline.appendChild(this.renderV2Timeline(projection));

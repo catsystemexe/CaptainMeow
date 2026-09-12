@@ -4,14 +4,18 @@ import { readFileSync } from "node:fs";
 const source = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 
 assert.equal(source.match(/createPixelBgrDevWorkspaceShell\(\)/g)?.length, 1, "Lab creates one stable workspace shell during construction");
-assert(source.includes("this.workspace.leftCanvas.appendChild(this.root)"), "existing Lab UI remains the transitional authoring owner in the left dock");
+assert(source.includes("this.workspace.leftCanvas.appendChild(this.devLabHost.root)"), "one unified Lab host owns the left dock");
 assert(source.includes("this.workspace.timeline.appendChild(this.renderV2Timeline(projection))"), "V2 timeline is mounted in the center-owned timeline region");
-assert.match(source, /sourceBlock\.append\(this\.renderV2Environment\(v2Scene\)\)[^;]*;[\s\S]*?upperContent\.append\(headerBlock,this\.v2Spacer\(\),sourceBlock/, "the environment surface remains within the grouped BGR Lab composition");
+assert.match(source, /sourceBlock\.append\(this\.renderV2SceneContents\(v2Scene\)\);[\s\S]*?upperContent\.append\(headerBlock,this\.v2Spacer\(\),sourceBlock/, "the Scene contents remain within the grouped BGR Lab composition");
 assert(source.includes("while (this.root.childNodes.length > 1)") && source.includes("this.workspace.timeline.replaceChildren()"), "rerenders replace owned BGR and timeline contents without duplicating nodes or the shell");
 assert(!source.includes(".cm-pixel-bgr-lab{position:fixed"), "DEV Lab no longer uses root-level floating-window geometry");
 assert(source.includes('this.setDisplayMode("dev")'), "opening the Lab activates DEV presentation");
+assert(source.includes("setActiveDevLab(mode: DevLabMode)") && source.includes("getActiveDevLab(): DevLabMode"), "the workspace controller exposes one canonical active Lab state");
+assert(source.includes("this.devLabHost.getActive()") && !source.includes("sceneVisible"), "Lab visibility derives from the unified host rather than parallel booleans");
 assert(source.includes('this.visible = mode === "dev"'), "one display mode owns GAME/DEV presentation visibility");
-assert(source.includes("createRightLabHost(panel, hudLab)"), "the existing Enemy Lab panel is reparented into the mutually exclusive right-lab host");
+assert(source.includes('this.devLabHost.mount("enemy", panel)'), "the existing Enemy Lab panel is reparented into the unified left host");
+assert(source.includes("createUnifiedDevLabHost(this.root, createHudFxLabUI()"), "Scene and one HUD instance are mounted in the unified left host");
+assert(!source.includes("createRightLabHost"), "the obsolete right-side Lab selector is absent");
 assert(source.includes("this.enemyLabOriginalStyle") && source.includes("document.body.appendChild(this.enemyLabPanel)"), "workspace disposal restores the existing Enemy Lab lifecycle owner");
 assert(source.includes("this.workspace.root.remove()"), "dispose removes the owned workspace DOM");
 
@@ -53,10 +57,11 @@ assert.match(timelineRule, /overflow-y:\s*hidden/, "the compact timeline region 
 assert(layoutSource.includes('viewport: "cm-bgr-workspace-viewport"'), "the transparent center keeps its stable viewport class");
 assert(layoutSource.includes('timeline: "cm-bgr-workspace-timeline"'), "the bottom region keeps its stable timeline class");
 assert(!source.includes("Timeline unavailable for this scene format"), "non-V2 scenes do not render a disabled workspace band");
-assert(source.includes('this.workspace.root.dataset.timelineMode = v2Scene ? "v2" : "disabled"'), "scene format explicitly owns timeline occupancy");
+assert(source.includes('this.workspace.root.dataset.timelineMode = sceneActive && getBackgroundSceneV2(globalThis) ? "v2" : "disabled"'), "active Scene mode and scene format jointly own timeline occupancy");
 assert(layoutSource.includes("left.append(leftCanvas, gutter)") && layoutSource.includes("center.append(viewport, timeline)") && layoutSource.includes("main.append(left, center, right)"), "center owns the game viewport and timeline between full-height sidebars");
 assert(layoutSource.includes("pointer-events: none"), "transparent authoring viewport preserves interaction with the existing game canvas");
 assert(layoutSource.includes('.cm-bgr-workspace-shell.is-game .cm-bgr-workspace-timeline'), "GAME mode hides the center-owned authoring timeline with the side regions");
+assert(layoutSource.includes('[data-active-lab="enemy"] .cm-bgr-workspace-right') && layoutSource.includes('[data-active-lab="hud"] .cm-bgr-workspace-right'), "the reserved Scene Context region is hidden outside Scene mode");
 assert(layoutSource.includes('modeToggle: "cm-bgr-workspace-mode-toggle"'), "the shell exposes one compact mode control region");
 assert(!layoutSource.includes("cm-bgr-workspace-topbar"), "the legacy full-workspace top bar is absent");
 assert(!layoutSource.includes(".cm-bgr-workspace-left,\n  .cm-bgr-workspace-right {\n    display: none"), "responsive layout does not silently hide both labs around 1000px");
