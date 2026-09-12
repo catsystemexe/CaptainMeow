@@ -1,6 +1,6 @@
 # Captain Meow — Asset System Implementation Roadmap
 
-Status: ACTIVE IMPLEMENTATION ROADMAP / PHASE D CURRENT-CONTRACT SCOPE COMPLETE
+Status: ACTIVE IMPLEMENTATION ROADMAP / PHASE F1 BGR SCOPE COMPLETE
 Last updated: 2026-09-12
 
 This roadmap turns `07-asset-system.md` into a staged implementation plan. The
@@ -240,6 +240,15 @@ Requires runtime/visual verification in addition to static checks.
 ## 8. Phase F — Preparation convention implementation
 
 Priority: P2
+
+Status: **PARTIALLY COMPLETE. Phase F1 — BGR measured preparation contract is
+complete.** Canonical BGR declarations now own measured native size, multi-role
+usage, current top-left compatibility placement, and evidence-based repeat/seam
+state. PNG/SVG inspection and repository validation enforce physical-file
+agreement. Runtime geometry, renderer behavior, and persistence are unchanged.
+
+Remaining Phase F work is deliberately deferred for animated/gameplay sprites,
+future pivot/default-scale migration, collision bounds, and a source-art pipeline.
 
 ### Goal
 
