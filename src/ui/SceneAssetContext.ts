@@ -31,7 +31,7 @@ export const sceneAssetUsageLabel = (usage: BackgroundAssetUsage): string => ({
   "static-backdrop": "BGR",
 })[usage];
 
-function preview(documentRef: Document, item: SceneAssetContextItem, className: string): HTMLElement {
+function preview(documentRef: Document, item: SceneAssetContextItem, className: string, showNativeSize = false): HTMLElement {
   const frame = documentRef.createElement("div");
   frame.className = className;
   const image = documentRef.createElement("img");
@@ -44,6 +44,13 @@ function preview(documentRef: Document, item: SceneAssetContextItem, className: 
   unavailable.hidden = true;
   image.onerror = () => { image.hidden = true; unavailable.hidden = false; };
   frame.append(image, unavailable);
+  if (showNativeSize) {
+    const nativeSize = documentRef.createElement("span");
+    nativeSize.className = "cm-scene-asset-native-size";
+    nativeSize.textContent = `${item.nativeSize.width}×${item.nativeSize.height}`;
+    nativeSize.setAttribute("aria-hidden", "true");
+    frame.appendChild(nativeSize);
+  }
   return frame;
 }
 
@@ -136,7 +143,7 @@ export function createSceneAssetContext(
     const name = documentRef.createElement("span");
     name.className = "cm-scene-asset-name";
     name.textContent = item.displayName;
-    card.append(preview(documentRef, item, "cm-scene-asset-thumb"), name);
+    card.append(preview(documentRef, item, "cm-scene-asset-thumb", true), name);
     card.onclick = () => onSelect(item.id);
     catalog.appendChild(card);
   }
@@ -174,13 +181,15 @@ export const SCENE_ASSET_CONTEXT_CSS = `
 .cm-scene-context h2{margin:0 0 6px;padding-bottom:4px;border-bottom:1px solid rgba(142,232,255,.2);color:#8ee8ff;font-size:11px;letter-spacing:.08em}
 .cm-scene-context h2:not(:first-child){margin-top:10px}
 .cm-scene-asset-catalog{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
-.cm-scene-asset-card{display:grid;grid-template-rows:48px minmax(0,1fr);gap:3px;min-width:0;min-height:70px;padding:3px;border:1px solid rgba(142,232,255,.18);border-radius:2px;background:#071521;color:#eaf6ff;font:inherit;text-align:left;cursor:pointer}
+.cm-scene-asset-card{display:grid;grid-template-rows:48px minmax(0,1fr);gap:3px;min-width:0;padding:0 0 3px;border:1px solid rgba(142,232,255,.18);border-radius:2px;background:#071521;color:#eaf6ff;font:inherit;text-align:left;cursor:pointer}
 .cm-scene-asset-card[aria-pressed="true"]{border-color:#ffe66d;box-shadow:inset 0 0 0 1px rgba(255,230,109,.45)}
 .cm-scene-asset-card:focus-visible{outline:1px solid #8ee8ff;outline-offset:1px}
 .cm-scene-asset-thumb,.cm-scene-asset-preview{display:grid;place-items:center;overflow:hidden;background:#02060a}
+.cm-scene-asset-thumb{position:relative}
 .cm-scene-asset-thumb img,.cm-scene-asset-preview img{display:block;width:100%;height:100%;object-fit:contain}
 .cm-scene-asset-thumb img.pixelated,.cm-scene-asset-preview img.pixelated{image-rendering:pixelated}
-.cm-scene-asset-name{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.cm-scene-asset-native-size{position:absolute;top:2px;left:2px;padding:1px 2px;background:rgba(2,6,10,.78);color:#eaf6ff;font:8px/1 ui-monospace,Menlo,Consolas,monospace;white-space:nowrap;pointer-events:none}
+.cm-scene-asset-name{min-width:0;padding:0 3px;overflow:hidden;color:#eaf6ff;font-size:9px;white-space:nowrap;text-overflow:ellipsis}
 .cm-scene-asset-unavailable{padding:4px;color:#ffd166;font-size:9px;text-align:center}
 .cm-scene-asset-detail h3{margin:6px 0;color:#fff;font-size:11px;overflow-wrap:anywhere}
 .cm-scene-asset-preview{height:104px;border:1px solid rgba(255,255,255,.12)}
