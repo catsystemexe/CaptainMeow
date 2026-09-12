@@ -1,6 +1,6 @@
 # Captain Meow — Asset System Implementation Roadmap
 
-Status: ACTIVE IMPLEMENTATION ROADMAP / PHASE H1 SAFETY FOUNDATION COMPLETE
+Status: ACTIVE IMPLEMENTATION ROADMAP / PHASE H2a LIFECYCLE / REFERENCE UX COMPLETE
 Last updated: 2026-09-12
 
 This roadmap turns `07-asset-system.md` into a staged implementation plan. The
@@ -205,10 +205,10 @@ Priority: P2
 
 Status: **PARTIALLY COMPLETE / E1 catalogue-native V2 picker implemented**
 
-E1 covers explicit V2 segment/object insert selection, Display Name options,
-runtime-URL preview, technical ID/path details, and contextual selection sync.
-The richer grouping, filtering/search, thumbnail tooling, deprecation, and
-reference-count capabilities below remain potential E2 scope.
+E1/S2 cover explicit V2 segment/object insert selection, Display Name options,
+runtime-URL thumbnail/preview, technical ID/path details, and contextual selection
+sync. H2a supplies selected-asset deprecation and reference-count inspection. The
+richer grouping and filtering/search capabilities below remain potential E2 scope.
 
 ### Goal
 
@@ -317,12 +317,14 @@ Actual order depends on Phase A findings and active product work.
 
 Priority: P3
 
-Status: **PARTIALLY COMPLETE. Phase H1 — lifecycle + reference safety foundation COMPLETE.**
+Status: **PARTIALLY COMPLETE. Phase H2a — lifecycle / reference UX COMPLETE.**
 H1 implements live lifecycle metadata, removed-ID tombstones, replacement graph
 validation, deterministic known-reference queries, unused-candidate reporting,
-and known-reference removal assessment. H2 remains pending for Scene Lab
-indicators/reference-count UI, the DEV missing-asset placeholder, and richer
-interactive deprecation, replacement, and safe-removal workflows.
+and known-reference removal assessment. H2a exposes lifecycle, separate blocking
+and informational counts, expandable provenance, scoped removal assessment, and
+the canonical limitation in the read-only Scene Asset Context. Phase H remains
+partially complete: H2b DEV missing-asset presentation and richer destructive
+deprecation, replacement, and safe-removal workflows remain pending.
 
 ### Goal
 

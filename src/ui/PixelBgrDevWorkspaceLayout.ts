@@ -229,7 +229,10 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 .cm-bgr-workspace-right {
   border-left: 1px solid rgba(120, 220, 255, .14);
   overflow: auto;
+  scrollbar-width: none;
 }
+
+.cm-bgr-workspace-right::-webkit-scrollbar { display: none; }
 
 .cm-hud-fx-lab { padding:4px; color:#eee; background:#000; }
 .cm-hud-fx-lab h3 { margin:0 0 5px; font-size:12px; letter-spacing:1px; }

@@ -1,6 +1,6 @@
 # Captain Meow — Asset System
 
-Status: DESIGN BASIS / PHASE H1 LIFECYCLE AND REFERENCE SAFETY IMPLEMENTED
+Status: DESIGN BASIS / PHASE H2a LIFECYCLE AND REFERENCE UX IMPLEMENTED
 Last updated: 2026-09-12
 
 This document defines the intended normative conventions and architecture for Captain Meow asset identity, preparation, cataloguing, validation, Scene Lab integration, and runtime resolution.
@@ -251,6 +251,13 @@ persisted files, browser localStorage, or dynamically constructed references. It
 does not prove global non-use, delete files, deprecate entries, redirect resolution,
 or automatically rewrite scenes.
 
+Phase H2a exposes that canonical lifecycle and known-reference assessment in the
+read-only Scene Asset Context. The selected asset shows separate blocking and
+informational counts, expandable deterministic provenance records, scoped removal
+wording, and the canonical limitation above. Deprecated definitions can also show
+their advisory replacement ID. This UI adds no deletion, replacement, migration,
+or reference-rewrite action; the DEV missing-asset placeholder remains deferred.
+
 ## 8. Implemented current BGR preparation convention (Phase F1)
 
 `BACKGROUND_ASSET_DECLARATIONS` is the single owner of each BGR asset's identity,
@@ -487,12 +494,13 @@ Existing specialised content sources and generated atlas metadata remain valid o
 
 ## 13. Scene Lab integration
 
-Phase E1 implements a compact catalogue-native picker for new V2 segment and
-object insertion. Its options are projected from the canonical BGR declarations:
+Phase E1/S2 implement a compact catalogue-native picker and preview context for new
+V2 segment and object insertion. Its options are projected from canonical BGR declarations:
 the mutable Display Name is the primary UI label, Asset ID remains the persisted
 identity, and the canonical runtime URL supplies both insertion delivery data and
 the bounded DOM image preview. Asset ID and runtime path remain visible as
-secondary technical details. Advanced grouping, filtering, and search remain
+secondary technical details. H2a adds lifecycle and known-reference counts/details
+to the selected-asset context. Advanced grouping, filtering, and search remain
 future scope; V1 and the V2 static backdrop are unchanged.
 
 Scene Lab SHOULD present human-oriented asset information by default:
