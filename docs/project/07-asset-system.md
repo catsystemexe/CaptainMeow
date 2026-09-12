@@ -365,6 +365,14 @@ Existing specialised content sources and generated atlas metadata remain valid o
 
 ## 12. Scene Lab integration
 
+Phase E1 implements a compact catalogue-native picker for new V2 segment and
+object insertion. Its options are projected from the canonical BGR declarations:
+the mutable Display Name is the primary UI label, Asset ID remains the persisted
+identity, and the canonical runtime URL supplies both insertion delivery data and
+the bounded DOM image preview. Asset ID and runtime path remain visible as
+secondary technical details. Advanced grouping, filtering, and search remain
+future scope; V1 and the V2 static backdrop are unchanged.
+
 Scene Lab SHOULD present human-oriented asset information by default:
 - thumbnail or visual preview;
 - Display Name;

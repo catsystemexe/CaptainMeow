@@ -69,6 +69,7 @@ const SMOKES = [
   "../ui/PixelBgrV2SegmentAuthoringUI.smoke",
   "../ui/PixelBgrV2ObjectEditing.smoke",
   "../ui/PixelBgrV2PlacementCoordinates.smoke",
+  "../ui/PixelBgrV2AssetPicker.smoke",
   "../ui/PixelBgrV2LaneInsert.smoke",
   "../ui/PixelBgrV2YNudge.smoke",
   "../ui/PixelBgrV2EventsLane.smoke",
