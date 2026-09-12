@@ -36,6 +36,7 @@ import { v2YRailValue, type V2YRailDrag } from "./PixelBgrV2YRail";
 import { rememberSceneLabCatalogEntry, resolveSceneLabV2Entry } from "./SceneLabLastScene";
 import { v2EntityDisplayName } from "./PixelBgrV2EntityDisplayName";
 import { initialV2AssetId, resolveV2PickerAsset, syncV2PickerAssetId } from "./PixelBgrV2AssetPicker";
+import { createSceneAssetContext, SCENE_ASSET_CONTEXT_CSS } from "./SceneAssetContext";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -117,7 +118,7 @@ export class PixelBgrLabUI {
     if (shouldApplyPixelBgrV1Draft(activeState)) this.applyIfValid();
     this.workspace = createPixelBgrDevWorkspaceShell();
     const workspaceStyle = el("style");
-    workspaceStyle.textContent = PIXEL_BGR_DEV_WORKSPACE_CSS;
+    workspaceStyle.textContent = PIXEL_BGR_DEV_WORKSPACE_CSS + SCENE_ASSET_CONTEXT_CSS;
     const gameLabel = el("span"); gameLabel.textContent = "GAME";
     const modeSwitch = button("", () => this.setDisplayMode(this.displayMode === "dev" ? "game" : "dev"));
     modeSwitch.className = "cm-mode-switch";
@@ -190,7 +191,7 @@ export class PixelBgrLabUI {
     if (this.devLabHost.getActive() === mode) return;
     this.devLabHost.setActive(mode);
     this.workspace.root.dataset.activeLab = mode;
-    this.updateLabLayout();
+    this.render();
     this.notifyPresentationChange();
   }
   getActiveDevLab(): DevLabMode { return this.devLabHost.getActive(); }
@@ -237,6 +238,7 @@ export class PixelBgrLabUI {
     this.clearV2TimelineIndicatorRefs();
     this.workspace.timeline.replaceChildren();
     this.workspace.gutter.replaceChildren();
+    this.workspace.right.replaceChildren();
     this.activeTab = normalizePixelBgrLabTab(this.activeTab, pixelBgrLabTabForSelection(Boolean(this.selectedLayer()), this.selectedLayer()?.kind));
     if (!PIXEL_BGR_LEFT_TOOLS.includes(this.activeTab)) this.activeTab = "scene";
     const titlebar = el("div", "cm-pixel-titlebar");
@@ -245,6 +247,7 @@ export class PixelBgrLabUI {
     const summary = el("div", "cm-scene-environment-row cm-pixel-scene-summary");
     summary.append(`SCENE: ${v2Scene?.id ?? this.draft.id ?? "untitled scene"}`);
     if (v2Scene) {
+      if (this.getActiveDevLab() === "scene") this.workspace.right.appendChild(this.renderSceneAssetContext());
       const projection=projectBackgroundV2Timeline(v2Scene,{},this.currentX());
       this.workspace.timeline.appendChild(this.renderV2Timeline(projection));
       const headerBlock=el("div","cm-v2-left-block cm-v2-header-block");headerBlock.append(titlebar,this.renderV2Toolbar(),summary);
@@ -303,7 +306,6 @@ export class PixelBgrLabUI {
   }
   private renderV2SceneContents(scene: BackgroundSceneV2): HTMLElement {
     const tree=el("section","cm-scene-compact-section cm-scene-contents");tree.setAttribute("aria-label","Scene contents");
-    tree.append(this.renderV2AssetPicker());
     const backdrop=scene.staticBackdrop;const starfield=scene.environment.starfield;
     tree.append(
       this.sceneContentsRow("BGR","visibility",Boolean(backdrop?.enabled),backdrop?1:0,()=>{if(!backdrop)return;const result=setV2StaticBackdropEnabled(scene,!backdrop.enabled);if(result.ok)setBackgroundSceneV2(result.scene,globalThis);},backdrop?()=>[this.sceneContentsIdentityChild(backdrop.asset.id)]:undefined,!backdrop),
@@ -321,18 +323,8 @@ export class PixelBgrLabUI {
     );
     if(this.message){const message=el("div","cm-pixel-msg");message.textContent=this.message;tree.append(message);}return tree;
   }
-  private renderV2AssetPicker():HTMLElement {
-    const picker=el("section","cm-v2-asset-picker");picker.setAttribute("aria-label","V2 insert asset");
-    const label=el("label");label.textContent="Asset";
-    const select=el("select");select.setAttribute("aria-label","Asset for new segment or object");
-    const resolved=BACKGROUND_ASSET_CATALOG.find(asset=>asset.id===this.v2SelectedAssetId)??null;
-    if(!resolved&&this.v2SelectedAssetId){const option=el("option");option.value=this.v2SelectedAssetId;option.textContent=`Unknown / unresolved (${this.v2SelectedAssetId})`;select.append(option);}
-    for(const asset of BACKGROUND_ASSET_CATALOG){const option=el("option");option.value=asset.id;option.textContent=asset.label;select.append(option);}
-    select.value=this.v2SelectedAssetId;select.disabled=BACKGROUND_ASSET_CATALOG.length===0;select.onchange=()=>{this.v2SelectedAssetId=select.value;this.render();};label.append(select);picker.append(label);
-    const preview=el("div","cm-v2-asset-preview");
-    if(resolved){const image=el("img");image.src=resolved.url;image.alt=`Preview of ${resolved.label}`;if(resolved.pixelArt)image.classList.add("pixelated");const unavailable=el("span","cm-v2-asset-unavailable");unavailable.textContent="Preview unavailable";unavailable.hidden=true;image.onerror=()=>{image.hidden=true;unavailable.hidden=false;};preview.append(image,unavailable);}
-    else {const unavailable=el("span","cm-v2-asset-unavailable");unavailable.textContent=BACKGROUND_ASSET_CATALOG.length?"Unknown / unresolved asset":"Catalogue empty";preview.append(unavailable);}
-    const id=el("div","cm-v2-asset-detail");id.textContent=`ID: ${this.v2SelectedAssetId||"unavailable"}`;const path=el("div","cm-v2-asset-detail");path.textContent=`Path: ${resolved?.url??"unresolved"}`;picker.append(preview,id,path);return picker;
+  private renderSceneAssetContext():HTMLElement {
+    return createSceneAssetContext(this.v2SelectedAssetId,assetId=>{this.v2SelectedAssetId=assetId;this.render();});
   }
   private sceneContentsIdentityChild(label:string):HTMLElement {const child=el("div","cm-scene-tree-child");child.append(document.createTextNode(""),document.createTextNode(label));return child;}
   private sceneContentsEnvironmentChild(scene:BackgroundSceneV2):HTMLElement {const starfield=scene.environment.starfield!;const child=el("div","cm-scene-environment-row");const seed=num(starfield.seed,1,value=>this.applyV2EnvironmentEdit(updateV2Starfield(scene,{seed:value})));seed.title="Starfield seed";seed.setAttribute("aria-label","Starfield seed");const density=num(starfield.density,.05,value=>this.applyV2EnvironmentEdit(updateV2Starfield(scene,{density:value})));density.title="Starfield density";density.setAttribute("aria-label","Starfield density");child.append("starfield",seed,density,this.iconButton("Randomize starfield seed",RotateCcw,"RotateCcw",()=>{const values=new Uint32Array(1);crypto.getRandomValues(values);this.applyV2EnvironmentEdit(randomizeV2StarfieldSeed(scene,values[0]));}));return child;}
