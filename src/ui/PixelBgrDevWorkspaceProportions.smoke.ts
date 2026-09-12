@@ -13,7 +13,7 @@ assert.match(layout, /data-timeline-mode="v2"[\s\S]*?\.cm-bgr-workspace-center[\
 assert.match(layout, /data-timeline-mode="disabled"[\s\S]*?\.cm-bgr-workspace-center[\s\S]*?minmax\(0, 1fr\) 0/, "other scenes collapse the center timeline row");
 assert.match(layout, /\.cm-bgr-workspace-left \{[\s\S]*?padding-top:\s*36px/, "the left dock reserves a compact inset for the fixed mode toggle");
 assert.match(layout, /\.cm-bgr-workspace-shell\.is-game \{[\s\S]*?grid-template-rows:\s*1fr/, "GAME mode removes timeline reservation");
-assert.match(ui, /dataset\.timelineMode = v2Scene \? "v2" : "disabled"/, "one explicit UI state owns timeline occupancy");
+assert.match(ui, /dataset\.timelineMode = sceneActive && getBackgroundSceneV2\(globalThis\) \? "v2" : "disabled"/, "the active Scene Lab and V2 scene format jointly own timeline occupancy");
 assert.match(ui, /getPresentationVerticalAlign\(\): "top" \| "center" \{ return this\.displayMode === "dev" \? "top" : "center"; \}/, "DEV explicitly requests top presentation alignment");
 assert.match(main, /gfx\.resize\(cssW, cssH, dpr, presentationGeometrySource\?\.getPresentationVerticalAlign\(\) \?\? "center"\)/, "the existing presentation bridge forwards alignment to Graphics");
 assert.equal(main.match(/document\.createElement\("canvas"\)/g)?.length, 1, "startup still creates one game canvas");

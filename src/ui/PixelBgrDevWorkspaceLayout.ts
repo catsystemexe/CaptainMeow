@@ -258,12 +258,26 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   grid-template-rows: minmax(0, 1fr) 176px;
 }
 
+.cm-bgr-workspace-shell[data-timeline-mode="v2"] .cm-bgr-workspace-timeline {
+  display: flex;
+}
+
+.cm-bgr-workspace-shell[data-timeline-mode="v2"] .cm-bgr-workspace-gutter {
+  display: block;
+}
+
 .cm-bgr-workspace-shell[data-timeline-mode="disabled"] .cm-bgr-workspace-center {
   grid-template-rows: minmax(0, 1fr) 0;
 }
 
 .cm-bgr-workspace-shell[data-timeline-mode="disabled"] .cm-bgr-workspace-left {
   grid-template-rows: minmax(0, 1fr) 0;
+}
+
+.cm-bgr-workspace-shell[data-timeline-mode="disabled"] .cm-bgr-workspace-timeline,
+.cm-bgr-workspace-shell[data-timeline-mode="disabled"] .cm-bgr-workspace-gutter {
+  display: none;
+  pointer-events: none;
 }
 
 .cm-bgr-workspace-shell[data-active-lab="enemy"] .cm-bgr-workspace-right,
