@@ -39,5 +39,6 @@ for (const { definition, background } of BACKGROUND_ASSET_DECLARATIONS) {
     technical: background.technical,
   });
 }
+assert(BACKGROUND_ASSET_DECLARATIONS.some(({ background }) => background.preparation.usage.length > 1), "canonical declarations support multiple authoring roles");
 
 console.log("AssetCatalog.smoke: PASS");

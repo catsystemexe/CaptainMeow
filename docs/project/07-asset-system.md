@@ -1,6 +1,6 @@
 # Captain Meow — Asset System
 
-Status: DESIGN BASIS / PHASE D CURRENT-CONTRACT VALIDATION IMPLEMENTED
+Status: DESIGN BASIS / PHASE F1 BGR PREPARATION CONTRACT IMPLEMENTED
 Last updated: 2026-09-12
 
 This document defines the intended normative conventions and architecture for Captain Meow asset identity, preparation, cataloguing, validation, Scene Lab integration, and runtime resolution.
@@ -15,7 +15,8 @@ reading canonical or legacy scenes. Static-backdrop and BGR V1 persistence remai
 URL-bearing, and the renderer continues to consume resolved URLs internally.
 Phase D adds structured static diagnostics for raw catalogue shape and duplicate
 identity, local runtime-file existence, and migrated V2 segment/object reference
-resolution.
+resolution. Phase F1 adds measured BGR preparation metadata and file-integrity
+validation without changing runtime placement or rendering.
 
 ## 1. Purpose
 
@@ -220,7 +221,96 @@ tools/
 
 The exact policy for large binary source files is still an open implementation decision. Source provenance must remain known even when editable masters are stored outside the main Git repository.
 
-## 8. Image preparation contract
+## 8. Implemented current BGR preparation convention (Phase F1)
+
+`BACKGROUND_ASSET_DECLARATIONS` is the single owner of each BGR asset's identity,
+URL, technical/pixel-art classification, and `background.preparation` metadata.
+Do not add a parallel preparation map. Every current entry declares:
+
+- `nativeSize`, measured from the physical runtime file rather than a scene instance;
+- one or more `usage` roles: `segment`, `object`, or `static-backdrop`;
+- `positioning.convention: "top-left"`, which records current compatibility behavior;
+- horizontal `repeat.x` and a `seam` state of `seamless`, `not-seamless`, or `unknown`.
+
+Current supported preparation-inspection formats are PNG (signature/IHDR header)
+and SVG. SVG uses positive unitless or `px` root `width` and `height` when both
+exist, otherwise positive `viewBox` width and height. Unsupported, malformed, or
+dimensionless files are not assigned invented dimensions and fail repository
+preparation validation.
+
+All current entries are technical/test content (`technical: true`); F1 does not
+invent production classifications. Multiple roles are valid. Repeatability and
+seamlessness are independent claims, and an unproven seam remains `unknown`.
+Only the explicitly authored demo stars tile is currently certified horizontally
+repeatable and seamless.
+
+### Segment authoring
+
+1. Export a PNG or deterministic SVG under `public/assets/` and measure its
+   intrinsic dimensions with the inspection utility.
+2. Add its stable identity, delivery URL, measured `nativeSize`, `segment` usage,
+   top-left positioning, and evidence-based repeat/seam state to the canonical
+   declaration.
+3. Author `startTrackX`, `offsetY`, and `widthPx` in the scene. `widthPx` is an
+   instance width, not native-size metadata. `offsetY` remains the vertical
+   placement/baseline control.
+4. Choose a track whose `role` and parallax represent the intended environment
+   depth, then run `npm run validate:assets` and select the declaration in Scene Lab.
+
+There is **no universal segment width**. The renderer receives the authored width
+and, because segment height is omitted, obtains height asynchronously from loaded
+texture metadata. Until that metadata exists, no tile is emitted. This independent
+width/native-height behavior is existing runtime behavior, not an aspect-ratio or
+scale policy. Horizontal repeat in F1 metadata describes preparation knowledge;
+BGR V2 sequence tracks do not consume it as a new runtime instruction.
+
+### Object authoring
+
+Objects may have arbitrary native dimensions; transparent padding and bounds must
+be intentional. Declare `object` usage and author placement from the current
+top-left origin. Scene `width` and `height` are optional, independent instance
+overrides. When either is omitted, the renderer fills that dimension from the
+loaded image's `naturalWidth`/`naturalHeight`; before load metadata is available,
+the draw produces no tiles. F1 adds no runtime `scale`, pivot, or anchor behavior.
+
+### Static-backdrop preparation
+
+A catalogue asset known to serve the camera-fixed backdrop may declare
+`static-backdrop`. Its current scene fields use the same top-left convention and
+optional per-instance width/height fallback described above. F1 does not migrate
+static-backdrop persistence or its existing URL-bearing runtime reference.
+
+### Desert fixture evidence
+
+Every catalogued Desert PNG measures **1672 × 941**. The sky backdrop and four
+segment instances specify width 1672 (native horizontal scale); their omitted
+height resolves to the native 941 after texture load. Object dimensions show a
+mixed deliberate-looking fixture convention that F1 records but does not explain
+or normalize:
+
+| Asset ID | Usage / track role | Explicit instance size | Native-to-instance factors |
+|---|---|---:|---:|
+| `desert-test-sky` | static backdrop / camera-fixed | 1672 × native height | 1.000 × 1.000 |
+| `desert-test-far-mesas` | segment / far | 1672 × native height | 1.000 × 1.000 |
+| `desert-test-mid-mesas-a` | segment / mid | 1672 × native height | 1.000 × 1.000 |
+| `desert-test-mid-mesas-b` | segment / mid | 1672 × native height | 1.000 × 1.000 |
+| `desert-test-near-band` | segment / near; object / foreground | 1672 × native height; 1003 × 565 | 1.000 × 1.000; about 0.600 × 0.600 |
+| `desert-test-sun` | object / far | 836 × 471 | 0.500 × about 0.501 |
+| `desert-test-clouds` | object / far | 1254 × 706 | 0.750 × about 0.750 |
+
+Thus 1672 is the native width of this fixture family, not evidence of a universal
+segment standard. The repository does not establish whether the object sizes are
+art direction, export compensation, or another convention; that question remains
+explicitly unresolved.
+
+### Validation
+
+`npm run validate:assets` retains Phase D definition/reference checks and also
+rejects missing/invalid preparation, non-positive native sizes, empty or unknown
+roles, invalid repeat/seam combinations, uninspectable current files, and declared
+sizes that disagree with physical PNG/SVG measurements.
+
+## 9. Future target image preparation and pivot/scale model
 
 The system SHOULD use per-type preparation rules rather than forcing all assets into one fixed canvas size.
 
@@ -260,7 +350,7 @@ They SHOULD define:
 - optional layer hint;
 - optional collision or interaction bounds where relevant.
 
-## 9. Pivot, position, and scale
+## 10. Future target pivot, position, and scale
 
 ### Pivot
 
@@ -282,7 +372,9 @@ For asset instances:
 instance.x / instance.y = world or scene position of the asset pivot
 ```
 
-Position MUST NOT implicitly mean the top-left pixel of the bitmap unless a specific asset type explicitly defines that convention.
+This is a future target. Current BGR V2 explicitly defines top-left placement as
+its compatibility convention; migrating to a normalized pivot would change scene
+geometry and requires a separate approved migration.
 
 ### Scale
 
@@ -290,7 +382,7 @@ Position MUST NOT implicitly mean the top-left pixel of the bitmap unless a spec
 
 If ordinary use requires arbitrary corrective scales such as `0.173`, that is evidence that asset preparation or canonical sizing should be reviewed.
 
-## 10. Asset metadata model
+## 11. Future target asset metadata model
 
 Target conceptual definition:
 
@@ -339,7 +431,7 @@ interface AssetInstance {
 
 The implementation may use different concrete TypeScript shapes, but MUST preserve the distinction between reusable asset metadata and per-scene instance state.
 
-## 11. Canonical Asset Catalogue
+## 12. Canonical Asset Catalogue
 
 There SHOULD be one canonical catalogue/registry for assets that require stable identity.
 
@@ -363,7 +455,7 @@ Rules:
 
 Existing specialised content sources and generated atlas metadata remain valid ownership domains where already established. The Asset System must integrate with those domains rather than duplicating them.
 
-## 12. Scene Lab integration
+## 13. Scene Lab integration
 
 Phase E1 implements a compact catalogue-native picker for new V2 segment and
 object insertion. Its options are projected from the canonical BGR declarations:

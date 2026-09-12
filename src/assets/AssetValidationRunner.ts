@@ -2,10 +2,12 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { ASSET_CATALOG, BACKGROUND_ASSET_DECLARATIONS } from "./BackgroundAssets";
+import { inspectAssetFileIntrinsicSize } from "./AssetPreparationInspection";
 import {
   collectBackgroundV2AssetReferences,
   combineAssetValidationResults,
   validateAssetDefinitions,
+  validateBackgroundAssetPreparations,
   validateAssetReferences,
   type AssetValidationResult,
 } from "./AssetValidation";
@@ -26,6 +28,12 @@ export function validateRepositoryAssets(): AssetValidationResult {
         ? resolve(repositoryRoot, "public", url.slice(1))
         : null,
       fileExists: existsSync,
+    }),
+    validateBackgroundAssetPreparations(BACKGROUND_ASSET_DECLARATIONS, {
+      runtimeUrlToPath: (url) => url.startsWith("/assets/")
+        ? resolve(repositoryRoot, "public", url.slice(1))
+        : null,
+      inspectFile: inspectAssetFileIntrinsicSize,
     }),
     validateAssetReferences(references, new Set(ASSET_CATALOG.list().map(({ id }) => id))),
   );
