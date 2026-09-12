@@ -133,8 +133,8 @@ Gameplay sprites separately use per-content/per-instance numeric sprite scale ap
 
 ## 10. Missing-asset / fallback behaviour
 
-* BGR V1/V2 image failure transitions the renderer cache entry to `error`, logs one warning when drawn, skips drawing, and provides no placeholder. Scene Lab texture metadata reports error/unavailable only after the renderer has attempted loading; catalogue entries themselves are not file-validated.
-* Unknown BGR asset IDs are accepted if `id` and `url` are non-empty. The URL still loads; no ID lookup or warning occurs. A V2 object whose ID is absent from the UI list can persist/render but is not a valid picker selection.
+* BGR V2 image failure transitions the renderer cache entry to `error` and logs one contextual warning. In DEV presentation, confirmed failed textures and unresolved V2 catalogue IDs render procedural bounds-preserving placeholders; normal loading remains unchanged and GAME suppresses them. BGR V1 retains its prior warn-and-skip behavior.
+* Unknown BGR V2 asset IDs remain accepted by the unchanged format, but runtime command materialization retains catalogue-resolution status and identity for DEV diagnostics. References are not rewritten or redirected.
 * `findBackgroundAsset` returns `null`, while UI callbacks simply do nothing for an unknown selection. Lane insertion reports only an entirely empty catalogue.
 * Missing atlas JSON/PNG is caught by `SpriteSystem.load`, stored as `err`, warned, and leaves `ready=false`. Renderer selection consequently falls through to established glyph/procedural/quad paths where applicable.
 * Unknown atlas frame/animation keys return `null`; animated selection also returns `null` for an empty/missing animation. Atlas JSON has no schema/file-existence validation at load time beyond fetch success and later lookups.
@@ -172,7 +172,7 @@ repeat/seam state. This note does not rewrite the historical findings above.
 | Pivot | BGR top-left; atlas frames explicit pixel pivots. | Explicit normalised pivot metadata. | No BGR asset pivot; mixed domain conventions. | Changing pivots moves existing compositions. |
 | Scale | BGR native or per-instance dimensions; gameplay sprite scale is separate. | Explicit native/default scale with per-instance transform separated. | No BGR definition metadata or normalized convention. | Existing compensation could be accidentally doubled. |
 | Validation | Scene shape only; limited list uniqueness smoke. | Unique IDs, files, types, dimensions, pivots and resolved references. | No cross-file/catalogue validation. | Silent drift until runtime. |
-| Missing assets | Warn once and skip BGR; sprites warn/not-ready/fallback; unknown BGR IDs accepted. | Observable diagnostic and DEV placeholder where practical. | No ID-context diagnostic or BGR placeholder. | Invisible scene elements and weak author feedback. |
+| Missing assets | BGR V2 warns once; DEV renders SEG/OBJ/static-backdrop placeholders and exposes identity/bounds diagnostics; GAME and pending loads remain unchanged. | Observable diagnostic and DEV placeholder where practical. | BGR V1 and atlas behavior remain separate. | Runtime visual acceptance remains required after integration. |
 | Generated atlas ownership | Core map/generator/output is clear; other origins unclear. | Preserve specialised metadata and integrate without duplication. | General catalogue relationship remains undecided. | Hand edits or duplicate region truth. |
 
 ## 13. Recommended Phase B implementation boundary

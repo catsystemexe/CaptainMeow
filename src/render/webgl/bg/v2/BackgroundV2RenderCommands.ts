@@ -1,11 +1,16 @@
 import type { BackgroundV1CompatibilityState } from "../../../bg/v2/BackgroundV1Adapter";
 import type { BackgroundRenderInstance, EvaluatedBackgroundFrame, EvaluatedBackgroundStaticBackdrop } from "../../../bg/v2/BackgroundV2Types";
 import { clamp01, wrappedTileOrigins } from "../layers/backgroundLayerMath";
+import { BACKGROUND_ASSET_DECLARATIONS, resolveAsset } from "../../../../assets/BackgroundAssets";
+import { assetId } from "../../../../assets/AssetTypes";
 
 export type BackgroundTextureResourceKey = string;
 export type BackgroundTextureMetadata = { width: number; height: number };
 export interface BackgroundSpriteDrawCommand {
   instanceId: string;
+  assetId: string;
+  assetResolved?: boolean;
+  expectedTextureSize?: BackgroundTextureMetadata;
   resourceKey: BackgroundTextureResourceKey;
   url: string;
   x: number;
@@ -24,6 +29,10 @@ export interface BackgroundSpriteDrawCommand {
   clip?: { x: number; y: number; width: number; height: number };
 }
 export interface BackgroundStaticBackdropDrawCommand {
+  instanceId: "static-backdrop";
+  assetId: string;
+  assetResolved: boolean;
+  expectedTextureSize?: BackgroundTextureMetadata;
   resourceKey: BackgroundTextureResourceKey;
   url: string;
   x: number;
@@ -58,6 +67,7 @@ export function isCompatibilityInstanceActive(instance: BackgroundRenderInstance
 }
 
 function commandFor(instance: BackgroundRenderInstance, compatibility?: BackgroundV1CompatibilityState): BackgroundSpriteDrawCommand {
+  const declaration = BACKGROUND_ASSET_DECLARATIONS.find(({ definition }) => definition.id === instance.asset.id);
   const clip = instance.sourceSegmentId && instance.width !== undefined
     ? { x: instance.screenX, y: 0, width: Math.max(0, instance.width), height: Number.POSITIVE_INFINITY }
     : instance.width !== undefined && instance.height !== undefined
@@ -65,6 +75,10 @@ function commandFor(instance: BackgroundRenderInstance, compatibility?: Backgrou
       : undefined;
   return {
     instanceId: instance.instanceId,
+    assetId: instance.asset.id,
+    // Compatibility scenes predate catalogue identity, so absence there is not a confirmed missing V2 ID.
+    assetResolved: compatibility ? undefined : resolveAsset(assetId(instance.asset.id)) !== null,
+    expectedTextureSize: declaration?.background.preparation.nativeSize,
     resourceKey: backgroundTextureResourceKey(instance.asset.url),
     url: normalizeBackgroundTextureUrl(instance.asset.url),
     x: instance.screenX,
@@ -95,7 +109,12 @@ export function materializeBackgroundCommands(
 
 function materializeStaticBackdrop(backdrop: EvaluatedBackgroundStaticBackdrop | undefined): BackgroundStaticBackdropDrawCommand | undefined {
   if (!backdrop) return undefined;
+  const declaration = BACKGROUND_ASSET_DECLARATIONS.find(({ definition }) => definition.id === backdrop.asset.id);
   return {
+    instanceId: "static-backdrop",
+    assetId: backdrop.asset.id,
+    assetResolved: resolveAsset(assetId(backdrop.asset.id)) !== null,
+    expectedTextureSize: declaration?.background.preparation.nativeSize,
     resourceKey: backgroundTextureResourceKey(backdrop.asset.url),
     url: normalizeBackgroundTextureUrl(backdrop.asset.url),
     x: backdrop.x,

@@ -58,6 +58,7 @@ const SMOKES = [
   "../render/bg/v2/BackgroundV2Starfield.smoke",
   "../render/bg/v2/BackgroundV2DesertTestScene.smoke",
   "../render/bg/v2/BackgroundV2StaticBackdrop.smoke",
+  "../render/webgl/bg/v2/BackgroundV2MissingAssetPresentation.smoke",
   "../render/bg/v2/BackgroundV2Serialization.smoke",
   "../render/bg/v2/BackgroundV2Persistence.smoke",
   "../render/bg/v2/BackgroundV2Events.smoke",
