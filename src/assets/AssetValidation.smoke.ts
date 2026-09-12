@@ -13,6 +13,7 @@ const validDefinition: AssetDefinition = {
   id: assetId("test.image"),
   displayName: "Test image",
   type: "image",
+  lifecycle: { state: "active" },
   runtime: { kind: "url", url: "/assets/test.png" },
 };
 const fakeFiles = {

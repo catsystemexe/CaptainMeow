@@ -1,6 +1,6 @@
 # Captain Meow — Asset System
 
-Status: DESIGN BASIS / PHASE F1 BGR PREPARATION CONTRACT IMPLEMENTED
+Status: DESIGN BASIS / PHASE H1 LIFECYCLE AND REFERENCE SAFETY IMPLEMENTED
 Last updated: 2026-09-12
 
 This document defines the intended normative conventions and architecture for Captain Meow asset identity, preparation, cataloguing, validation, Scene Lab integration, and runtime resolution.
@@ -16,7 +16,9 @@ URL-bearing, and the renderer continues to consume resolved URLs internally.
 Phase D adds structured static diagnostics for raw catalogue shape and duplicate
 identity, local runtime-file existence, and migrated V2 segment/object reference
 resolution. Phase F1 adds measured BGR preparation metadata and file-integrity
-validation without changing runtime placement or rendering.
+validation without changing runtime placement or rendering. Phase H1 adds canonical
+lifecycle metadata, removed-ID tombstones, and deterministic known-reference safety
+queries without changing persistence or delivery.
 
 ## 1. Purpose
 
@@ -220,6 +222,34 @@ tools/
 ```
 
 The exact policy for large binary source files is still an open implementation decision. Source provenance must remain known even when editable masters are stored outside the main Git repository.
+
+
+## 8.1 Implemented lifecycle and known-reference safety (Phase H1)
+
+Every live `AssetDefinition` owns lifecycle state beside its canonical identity.
+`active` definitions resolve normally. `deprecated` definitions also continue to
+resolve themselves; an optional replacement ID is advisory and never redirects
+runtime identity or rewrites a scene. All 15 current BGR definitions remain active.
+
+Removed IDs are represented separately as `RemovedAssetTombstone` records beside
+the live declarations. A tombstone reserves its ID permanently, is excluded from
+normal catalogue lookup/resolution, and may retain an advisory replacement. The
+catalogue and validator reject a live/tombstone collision. Lifecycle validation
+also rejects invalid states, active replacements, unknown or non-active targets,
+self-replacements, and replacement cycles.
+
+`AssetReferenceIndex` deterministically derives references from registered built-in
+scene factories rather than hand-maintained individual references. It indexes V2
+segments, objects, and static backdrops. V1 URL correspondence is recorded as
+`url-match`, never `exact-id`. Runtime/authoring references block known-safe
+removal; verification/test-fixture references are informational. The query, unused-
+candidate, and removal-assessment APIs are pure and browser/filesystem independent.
+
+`UNUSED_CANDIDATE` means only that no blocking reference exists in supported,
+repository-owned sources. The index cannot discover imported scenes, external
+persisted files, browser localStorage, or dynamically constructed references. It
+does not prove global non-use, delete files, deprecate entries, redirect resolution,
+or automatically rewrite scenes.
 
 ## 8. Implemented current BGR preparation convention (Phase F1)
 

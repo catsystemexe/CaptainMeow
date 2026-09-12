@@ -9,7 +9,8 @@
     "gen:atlas": "node tools/gen_atlas.mjs assets/sprites/core.map.txt public/assets/sprites/core.atlas.json",
     "typecheck": "tsc --noEmit",
     "test": "tsx src/render/webgl/EnemySpriteSelection.smoke.ts",
-    "validate:assets": "tsx src/assets/AssetValidationRunner.ts"
+    "validate:assets": "tsx src/assets/AssetValidationRunner.ts",
+    "audit:asset-refs": "tsx src/assets/AssetReferenceAuditRunner.ts"
   },
   "dependencies": {
     "lucide": "^1.23.0",

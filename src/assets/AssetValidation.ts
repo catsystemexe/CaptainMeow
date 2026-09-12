@@ -1,5 +1,6 @@
 import type { BackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Types";
 import type { IntrinsicAssetSize } from "./AssetPreparationInspection";
+import type { RemovedAssetTombstone } from "./AssetTypes";
 
 export type AssetValidationSeverity = "ERROR" | "WARNING" | "INFO";
 
@@ -16,7 +17,14 @@ export type AssetValidationCode =
   | "ASSET_USAGE_EMPTY"
   | "ASSET_USAGE_INVALID"
   | "ASSET_PREPARATION_INVALID"
-  | "ASSET_DIMENSION_UNAVAILABLE";
+  | "ASSET_DIMENSION_UNAVAILABLE"
+  | "ASSET_LIFECYCLE_INVALID"
+  | "ASSET_REPLACEMENT_NOT_PERMITTED"
+  | "ASSET_REPLACEMENT_SELF"
+  | "ASSET_REPLACEMENT_UNKNOWN"
+  | "ASSET_REPLACEMENT_NOT_ACTIVE"
+  | "ASSET_REPLACEMENT_CYCLE"
+  | "ASSET_REMOVED_ID_REUSED";
 
 export interface AssetValidationDiagnostic {
   readonly severity: AssetValidationSeverity;
@@ -45,6 +53,55 @@ export interface AssetDefinitionValidationOptions {
 export interface BackgroundPreparationValidationOptions {
   readonly runtimeUrlToPath?: (url: string) => string | null;
   readonly inspectFile?: (path: string) => IntrinsicAssetSize | null;
+}
+
+/** Validates the single live-definition/tombstone lifecycle ownership graph. */
+export function validateAssetLifecycle(
+  definitions: readonly unknown[],
+  tombstones: readonly RemovedAssetTombstone[],
+): AssetValidationResult {
+  const diagnostics: AssetValidationDiagnostic[] = [];
+  const live = new Map<string, Record<string, unknown>>();
+  const removed = new Map<string, RemovedAssetTombstone>();
+  for (const raw of definitions) {
+    if (object(raw) && typeof raw.id === "string") live.set(raw.id, raw);
+  }
+  for (const tombstone of tombstones) {
+    if (live.has(tombstone.id)) diagnostics.push({ severity: "ERROR", code: "ASSET_REMOVED_ID_REUSED", message: `Removed Asset ID is reused by a live definition: ${tombstone.id}`, assetId: tombstone.id });
+    removed.set(tombstone.id, tombstone);
+  }
+  const all = new Map<string, { state: string; replacementId?: string }>();
+  for (const [id, definition] of live) {
+    const lifecycle = object(definition.lifecycle) ? definition.lifecycle : {};
+    const state = lifecycle.state;
+    const replacementId = typeof lifecycle.replacementId === "string" ? lifecycle.replacementId : undefined;
+    if (state !== "active" && state !== "deprecated") diagnostics.push({ severity: "ERROR", code: "ASSET_LIFECYCLE_INVALID", message: `Invalid lifecycle state: ${String(state)}`, assetId: id });
+    if (state === "active" && replacementId !== undefined) diagnostics.push({ severity: "ERROR", code: "ASSET_REPLACEMENT_NOT_PERMITTED", message: "Active assets cannot declare a replacement.", assetId: id });
+    all.set(id, { state: typeof state === "string" ? state : "invalid", replacementId });
+  }
+  for (const [id, tombstone] of removed) all.set(id, tombstone);
+
+  for (const [id, lifecycle] of all) {
+    const replacementId = lifecycle.replacementId;
+    if (!replacementId) continue;
+    if (replacementId === id) diagnostics.push({ severity: "ERROR", code: "ASSET_REPLACEMENT_SELF", message: "An asset cannot replace itself.", assetId: id });
+    else if (!all.has(replacementId)) diagnostics.push({ severity: "ERROR", code: "ASSET_REPLACEMENT_UNKNOWN", message: `Unknown replacement Asset ID: ${replacementId}`, assetId: id });
+    else if (all.get(replacementId)?.state !== "active") diagnostics.push({ severity: "ERROR", code: "ASSET_REPLACEMENT_NOT_ACTIVE", message: `Replacement target must be active: ${replacementId}`, assetId: id });
+  }
+
+  for (const start of all.keys()) {
+    const path = new Set<string>();
+    let current: string | undefined = start;
+    while (current !== undefined && all.has(current)) {
+      if (path.has(current)) {
+        diagnostics.push({ severity: "ERROR", code: "ASSET_REPLACEMENT_CYCLE", message: `Replacement cycle includes Asset ID: ${current}`, assetId: start });
+        break;
+      }
+      path.add(current);
+      current = all.get(current)?.replacementId;
+    }
+  }
+  return result(diagnostics);
 }
 
 const object = (value: unknown): value is Record<string, unknown> =>
