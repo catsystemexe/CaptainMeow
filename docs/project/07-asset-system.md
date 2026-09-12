@@ -1,7 +1,7 @@
 # Captain Meow — Asset System
 
-Status: DESIGN BASIS / PHASE C BGR V2 PERSISTENCE IMPLEMENTED
-Last updated: 2026-09-11
+Status: DESIGN BASIS / PHASE D CURRENT-CONTRACT VALIDATION IMPLEMENTED
+Last updated: 2026-09-12
 
 This document defines the intended normative conventions and architecture for Captain Meow asset identity, preparation, cataloguing, validation, Scene Lab integration, and runtime resolution.
 
@@ -13,6 +13,9 @@ Scene Lab compatibility view. Phase C persists BGR V2 segment/object references
 as stable Asset IDs and resolves them to URL-bearing runtime references while
 reading canonical or legacy scenes. Static-backdrop and BGR V1 persistence remain
 URL-bearing, and the renderer continues to consume resolved URLs internally.
+Phase D adds structured static diagnostics for raw catalogue shape and duplicate
+identity, local runtime-file existence, and migrated V2 segment/object reference
+resolution.
 
 ## 1. Purpose
 
@@ -522,6 +525,18 @@ Asset ID → WebP / generated runtime representation
 Advanced loading, caching, atlas, compression, and memory-budget work is intentionally deferred until runtime evidence justifies it.
 
 ## 20. Testing contract
+
+The implemented repository-local `validate:assets` command validates the current
+canonical BGR declarations and derives migrated references from representative V2
+scene objects. Diagnostics carry deterministic severity, code, message, and asset
+or source context where applicable. Repository-local `/assets/...` URLs map to
+`public/assets/...`; remote URLs are outside the current catalogue and are not
+fetched. Static-backdrop and BGR V1 references remain outside the migrated
+cross-reference scope.
+
+Dimensions and pivots are not fields in the current general `AssetDefinition`, so
+their validation is not applicable yet and remains deferred until the preparation
+contract owns that metadata.
 
 ### Static/unit-level
 - catalogue schema;
