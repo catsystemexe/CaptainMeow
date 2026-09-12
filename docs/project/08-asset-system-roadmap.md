@@ -203,6 +203,13 @@ Prefer a repository-local validator or smoke that can run without browser runtim
 
 Priority: P2
 
+Status: **PARTIALLY COMPLETE / E1 catalogue-native V2 picker implemented**
+
+E1 covers explicit V2 segment/object insert selection, Display Name options,
+runtime-URL preview, technical ID/path details, and contextual selection sync.
+The richer grouping, filtering/search, thumbnail tooling, deprecation, and
+reference-count capabilities below remain potential E2 scope.
+
 ### Goal
 
 Make Scene Lab consume the canonical catalogue instead of maintaining its own competing asset list.

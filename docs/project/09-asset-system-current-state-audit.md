@@ -194,6 +194,10 @@ Explicitly untouched in Phase B: V1/V2 persistence shapes, factories and saved k
 
 ### RUNTIME VERIFY REQUIRED
 
+* Phase E1 subsequently added the catalogue-native V2 segment/object picker;
+  its browser preview, selection ergonomics, and insert/save workflow still
+  require the documented post-merge runtime gate.
+
 * Whether transparent padding in each BGR image matches author expectations at the proven top-left origin.
 * Visual equivalence of native versus explicit desert dimensions and whether the near-integer ratios intentionally compensate export scale.
 * Actual browser decode/WebGL warning visibility and author-facing response to unavailable catalogue entries.
