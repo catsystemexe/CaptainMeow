@@ -43,6 +43,7 @@ const SMOKES = [
   "../game/enemies/FsmCanonicalRuntimeParity.smoke",
   "../game/enemies/FsmTransitionMovement.smoke",
   "../dev/DevSummonerFsmRetention.smoke",
+  "../dev/UnifiedDevLabHost.smoke",
   "../render/webgl/bg/layers/BackgroundLayerResolve.smoke",
   "../render/webgl/bg/layers/ParallaxOffset.smoke",
   "../render/webgl/bg/layers/WrappedTileOrigins.smoke",

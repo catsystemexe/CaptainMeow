@@ -25,9 +25,9 @@ assert(lab.includes("cm-v2-transport-block .cm-transport-button{width:72px;min-w
 assert(lab.includes("cm-v2-transport-block .cm-transport-icon{width:30px;height:30px}") && lab.includes("const iconSize=primary?30:16"), "the actual transport SVG inline size and selector both meet the 30px target");
 assert(lab.includes("cm-v2-upper-content{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}"), "V2 upper content scrolls vertically without a visible scrollbar");
 assert(lab.includes("cm-v2-transport-block{flex:0 0 72px;height:72px;overflow:hidden}") && lab.includes("cm-scene-transport{flex-wrap:nowrap;margin:0}"), "transport owns a fixed non-shrinking bottom slot");
-assert(layout.includes("left.append(leftCanvas, gutter)") && lab.includes("this.workspace.leftCanvas.appendChild(this.root)"), "the left canvas region owns Scene Lab above its sibling multitrack gutter");
+assert(layout.includes("left.append(leftCanvas, gutter)") && lab.includes("this.workspace.leftCanvas.appendChild(this.devLabHost.root)"), "the left canvas region owns Scene Lab above its sibling multitrack gutter");
 assert.match(layout,/\.cm-bgr-workspace-left-canvas \{[\s\S]*?display: flex;[\s\S]*?overflow: hidden;/,"the canvas-height region provides the flex containing block for bottom ownership");
-assert.match(layout,/\.cm-bgr-workspace-left-canvas > \.cm-pixel-bgr-lab \{[\s\S]*?flex: 1 1 0;[\s\S]*?height: auto;/,"Scene Lab stretches as a flex item instead of relying on an unresolved percentage height");
+assert.match(layout,/\.cm-dev-lab-host \{[\s\S]*?flex: 1 1 0;[\s\S]*?height: auto;/,"Scene Lab stretches as a flex item instead of relying on an unresolved percentage height");
 assert.match(layout, /data-timeline-mode="v2"\] \.cm-bgr-workspace-left \{\s*grid-template-rows: minmax\(0, 1fr\) 176px;/, "the canvas-height left panel ends directly above the multitrack gutter");
 assert(lab.includes('transportBlock.append(this.renderPreview([],projection.bounds,true))'), "only the V2 bottom-owned transport receives primary sizing");
 assert.match(lab, /const upperContent=el\("div","cm-v2-upper-content"\);[\s\S]*?this\.root\.append\(upperContent,transportBlock\);\s*this\.syncOverlay\(\);\s*return;/, "all V2 Scene Contents content remains above the transport sibling");

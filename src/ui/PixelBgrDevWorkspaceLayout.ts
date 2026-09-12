@@ -184,14 +184,27 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   overflow: hidden;
 }
 
-.cm-bgr-workspace-left-canvas > .cm-pixel-bgr-lab {
+.cm-dev-lab-host {
   flex: 1 1 0;
   width: auto;
   height: auto;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #040810;
+  color: #eee;
+  font: 11px/1.2 ui-monospace, Menlo, Consolas, monospace;
 }
+
+.cm-dev-lab-selector { display:flex; flex:0 0 auto; gap:8px; padding:4px; }
+.cm-dev-lab-selector button,.cm-dev-text-choice,.cm-hud-fx-lab>button { min-height:18px; padding:0 2px; border:0; border-radius:0; background:transparent; color:#eee; font:inherit; }
+.cm-dev-lab-selector button[aria-selected="true"],.cm-dev-text-choice[aria-pressed="true"] { background:#eee; color:#000; font-weight:800; }
+.cm-dev-lab-body { flex:1 1 auto; min-height:0; overflow:hidden; }
+.cm-dev-lab-panel { width:100%; height:100%; min-height:0; overflow:auto; }
+.cm-dev-lab-panel[hidden] { display:none; }
+.cm-dev-lab-panel > .cm-pixel-bgr-lab { width:100%; height:100%; }
 
 .cm-bgr-workspace-gutter {
   min-width: 0;
@@ -218,12 +231,6 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
   overflow: auto;
 }
 
-.cm-right-lab-host { min-height:100%; background:#000; color:#eee; font:12px/1.2 ui-monospace,Menlo,Consolas,monospace; }
-.cm-right-lab-selector { display:flex; gap:8px; padding:4px; }
-.cm-right-lab-selector button,.cm-dev-text-choice,.cm-hud-fx-lab>button { min-height:18px; padding:0 2px; border:0; border-radius:0; background:transparent; color:#eee; font:inherit; }
-.cm-right-lab-selector button[aria-selected="true"],.cm-dev-text-choice[aria-pressed="true"] { background:#eee; color:#000; font-weight:800; }
-.cm-right-lab-body[hidden] { display:none; }
-.cm-right-lab-body { min-height:0; }
 .cm-hud-fx-lab { padding:4px; color:#eee; background:#000; }
 .cm-hud-fx-lab h3 { margin:0 0 5px; font-size:12px; letter-spacing:1px; }
 .cm-dev-label { margin:5px 0 2px; color:#888; }
@@ -258,6 +265,9 @@ export const PIXEL_BGR_DEV_WORKSPACE_CSS = `
 .cm-bgr-workspace-shell[data-timeline-mode="disabled"] .cm-bgr-workspace-left {
   grid-template-rows: minmax(0, 1fr) 0;
 }
+
+.cm-bgr-workspace-shell[data-active-lab="enemy"] .cm-bgr-workspace-right,
+.cm-bgr-workspace-shell[data-active-lab="hud"] .cm-bgr-workspace-right { visibility:hidden; }
 
 .cm-bgr-workspace-left,
 .cm-bgr-workspace-right {
