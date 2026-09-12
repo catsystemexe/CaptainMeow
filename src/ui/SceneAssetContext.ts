@@ -1,12 +1,15 @@
 import { BACKGROUND_ASSET_DECLARATIONS, type BackgroundAssetUsage } from "../assets/BackgroundAssets";
+import { assessAssetRemoval, UNUSED_CANDIDATE_LIMITATION, type AssetRemovalAssessment, type AssetReferenceRecord } from "../assets/AssetReferenceIndex";
+import type { AssetId, AssetLifecycleState } from "../assets/AssetTypes";
 
 export interface SceneAssetContextItem {
-  readonly id: string;
+  readonly id: AssetId;
   readonly displayName: string;
   readonly runtimeUrl: string;
   readonly nativeSize: { readonly width: number; readonly height: number };
   readonly usage: readonly BackgroundAssetUsage[];
   readonly pixelArt: boolean;
+  readonly lifecycle: { readonly state: AssetLifecycleState; readonly replacementId?: AssetId };
 }
 
 /** Read-only authoring projection; canonical declarations remain the sole metadata owner. */
@@ -18,6 +21,7 @@ export const SCENE_ASSET_CONTEXT_ITEMS: readonly SceneAssetContextItem[] = BACKG
     nativeSize: background.preparation.nativeSize,
     usage: background.preparation.usage,
     pixelArt: background.pixelArt,
+    lifecycle: definition.lifecycle,
   }),
 );
 
@@ -41,6 +45,69 @@ function preview(documentRef: Document, item: SceneAssetContextItem, className: 
   image.onerror = () => { image.hidden = true; unavailable.hidden = false; };
   frame.append(image, unavailable);
   return frame;
+}
+
+function referenceRow(documentRef: Document, reference: AssetReferenceRecord): HTMLElement {
+  const row = documentRef.createElement("div");
+  row.className = "cm-scene-asset-reference-row";
+  const value = (className: string, text: string) => {
+    const line = documentRef.createElement("div");
+    line.className = className;
+    line.textContent = text;
+    row.appendChild(line);
+  };
+  value("cm-scene-asset-reference-impact", reference.impact === "blocking" ? "BLOCKING" : "INFO");
+  value("", reference.sourceId);
+  value("", reference.sourceKind);
+  value("", reference.sourcePath);
+  value("", reference.confidence);
+  if (reference.detail) value("cm-scene-asset-reference-detail", reference.detail);
+  return row;
+}
+
+export function createSceneAssetSafetyDetails(
+  item: SceneAssetContextItem,
+  assessment: AssetRemovalAssessment,
+  documentRef: Document = document,
+): HTMLElement {
+  const safety = documentRef.createElement("section");
+  safety.className = "cm-scene-asset-safety";
+
+  const metadata = documentRef.createElement("dl");
+  const field = (label: string, value: string) => {
+    const term = documentRef.createElement("dt"); term.textContent = label;
+    const description = documentRef.createElement("dd"); description.textContent = value;
+    metadata.append(term, description);
+  };
+  field("LIFECYCLE", item.lifecycle.state.toUpperCase());
+  if (item.lifecycle.state === "deprecated" && item.lifecycle.replacementId) field("REPLACEMENT", item.lifecycle.replacementId);
+  field("REFERENCES", `${assessment.blockingReferences.length} blocking\n${assessment.informationalReferences.length} informational`);
+  const removal = assessment.blockingReferences.length > 0 ? "BLOCKED" : "SAFE AGAINST KNOWN REPO REFERENCES\nUNUSED_CANDIDATE";
+  field("REMOVAL", removal);
+  safety.appendChild(metadata);
+
+  const toggle = documentRef.createElement("button");
+  toggle.type = "button";
+  toggle.className = "cm-scene-asset-find-references";
+  toggle.textContent = "Find References";
+  toggle.setAttribute("aria-expanded", "false");
+  const list = documentRef.createElement("div");
+  list.className = "cm-scene-asset-reference-list";
+  list.hidden = true;
+  list.setAttribute("aria-label", "Known repository references");
+  const references = [...assessment.blockingReferences, ...assessment.informationalReferences];
+  if (references.length === 0) list.textContent = "No known repository references";
+  else for (const reference of references) list.appendChild(referenceRow(documentRef, reference));
+  toggle.onclick = () => {
+    list.hidden = !list.hidden;
+    toggle.setAttribute("aria-expanded", String(!list.hidden));
+  };
+
+  const limitation = documentRef.createElement("p");
+  limitation.className = "cm-scene-asset-limitation";
+  limitation.textContent = UNUSED_CANDIDATE_LIMITATION;
+  safety.append(toggle, list, limitation);
+  return safety;
 }
 
 export function createSceneAssetContext(
@@ -93,7 +160,8 @@ export function createSceneAssetContext(
     field("SIZE", `${selected.nativeSize.width} × ${selected.nativeSize.height}`);
     field("USAGE", selected.usage.map(sceneAssetUsageLabel).join("  "));
     field("PATH", selected.runtimeUrl);
-    detail.append(preview(documentRef, selected, "cm-scene-asset-preview"), name, metadata);
+    const assessment = assessAssetRemoval(selected.id);
+    detail.append(preview(documentRef, selected, "cm-scene-asset-preview"), name, metadata, createSceneAssetSafetyDetails(selected, assessment, documentRef));
   } else {
     detail.textContent = selectedAssetId ? `Unknown / unresolved asset: ${selectedAssetId}` : "Catalogue empty";
   }
@@ -119,4 +187,14 @@ export const SCENE_ASSET_CONTEXT_CSS = `
 .cm-scene-asset-detail dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:3px 7px;margin:0}
 .cm-scene-asset-detail dt{color:#8ee8ff;font-size:9px}
 .cm-scene-asset-detail dd{min-width:0;margin:0;overflow-wrap:anywhere;user-select:text}
+.cm-scene-asset-safety{margin-top:9px;padding-top:7px;border-top:1px solid rgba(142,232,255,.16)}
+.cm-scene-asset-safety dl{white-space:pre-line}
+.cm-scene-asset-find-references{margin:7px 0 4px;padding:3px 6px;border:1px solid rgba(142,232,255,.35);border-radius:2px;background:#071521;color:#8ee8ff;font:inherit;cursor:pointer}
+.cm-scene-asset-find-references:focus-visible{outline:1px solid #ffe66d;outline-offset:1px}
+.cm-scene-asset-reference-list{display:grid;gap:4px}
+.cm-scene-asset-reference-list[hidden]{display:none}
+.cm-scene-asset-reference-row{padding:4px;border-left:2px solid rgba(142,232,255,.28);background:rgba(142,232,255,.04);overflow-wrap:anywhere;user-select:text}
+.cm-scene-asset-reference-impact{color:#ffd166;font-weight:700}
+.cm-scene-asset-reference-detail{color:#aebbc4}
+.cm-scene-asset-limitation{margin:6px 0 0;color:#8f9da7;font-size:9px;overflow-wrap:anywhere}
 `;
