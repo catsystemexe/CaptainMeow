@@ -1,11 +1,13 @@
 # Captain Meow — Asset System Implementation Roadmap
 
-Status: ACTIVE IMPLEMENTATION ROADMAP / PHASE C BGR V2 PORTION COMPLETE
-Last updated: 2026-09-11
+Status: ACTIVE IMPLEMENTATION ROADMAP / PHASE D CURRENT-CONTRACT SCOPE COMPLETE
+Last updated: 2026-09-12
 
 This roadmap turns `07-asset-system.md` into a staged implementation plan. The
 Phase B core contract and the Phase C BGR V2 segment/object persistence migration
-exist, but the broader target Asset System does not yet.
+exist. Phase D static validation is implemented for the metadata and migrated
+references the current contract actually owns, but the broader target Asset System
+does not yet.
 
 Implementation truth remains current code. The roadmap must be updated when repository evidence changes the required sequence or scope.
 
@@ -161,6 +163,12 @@ Do not redraw or cosmetically normalise assets during structural migration unles
 ## 6. Phase D — Validation
 
 Priority: P1
+
+Status: COMPLETE FOR CURRENT CONTRACT. Static validation covers IDs, duplicates,
+supported definition/runtime shape, blank display-name warnings, local runtime
+files, and derived BGR V2 segment/object references with structured diagnostics.
+Dimension and pivot checks remain deferred because the general asset definition
+does not yet own those fields. Static backdrop and BGR V1 are not migrated scope.
 
 ### Goal
 
