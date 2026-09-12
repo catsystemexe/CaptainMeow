@@ -65,7 +65,7 @@ export function createV2Segment(scene: BackgroundSceneV2, trackId: string, start
   if (!template && !fallbackAsset) return fail(scene, "asset-required", "Create requires an existing segment asset or catalog fallback.");
   const defaults: BackgroundSegment = { id: "", startTrackX: 0, widthPx: 256, asset: fallbackAsset!, offsetY: 0, opacity: 1, blend: "normal", localZ: 0, enabled: true };
   const source = template ?? defaults;
-  const next: BackgroundSegment = { ...source, asset: { ...source.asset }, id: uniqueSegmentId(scene, `${target.track.id}-segment`), startTrackX: snapTimelineValue(Math.max(0, startTrackX), V2_SEGMENT_SNAP_PX), widthPx: Math.max(MIN_V2_SEGMENT_WIDTH, source.widthPx) };
+  const next: BackgroundSegment = { ...source, asset: { ...(fallbackAsset ?? source.asset) }, id: uniqueSegmentId(scene, `${target.track.id}-segment`), startTrackX: snapTimelineValue(Math.max(0, startTrackX), V2_SEGMENT_SNAP_PX), widthPx: Math.max(MIN_V2_SEGMENT_WIDTH, source.widthPx) };
   const invalid = validSegment(next);
   if (invalid) return fail(scene, "invalid-value", invalid);
   return success(replaceTrack(scene, { ...target.track, segments: [...target.track.segments, next] }), trackId, next.id);
