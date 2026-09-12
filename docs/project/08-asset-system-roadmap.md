@@ -1,6 +1,6 @@
 # Captain Meow — Asset System Implementation Roadmap
 
-Status: ACTIVE IMPLEMENTATION ROADMAP / PHASE F1 BGR SCOPE COMPLETE
+Status: ACTIVE IMPLEMENTATION ROADMAP / PHASE H1 SAFETY FOUNDATION COMPLETE
 Last updated: 2026-09-12
 
 This roadmap turns `07-asset-system.md` into a staged implementation plan. The
@@ -316,6 +316,13 @@ Actual order depends on Phase A findings and active product work.
 ## 10. Phase H — Change safety and lifecycle tooling
 
 Priority: P3
+
+Status: **PARTIALLY COMPLETE. Phase H1 — lifecycle + reference safety foundation COMPLETE.**
+H1 implements live lifecycle metadata, removed-ID tombstones, replacement graph
+validation, deterministic known-reference queries, unused-candidate reporting,
+and known-reference removal assessment. H2 remains pending for Scene Lab
+indicators/reference-count UI, the DEV missing-asset placeholder, and richer
+interactive deprecation, replacement, and safe-removal workflows.
 
 ### Goal
 

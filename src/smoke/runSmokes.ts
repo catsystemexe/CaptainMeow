@@ -1,6 +1,7 @@
 // src/smoke/runSmokes.ts
 const SMOKES = [
   "../assets/AssetCatalog.smoke",
+  "../assets/AssetLifecycleReference.smoke",
   "../assets/AssetPreparationInspection.smoke",
   "../assets/AssetValidation.smoke",
   "../engine/core/EventBus.smoke",

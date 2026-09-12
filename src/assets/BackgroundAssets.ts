@@ -1,5 +1,5 @@
 import { createAssetCatalog } from "./AssetCatalog";
-import { assetId, type AssetDefinition } from "./AssetTypes";
+import { assetId, type AssetDefinition, type RemovedAssetTombstone } from "./AssetTypes";
 
 export interface BackgroundAssetMetadata {
   readonly technical: boolean;
@@ -32,7 +32,7 @@ function backgroundImage(
   repeat: BackgroundAssetPreparation["repeat"] = { x: false, seam: "unknown" },
 ): BackgroundAssetDeclaration {
   return {
-    definition: { id: assetId(id), displayName, type: "image", runtime: { kind: "url", url } },
+    definition: { id: assetId(id), displayName, type: "image", lifecycle: { state: "active" }, runtime: { kind: "url", url } },
     background: { pixelArt: true, technical: true, preparation: { nativeSize, usage, positioning: { convention: "top-left" }, repeat } },
   };
 }
@@ -56,8 +56,12 @@ export const BACKGROUND_ASSET_DECLARATIONS: readonly BackgroundAssetDeclaration[
   backgroundImage("foreground-marker", "Technical verification: foreground marker", "/assets/debug/bgr/bgr-test-marker.svg", { width: 128, height: 128 }, ["object"]),
 ];
 
+/** Canonical historical-ID reservations live beside the live BGR declarations. */
+export const BACKGROUND_ASSET_TOMBSTONES: readonly RemovedAssetTombstone[] = [];
+
 export const ASSET_CATALOG = createAssetCatalog(
   BACKGROUND_ASSET_DECLARATIONS.map((entry) => entry.definition),
+  BACKGROUND_ASSET_TOMBSTONES,
 );
 
 export const resolveAsset = ASSET_CATALOG.resolve;
