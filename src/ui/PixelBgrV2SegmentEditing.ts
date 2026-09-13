@@ -1,5 +1,6 @@
 import type { BackgroundAssetRef, BackgroundSceneV2, BackgroundSegment, BackgroundTrack } from "../render/bg/v2/BackgroundV2Types";
 import { worldXToTrackX } from "../render/bg/v2/BackgroundV2Math";
+import { BACKGROUND_ASSET_DECLARATIONS } from "../assets/BackgroundAssets";
 import { DEFAULT_CHUNK_TIMELINE_SNAP_PX, MIN_CHUNK_TIMELINE_LENGTH, snapTimelineValue } from "./PixelBgrTimeline";
 
 export const V2_SEGMENT_SNAP_PX = DEFAULT_CHUNK_TIMELINE_SNAP_PX;
@@ -61,10 +62,12 @@ function validSegment(segment: BackgroundSegment): string | null {
 export function createV2Segment(scene: BackgroundSceneV2, trackId: string, startTrackX: number, templateSegmentId?: string, fallbackAsset?: BackgroundAssetRef): V2SegmentEditResult {
   const target = editable(scene, trackId);
   if ("ok" in target) return target;
-  const template = (templateSegmentId ? target.track.segments.find(item => item.id === templateSegmentId) : null) ?? target.track.segments[0];
+  const template = templateSegmentId ? target.track.segments.find(item => item.id === templateSegmentId) : target.track.segments[0];
   if (!template && !fallbackAsset) return fail(scene, "asset-required", "Create requires an existing segment asset or catalog fallback.");
-  const defaults: BackgroundSegment = { id: "", startTrackX: 0, widthPx: 256, asset: fallbackAsset!, offsetY: 0, opacity: 1, blend: "normal", localZ: 0, enabled: true };
-  const source = template ?? defaults;
+  const nativeWidth = fallbackAsset && BACKGROUND_ASSET_DECLARATIONS.find(({ definition }) => definition.id === fallbackAsset.id)?.background.preparation.nativeSize.width;
+  const defaults: BackgroundSegment = { id: "", startTrackX: 0, widthPx: nativeWidth ?? 256, asset: fallbackAsset!, offsetY: 0, opacity: 1, blend: "normal", localZ: 0, enabled: true };
+  // An explicit catalogue asset creates a clean instance; templates remain for inspector/template creation only.
+  const source = fallbackAsset ? defaults : template!;
   const next: BackgroundSegment = { ...source, asset: { ...(fallbackAsset ?? source.asset) }, id: uniqueSegmentId(scene, `${target.track.id}-segment`), startTrackX: snapTimelineValue(Math.max(0, startTrackX), V2_SEGMENT_SNAP_PX), widthPx: Math.max(MIN_V2_SEGMENT_WIDTH, source.widthPx) };
   const invalid = validSegment(next);
   if (invalid) return fail(scene, "invalid-value", invalid);

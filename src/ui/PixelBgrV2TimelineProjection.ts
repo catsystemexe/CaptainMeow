@@ -11,10 +11,10 @@ export interface GameplayTimelineReference {
 }
 
 export interface V2ProjectedSegment {
-  id: string; name?: string; locked?: boolean; trackId: string; startX: number; endX: number; widthPx: number; enabled: boolean; effectiveZ: number;
+  id: string; assetId: string; locked?: boolean; trackId: string; startX: number; endX: number; widthPx: number; enabled: boolean; effectiveZ: number;
 }
 export interface V2ProjectedObject {
-  id: string; name?: string; locked?: boolean; trackId: string; x: number; width: number | null; enabled: boolean; effectiveZ: number;
+  id: string; assetId: string; locked?: boolean; trackId: string; x: number; width: number | null; enabled: boolean; effectiveZ: number;
 }
 export interface V2ProjectedTrack {
   id: string; label: string; role: BackgroundTrackRole; mode: "sequence" | "repeat"; enabled: boolean; sceneIndex: number; parallaxX: number; projectable: boolean;
@@ -71,7 +71,7 @@ export function projectBackgroundV2Timeline(
         const startX = project(segment.startTrackX);
         const endX = project(segment.startTrackX + segment.widthPx);
         return startX === null || endX === null ? [] : [{
-          id: segment.id, name: segment.name, locked: segment.locked, trackId: track.id, startX, endX, widthPx: endX - startX,
+          id: segment.id, assetId: segment.asset.id, locked: segment.locked, trackId: track.id, startX, endX, widthPx: endX - startX,
           enabled: segment.enabled, effectiveZ: track.zBase + segment.localZ,
         }];
       }) : [],
@@ -79,7 +79,7 @@ export function projectBackgroundV2Timeline(
         const x = project(object.startTrackX);
         if (x === null) return [];
         const endX = finite(object.width ?? Number.NaN) ? project(object.startTrackX + object.width!) : null;
-        return [{ id: object.id, name: object.name, locked: object.locked, trackId: track.id, x, width: endX === null ? null : endX - x, enabled: object.enabled, effectiveZ: track.zBase + object.localZ }];
+        return [{ id: object.id, assetId: object.asset.id, locked: object.locked, trackId: track.id, x, width: endX === null ? null : endX - x, enabled: object.enabled, effectiveZ: track.zBase + object.localZ }];
       }) : [],
     };
   });
