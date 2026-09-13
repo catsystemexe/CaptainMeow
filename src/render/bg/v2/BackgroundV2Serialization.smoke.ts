@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { createBackgroundV2DesertTestScene } from "./BackgroundV2DesertTestScene";
+import { evaluateBackgroundScene } from "./BackgroundV2Evaluator";
 import { parseBackgroundSceneV2, serializeBackgroundSceneV2 } from "./BackgroundV2Serialization";
 import { validateBackgroundSceneV2 } from "./BackgroundV2Validation";
+import { materializeBackgroundFrameCommands } from "../../webgl/bg/v2/BackgroundV2RenderCommands";
 
 const scene = createBackgroundV2DesertTestScene();
 const json = serializeBackgroundSceneV2(scene);
@@ -29,6 +31,20 @@ assert(migratedIdentity.ok);
 if (migratedIdentity.ok) {
   assert.equal(migratedIdentity.scene.tracks[0].segments[0].asset.id, "desert_far_mesas");
   assert.equal(migratedIdentity.scene.tracks[0].objects[1].asset.id, "desert_clouds");
+}
+
+const oldBackdropIdentity = structuredClone(persisted);
+oldBackdropIdentity.staticBackdrop.asset = { id: "desert-test-sky", url: "/old/location/sky.png" };
+const migratedBackdropIdentity = parseBackgroundSceneV2(JSON.stringify(oldBackdropIdentity));
+assert(migratedBackdropIdentity.ok);
+if (migratedBackdropIdentity.ok) {
+  assert.deepEqual(migratedBackdropIdentity.scene.staticBackdrop?.asset, { id: "desert_sky", url: "/assets/bg/test/desert/desert_sky.png" });
+  const roundTrip = JSON.parse(serializeBackgroundSceneV2(migratedBackdropIdentity.scene));
+  assert.deepEqual(roundTrip.staticBackdrop.asset, { id: "desert_sky", url: "/assets/bg/test/desert/desert_sky.png" }, "static backdrop keeps its full canonical persistence ref");
+  const frame = evaluateBackgroundScene(migratedBackdropIdentity.scene, { cameraScrollX: 0, cameraScrollY: 0 });
+  const command = materializeBackgroundFrameCommands(frame, { playerWorldX: 0 }).staticBackdrop;
+  assert.equal(command?.assetResolved, true);
+  assert.deepEqual(command?.expectedTextureSize, { width: 1672, height: 941 });
 }
 
 legacy.tracks[0].segments[0].asset.url = "/old/location/mesas.png";

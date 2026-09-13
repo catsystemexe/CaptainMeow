@@ -44,7 +44,13 @@ function resolvePersistedAssetRef(value: unknown, path: string): BackgroundAsset
 function normalizePersistedScene(raw: unknown): unknown {
   const scene = structuredClone(raw);
   if (!scene || typeof scene !== "object" || Array.isArray(scene)) return scene;
-  const tracks = (scene as Record<string, unknown>).tracks;
+  const sceneRecord = scene as Record<string, unknown>;
+  const staticBackdrop = sceneRecord.staticBackdrop;
+  if (staticBackdrop && typeof staticBackdrop === "object" && !Array.isArray(staticBackdrop)) {
+    const backdropRecord = staticBackdrop as Record<string, unknown>;
+    backdropRecord.asset = resolvePersistedAssetRef(backdropRecord.asset, "staticBackdrop.asset");
+  }
+  const tracks = sceneRecord.tracks;
   if (!Array.isArray(tracks)) return scene;
   tracks.forEach((track, trackIndex) => {
     if (!track || typeof track !== "object" || Array.isArray(track)) return;
