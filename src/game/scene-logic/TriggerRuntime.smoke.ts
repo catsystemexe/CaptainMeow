@@ -32,12 +32,15 @@ const atTime: TimeTriggerDefinition = {
   enabled: true,
 };
 const afterTime: TimeTriggerDefinition = { ...atTime, id: "after_ten", relation: "after" };
+const atZero: TimeTriggerDefinition = { ...atTime, id: "at_zero", timeSec: 0 };
+const afterZero: TimeTriggerDefinition = { ...atZero, id: "after_zero", relation: "after" };
 function timeSamples(trigger: TimeTriggerDefinition, times: readonly number[]): Array<string | null> {
   const state = createTimeTriggerRuntimeState();
   return times.map((time) => evaluateTimeTrigger(trigger, state, time)?.triggerId ?? null);
 }
 
 assert.equal(validateTimeTrigger(atTime).valid, true);
+assert.equal(validateTimeTrigger(atZero).valid, true, "a zero-second Time threshold is valid");
 for (const [field, value] of [
   ["id", " "], ["kind", "space"], ["relation", "before"], ["timeSec", -1],
   ["mode", "many"], ["enabled", "yes"],
@@ -57,6 +60,9 @@ assert.equal(validateTimeTrigger([]).valid, false);
 assert.deepEqual(timeSamples(atTime, [0]), [null], "first Time sample below the threshold is baseline only");
 assert.deepEqual(timeSamples(atTime, [10]), [null], "first Time sample at the threshold is baseline only");
 assert.deepEqual(timeSamples(atTime, [15]), [null], "first Time sample beyond the threshold is baseline only");
+assert.deepEqual(timeSamples(atZero, [0]), [null], "first sample zero is baseline only");
+assert.deepEqual(timeSamples(afterZero, [0, 0.1]), [null, afterZero.id], "after zero fires on movement from zero to positive time");
+assert.deepEqual(timeSamples(atZero, [0, 0.1]), [null, null], "at zero does not retro-fire after a first sample at zero");
 assert.deepEqual(timeSamples(atTime, [9, 10]), [null, atTime.id], "at fires when the threshold is reached");
 assert.deepEqual(timeSamples(atTime, [9, 11]), [null, atTime.id], "at fires across a large step");
 assert.deepEqual(timeSamples(atTime, [5, 9]), [null, null]);
