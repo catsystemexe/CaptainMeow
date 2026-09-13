@@ -6,7 +6,10 @@ import type {
   SpaceTriggerMode,
   TimeTriggerDefinition,
   ZoneSpaceTriggerDefinition,
+  StateTriggerDefinition,
 } from "./Trigger";
+import { readStateValue, type ResolvedStateReference } from "./StateRuntime";
+import { stateValueType, type StateValue } from "./State";
 
 export interface TimeTriggerRuntimeState {
   previousTime: number | null;
@@ -25,6 +28,56 @@ export interface TriggerOccurrence {
 export interface ContainmentTriggerRuntimeState {
   previousInside: boolean | null;
   fired: boolean;
+}
+
+export interface StateTriggerRuntimeState {
+  previousMatched: boolean | null;
+  fired: boolean;
+}
+
+export function createStateTriggerRuntimeState(): StateTriggerRuntimeState {
+  return { previousMatched: null, fired: false };
+}
+
+export function compareStateValues(relation: StateTriggerDefinition["relation"], current: StateValue, expected: StateValue): boolean {
+  if (stateValueType(current) !== stateValueType(expected)) {
+    if (relation === "==") return false;
+    if (relation === "!=") return true;
+    throw new Error("State comparison values must have matching types");
+  }
+  if (relation === "==") return current === expected;
+  if (relation === "!=") return current !== expected;
+  if (typeof current !== "number" || typeof expected !== "number") {
+    throw new Error("State ordering relations require number values");
+  }
+  if (relation === "<") return current < expected;
+  if (relation === "<=") return current <= expected;
+  if (relation === ">") return current > expected;
+  return current >= expected;
+}
+
+/** Reads current authoritative State and emits only on false-to-true transitions. */
+export function evaluateStateTrigger(
+  trigger: StateTriggerDefinition,
+  reference: ResolvedStateReference,
+  state: StateTriggerRuntimeState,
+): TriggerOccurrence | null {
+  if (reference.definition.id !== trigger.stateId) {
+    throw new Error(`State Trigger "${trigger.id}" expected State "${trigger.stateId}", received "${reference.definition.id}"`);
+  }
+  if (stateValueType(trigger.value) !== reference.definition.valueType) {
+    throw new Error(`State Trigger "${trigger.id}" value type does not match State "${trigger.stateId}"`);
+  }
+  if (trigger.relation !== "==" && trigger.relation !== "!=" && reference.definition.valueType !== "number") {
+    throw new Error("State ordering relations require a number State");
+  }
+  const matched = compareStateValues(trigger.relation, readStateValue(reference), trigger.value);
+  const previousMatched = state.previousMatched;
+  state.previousMatched = matched;
+  if (previousMatched === null || !trigger.enabled || (trigger.mode === "once" && state.fired)) return null;
+  if (previousMatched || !matched) return null;
+  if (trigger.mode === "once") state.fired = true;
+  return { triggerId: trigger.id };
 }
 
 export function createMarkerCrossTriggerRuntimeState(): MarkerCrossTriggerRuntimeState {
