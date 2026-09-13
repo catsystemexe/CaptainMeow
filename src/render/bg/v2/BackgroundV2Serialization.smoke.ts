@@ -8,8 +8,8 @@ const json = serializeBackgroundSceneV2(scene);
 const persisted = JSON.parse(json);
 const persistedSegment = persisted.tracks[0].segments[0].asset;
 const persistedObject = persisted.tracks[0].objects[1].asset;
-assert.deepEqual(persistedSegment, { id: "desert-test-far-mesas" });
-assert.deepEqual(persistedObject, { id: "desert-test-clouds" });
+assert.deepEqual(persistedSegment, { id: "desert_far_mesas" });
+assert.deepEqual(persistedObject, { id: "desert_clouds" });
 assert.deepEqual(persisted.staticBackdrop.asset, scene.staticBackdrop!.asset, "static backdrop keeps legacy persistence semantics");
 
 const parsed = parseBackgroundSceneV2(json);
@@ -21,6 +21,16 @@ const matchingLegacy = parseBackgroundSceneV2(JSON.stringify(legacy));
 assert(matchingLegacy.ok);
 if (matchingLegacy.ok) assert.deepEqual(matchingLegacy.scene, scene, "matching legacy refs remain compatible");
 
+const oldIdentity = structuredClone(persisted);
+oldIdentity.tracks[0].segments[0].asset.id = "desert-test-far-mesas";
+oldIdentity.tracks[0].objects[1].asset.id = "desert-test-clouds";
+const migratedIdentity = parseBackgroundSceneV2(JSON.stringify(oldIdentity));
+assert(migratedIdentity.ok);
+if (migratedIdentity.ok) {
+  assert.equal(migratedIdentity.scene.tracks[0].segments[0].asset.id, "desert_far_mesas");
+  assert.equal(migratedIdentity.scene.tracks[0].objects[1].asset.id, "desert_clouds");
+}
+
 legacy.tracks[0].segments[0].asset.url = "/old/location/mesas.png";
 legacy.tracks[0].objects[1].asset.url = "/old/location/clouds.png";
 const staleLegacy = parseBackgroundSceneV2(JSON.stringify(legacy));
@@ -29,8 +39,8 @@ if (staleLegacy.ok) {
   assert.equal(staleLegacy.scene.tracks[0].segments[0].asset.url, "/assets/bg/test/desert/desert_far_mesas.png");
   assert.equal(staleLegacy.scene.tracks[0].objects[1].asset.url, "/assets/bg/test/desert/desert_clouds.png");
   const roundTrip = JSON.parse(serializeBackgroundSceneV2(staleLegacy.scene));
-  assert.deepEqual(roundTrip.tracks[0].segments[0].asset, { id: "desert-test-far-mesas" });
-  assert.deepEqual(roundTrip.tracks[0].objects[1].asset, { id: "desert-test-clouds" });
+  assert.deepEqual(roundTrip.tracks[0].segments[0].asset, { id: "desert_far_mesas" });
+  assert.deepEqual(roundTrip.tracks[0].objects[1].asset, { id: "desert_clouds" });
 }
 
 for (const legacyUrl of [undefined, "/old/location/missing.png"]) {

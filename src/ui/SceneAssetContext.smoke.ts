@@ -15,7 +15,6 @@ import {
 assert.equal(SCENE_ASSET_CONTEXT_ITEMS.length, BACKGROUND_ASSET_DECLARATIONS.length, "right catalogue represents every canonical declaration");
 assert.deepEqual(SCENE_ASSET_CONTEXT_ITEMS, BACKGROUND_ASSET_DECLARATIONS.map(({ definition, background }) => ({
   id: definition.id,
-  displayName: definition.displayName,
   runtimeUrl: definition.runtime.url,
   nativeSize: background.preparation.nativeSize,
   usage: background.preparation.usage,
@@ -54,8 +53,8 @@ assert.match(contextSource, /empty\.textContent = "No assets in this category"/,
 assert.match(contextSource, /const selected = SCENE_ASSET_CONTEXT_ITEMS\.find\(\(item\) => item\.id === selectedAssetId\)/, "selected detail remains sourced independently of filtered cards");
 const filterClickHandler = contextSource.match(/button\.onclick = \(\) => \{([\s\S]*?)\n    \};/)?.[1] ?? "";
 assert.doesNotMatch(filterClickHandler, /onSelect|selectedAssetId/, "filter changes do not invoke or replace selection authority");
-assert.match(contextSource, /card\.title = item\.displayName/, "card title preserves the full canonical display name");
-assert.match(contextSource, /name\.textContent = item\.displayName/, "card caption uses the canonical display name");
+assert.match(contextSource, /card\.title = item\.id/, "card title uses the canonical asset ID");
+assert.match(contextSource, /name\.textContent = item\.id/, "card caption uses the canonical asset ID");
 assert.match(contextSource, /image\.src = item\.runtimeUrl/);
 assert.match(contextSource, /image\.onerror = \(\) =>/);
 assert.match(contextSource, /nativeSize\.textContent = `\$\{item\.nativeSize\.width\}×\$\{item\.nativeSize\.height\}`/, "thumbnail size overlay uses canonical native dimensions");
@@ -77,7 +76,7 @@ for (const provenance of ["reference.sourceId", "reference.sourceKind", "referen
 assert.match(contextSource, /reference\.impact === "blocking" \? "BLOCKING" : "INFO"/);
 assert.match(contextSource, /limitation\.textContent = UNUSED_CANDIDATE_LIMITATION/, "the canonical limitation remains discoverable");
 for (const destructive of ["Delete Asset", "Apply Replacement", "Rewrite References", "Fix References"]) assert(!contextSource.includes(destructive), `${destructive} is absent`);
-const synthetic = (usage: SceneAssetContextItem["usage"]): SceneAssetContextItem => ({ ...multiRole, id: "test.asset" as SceneAssetContextItem["id"], displayName: "unrelated name", usage });
+const synthetic = (usage: SceneAssetContextItem["usage"]): SceneAssetContextItem => ({ ...multiRole, id: "test.asset" as SceneAssetContextItem["id"], usage });
 assert.equal(assetContextLaneActions(synthetic(["segment"])).length, 4, "SEG-only exposes four actions");
 assert(assetContextLaneActions(synthetic(["segment"])).every(action => action.kind === "segment"), "SEG-only exposes only segment actions");
 assert.equal(assetContextLaneActions(synthetic(["object"])).length, 4, "OBJ-only exposes four actions");

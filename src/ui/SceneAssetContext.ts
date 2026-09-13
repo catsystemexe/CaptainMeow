@@ -4,7 +4,6 @@ import type { AssetId, AssetLifecycleState } from "../assets/AssetTypes";
 
 export interface SceneAssetContextItem {
   readonly id: AssetId;
-  readonly displayName: string;
   readonly runtimeUrl: string;
   readonly nativeSize: { readonly width: number; readonly height: number };
   readonly usage: readonly BackgroundAssetUsage[];
@@ -51,7 +50,6 @@ export function filterSceneAssetContextItems(
 export const SCENE_ASSET_CONTEXT_ITEMS: readonly SceneAssetContextItem[] = BACKGROUND_ASSET_DECLARATIONS.map(
   ({ definition, background }) => ({
     id: definition.id,
-    displayName: definition.displayName,
     runtimeUrl: definition.runtime.url,
     nativeSize: background.preparation.nativeSize,
     usage: background.preparation.usage,
@@ -71,7 +69,7 @@ function preview(documentRef: Document, item: SceneAssetContextItem, className: 
   frame.className = className;
   const image = documentRef.createElement("img");
   image.src = item.runtimeUrl;
-  image.alt = `Preview of ${item.displayName}`;
+  image.alt = `Preview of ${item.id}`;
   if (item.pixelArt) image.classList.add("pixelated");
   const unavailable = documentRef.createElement("span");
   unavailable.className = "cm-scene-asset-unavailable";
@@ -178,13 +176,13 @@ export function createSceneAssetContext(
       const card = documentRef.createElement("button");
       card.type = "button";
       card.className = "cm-scene-asset-card";
-      card.title = item.displayName;
-      card.setAttribute("aria-label", `Select asset: ${item.displayName}`);
+      card.title = item.id;
+      card.setAttribute("aria-label", `Select asset: ${item.id}`);
       card.setAttribute("aria-pressed", String(item.id === selectedAssetId));
       card.dataset.assetId = item.id;
       const name = documentRef.createElement("span");
       name.className = "cm-scene-asset-name";
-      name.textContent = item.displayName;
+      name.textContent = item.id;
       card.append(preview(documentRef, item, "cm-scene-asset-thumb", true), name);
       card.onclick = () => onSelect(item.id);
       card.oncontextmenu = (event) => {
@@ -223,7 +221,7 @@ export function createSceneAssetContext(
   const selected = SCENE_ASSET_CONTEXT_ITEMS.find((item) => item.id === selectedAssetId);
   if (selected) {
     const name = documentRef.createElement("h3");
-    name.textContent = selected.displayName;
+    name.textContent = selected.id;
     const metadata = documentRef.createElement("dl");
     const field = (label: string, value: string) => {
       const term = documentRef.createElement("dt"); term.textContent = label;

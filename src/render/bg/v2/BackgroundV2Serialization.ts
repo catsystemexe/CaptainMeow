@@ -10,13 +10,33 @@ export type V2Storage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 /** V2 wire identity for migrated segment/object assets. Runtime refs still include a resolved URL. */
 export interface PersistedBackgroundAssetRefV2 { id: string }
 
+/** Import-only migration for BGR IDs authored before filename-stem identity became canonical. */
+export const LEGACY_BACKGROUND_ASSET_IDS: Readonly<Record<string, string>> = {
+  "b1-technical-stars-svg": "b1_pixel_stars",
+  "bgr-demo-stars-tile": "bgr_demo_stars_tile",
+  "bgr-demo-orientation": "bgr_demo_orientation",
+  "bgr-demo-chunk-band": "bgr_demo_chunk_band",
+  "desert-test-sky": "desert_sky",
+  "desert-test-clouds": "desert_clouds",
+  "desert-test-far-mesas": "desert_far_mesas",
+  "desert-test-mid-mesas-a": "desert_mid_mesas_a",
+  "desert-test-mid-mesas-b": "desert_mid_mesas_b",
+  "desert-test-near-band": "desert_near_band",
+  "desert-test-sun": "desert_sun",
+  "shared-solid": "bgr-test-solid",
+  "blend-backdrop": "bgr-test-backdrop",
+  "finite-stripes": "bgr-test-stripes",
+  "foreground-marker": "bgr-test-marker",
+};
+
 function resolvePersistedAssetRef(value: unknown, path: string): BackgroundAssetRef {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${path}: must be an object`);
   const ref = value as Record<string, unknown>;
   for (const key of Object.keys(ref)) if (key !== "id" && key !== "url") throw new Error(`${path}.${key}: unknown field`);
   if (typeof ref.id !== "string" || ref.id.trim().length === 0) throw new Error(`${path}.id: must be a non-empty string`);
   if (ref.url !== undefined && (typeof ref.url !== "string" || ref.url.trim().length === 0)) throw new Error(`${path}.url: must be a non-empty string when present`);
-  const definition = resolveAsset(assetId(ref.id));
+  const canonicalId = LEGACY_BACKGROUND_ASSET_IDS[ref.id] ?? ref.id;
+  const definition = resolveAsset(assetId(canonicalId));
   if (!definition) throw new Error(`${path}.id: unknown Asset ID "${ref.id}"`);
   return { id: definition.id, url: definition.runtime.url };
 }

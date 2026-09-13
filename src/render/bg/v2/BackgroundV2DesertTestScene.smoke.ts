@@ -23,7 +23,7 @@ assert.deepEqual(scene.tracks.map((track) => track.parallax), [
   { x: 0.6, y: 0.3 },
   { x: 0.9, y: 0.6 },
 ]);
-assert.deepEqual(scene.staticBackdrop, { enabled: true, asset: { id: "desert-test-sky", url: "/assets/bg/test/desert/desert_sky.png" }, x: 0, y: -180, width: 1672, opacity: 1, blend: "normal" });
+assert.deepEqual(scene.staticBackdrop, { enabled: true, asset: { id: "desert_sky", url: "/assets/bg/test/desert/desert_sky.png" }, x: 0, y: -180, width: 1672, opacity: 1, blend: "normal" });
 assert.equal(scene.tracks.some(track => track.id === "desert-sky" || track.parallax.x === 0), false, "fixed sky is not duplicated as a track");
 
 const mid = tracks.get("desert-mid")!;
