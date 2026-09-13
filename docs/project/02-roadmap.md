@@ -22,6 +22,23 @@ The approved next implementation sequence is:
 
 Preserve verified BGR V2 editing/runtime contracts while migrating the shell. Do not resume button-by-button polishing of the old floating overlay by default.
 
+## Approved next product workstream
+
+Scene Logic v1 is approved as the next product workstream after the current Pixel BGR Dev Workspace v1 scope.
+
+Canonical target:
+- `docs/scene-logic/SCENE_LOGIC_MODEL_V1.md`
+
+Migration contract:
+- `docs/scene-logic/SCENE_LOGIC_MIGRATION_CONTRACT.md`
+
+Implementation roadmap:
+- `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
+
+Status: APPROVED / NEXT
+
+This does not broaden the current BGR Workspace Phase 1 scope.
+
 ## Completed audit / consolidation sequence
 
 The source/access, preservation, implementation/documentation, workflow, instruction-authority and consolidation audits are complete.
