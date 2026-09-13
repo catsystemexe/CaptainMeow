@@ -7,6 +7,8 @@ import {
   SCENE_ASSET_CONTEXT_ITEMS,
   SCENE_ASSET_FILTERS,
   sceneAssetUsageLabel,
+  assetContextLaneActions,
+  SCENE_ASSET_CONTEXT_LANES,
   type SceneAssetContextItem,
 } from "./SceneAssetContext";
 
@@ -75,7 +77,20 @@ for (const provenance of ["reference.sourceId", "reference.sourceKind", "referen
 assert.match(contextSource, /reference\.impact === "blocking" \? "BLOCKING" : "INFO"/);
 assert.match(contextSource, /limitation\.textContent = UNUSED_CANDIDATE_LIMITATION/, "the canonical limitation remains discoverable");
 for (const destructive of ["Delete Asset", "Apply Replacement", "Rewrite References", "Fix References"]) assert(!contextSource.includes(destructive), `${destructive} is absent`);
-assert.doesNotMatch(contextSource, /contextmenu/, "no context-menu UI is introduced");
+const synthetic = (usage: SceneAssetContextItem["usage"]): SceneAssetContextItem => ({ ...multiRole, id: "test.asset" as SceneAssetContextItem["id"], displayName: "unrelated name", usage });
+assert.equal(assetContextLaneActions(synthetic(["segment"])).length, 4, "SEG-only exposes four actions");
+assert(assetContextLaneActions(synthetic(["segment"])).every(action => action.kind === "segment"), "SEG-only exposes only segment actions");
+assert.equal(assetContextLaneActions(synthetic(["object"])).length, 4, "OBJ-only exposes four actions");
+assert(assetContextLaneActions(synthetic(["object"])).every(action => action.kind === "object"), "OBJ-only exposes only object actions");
+assert.equal(assetContextLaneActions(synthetic(["segment", "object"])).length, 8, "multi-role exposes both action groups");
+assert.equal(assetContextLaneActions(synthetic(["static-backdrop"])).length, 0, "BGR-only exposes no lane actions");
+assert.deepEqual(SCENE_ASSET_CONTEXT_LANES, [{ role: "foreground", label: "Front" }, { role: "near", label: "Near" }, { role: "mid", label: "Mid" }, { role: "far", label: "Far" }], "canonical roles and labels retain lane order");
+assert.equal(assetContextLaneActions(synthetic(["static-backdrop"])).length, 0, "action metadata is not inferred from a name");
+assert.match(contextSource, /card\.oncontextmenu = \(event\) =>/);
+assert.match(contextSource, /event\.preventDefault\(\)/, "asset context menu suppresses the native menu");
+assert.match(contextSource, /onContextMenu\?\.\(event, item\)/, "clicked item identity is forwarded directly");
+const contextHandler = contextSource.match(/card\.oncontextmenu = \(event\) => \{([\s\S]*?)\n      \};/)?.[1] ?? "";
+assert.doesNotMatch(contextHandler, /onSelect/, "right-click does not invoke normal selection");
 
 const cardRule = contextSource.match(/\.cm-scene-asset-card\{([^}]*)\}/)?.[1] ?? "";
 assert.match(cardRule, /padding:0 0 3px/, "thumbnail frame has no horizontal card inset");
@@ -101,11 +116,20 @@ assert.match(layoutSource, /\.cm-bgr-workspace-right::\-webkit-scrollbar \{ disp
 const uiSource = readFileSync(new URL("./PixelBgrLabUI.ts", import.meta.url), "utf8");
 assert.match(uiSource, /workspace\.right\.replaceChildren\(\)/, "right context is cleared on every render");
 assert.match(uiSource, /if \(this\.getActiveDevLab\(\) === "scene"\) this\.workspace\.right\.appendChild\(this\.renderSceneAssetContext\(\)\)/, "context renders only in Scene mode");
-assert.match(uiSource, /createSceneAssetContext\(this\.v2SelectedAssetId,assetId=>\{this\.v2SelectedAssetId=assetId;this\.render\(\);\}\)/, "catalogue selection updates the sole existing authority without editing scene data");
+assert.match(uiSource, /createSceneAssetContext\(this\.v2SelectedAssetId,assetId=>\{this\.v2SelectedAssetId=assetId;this\.render\(\);\},\(event,item\)=>this\.openSceneAssetInsertMenu\(event,item\)\)/, "catalogue selection updates the sole existing authority without editing scene data");
 assert.doesNotMatch(uiSource, /tree\.append\(this\.renderV2AssetPicker\(\)\)/, "old left picker is absent");
 assert.match(uiSource, /this\.v2SelectedAssetId=syncV2PickerAssetId\(segment\.asset\.id\)/, "SEG selection still synchronizes asset context");
 assert.match(uiSource, /this\.v2SelectedAssetId=syncV2PickerAssetId\(object\.asset\.id\)/, "OBJ selection still synchronizes asset context");
 assert.match(uiSource, /resolveV2PickerAsset\(BACKGROUND_ASSET_CATALOG,this\.v2SelectedAssetId\)/, "lane insertion still resolves the selected asset");
+assert.match(uiSource, /resolveV2PickerAsset\(BACKGROUND_ASSET_CATALOG,item\.id\)/, "context insertion resolves the clicked asset rather than catalogue selection");
+assert.match(uiSource, /resolveV2LaneInsertTrack\(scene,lane,this\.v2SelectedTrackId\)/, "context insertion reuses canonical lane track resolution");
+assert.match(uiSource, /insertV2LaneSegment\(scene,track\.id,this\.currentX\(\),asset,selectedSegment\?\.id\)/, "segment insertion reuses the player world-X authority and canonical helper");
+assert.match(uiSource, /insertV2LaneObject\(scene,track\.id,this\.currentX\(\),asset\)/, "object insertion reuses the player world-X authority and canonical helper");
+assert.doesNotMatch(uiSource, /insertV2Lane(?:Segment|Object)\([^\n]*event\.clientX/, "pointer X is never passed to insertion helpers");
+assert.match(uiSource, /this\.closeLaneInsertMenu\?\.\(\)/, "opening/rerendering closes the prior shared menu instance");
+assert.match(uiSource, /document\.removeEventListener\("pointerdown",outside\).*document\.removeEventListener\("keydown",keydown\)/, "menu close removes outside and Escape listeners");
+assert.match(uiSource, /Math\.min\(Math\.max\(margin,event\.clientX\).*window\.innerWidth-rect\.width-margin/, "menu pointer position is viewport-clamped without becoming scene X");
+assert.doesNotMatch(uiSource, /openSceneAssetInsertMenu[\s\S]*?activeSceneAssetFilter\s*=/, "context insertion does not reset the presentation filter");
 assert.match(uiSource, /this\.workspace\.timeline\.appendChild\(this\.renderV2Timeline\(projection\)\)/, "existing timeline remains mounted");
 
 console.log("SceneAssetContext.smoke: PASS");

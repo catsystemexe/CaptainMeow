@@ -16,6 +16,27 @@ export const SCENE_ASSET_FILTERS = ["all", "segment", "object", "static-backdrop
 export type SceneAssetFilter = (typeof SCENE_ASSET_FILTERS)[number];
 export const DEFAULT_SCENE_ASSET_FILTER: SceneAssetFilter = "all";
 
+export const SCENE_ASSET_CONTEXT_LANES = [
+  { role: "foreground", label: "Front" },
+  { role: "near", label: "Near" },
+  { role: "mid", label: "Mid" },
+  { role: "far", label: "Far" },
+] as const;
+export type SceneAssetContextLaneRole = (typeof SCENE_ASSET_CONTEXT_LANES)[number]["role"];
+export type SceneAssetContextInsertKind = "segment" | "object";
+export interface SceneAssetContextAction {
+  readonly kind: SceneAssetContextInsertKind;
+  readonly role: SceneAssetContextLaneRole;
+  readonly laneLabel: string;
+}
+
+export function assetContextLaneActions(item: Pick<SceneAssetContextItem, "usage">): readonly SceneAssetContextAction[] {
+  const kinds: SceneAssetContextInsertKind[] = [];
+  if (item.usage.includes("segment")) kinds.push("segment");
+  if (item.usage.includes("object")) kinds.push("object");
+  return kinds.flatMap(kind => SCENE_ASSET_CONTEXT_LANES.map(lane => ({ kind, role: lane.role, laneLabel: lane.label })));
+}
+
 // Presentation-only state intentionally survives Scene context DOM rebuilds and lab visibility changes.
 let activeSceneAssetFilter: SceneAssetFilter = DEFAULT_SCENE_ASSET_FILTER;
 
@@ -134,6 +155,7 @@ export function createSceneAssetSafetyDetails(
 export function createSceneAssetContext(
   selectedAssetId: string,
   onSelect: (assetId: string) => void,
+  onContextMenu?: (event: MouseEvent, item: SceneAssetContextItem) => void,
   documentRef: Document = document,
 ): HTMLElement {
   const context = documentRef.createElement("section");
@@ -165,6 +187,10 @@ export function createSceneAssetContext(
       name.textContent = item.displayName;
       card.append(preview(documentRef, item, "cm-scene-asset-thumb", true), name);
       card.onclick = () => onSelect(item.id);
+      card.oncontextmenu = (event) => {
+        event.preventDefault();
+        onContextMenu?.(event, item);
+      };
       catalog.appendChild(card);
     }
     if (catalog.childElementCount === 0) {
@@ -252,4 +278,8 @@ export const SCENE_ASSET_CONTEXT_CSS = `
 .cm-scene-asset-reference-impact{color:#ffd166;font-weight:700}
 .cm-scene-asset-reference-detail{color:#aebbc4}
 .cm-scene-asset-limitation{margin:6px 0 0;color:#8f9da7;font-size:9px;overflow-wrap:anywhere}
+.cm-scene-asset-insert-menu{min-width:132px;max-width:220px}
+.cm-scene-asset-insert-heading,.cm-scene-asset-insert-empty{padding:3px 5px;color:#8ee8ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-scene-asset-insert-heading{border-bottom:1px solid rgba(142,232,255,.2)}
+.cm-scene-asset-insert-empty{color:#8f9da7;white-space:normal}
 `;
