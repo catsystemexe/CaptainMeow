@@ -109,7 +109,7 @@ Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
 Current focused batch:
-`SL-03 — Scene Event runtime adapter`
+`SL-04 — first World Action adapter + vertical slice`
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
