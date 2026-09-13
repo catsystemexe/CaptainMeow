@@ -74,4 +74,6 @@ assert.equal(parseBackgroundSceneV2(JSON.stringify({ ...persisted, version: 1 })
 assert.equal(parseBackgroundSceneV2(JSON.stringify({ ...persisted, environment: { starfield: { seed: 1, density: 2 } } })).ok, false);
 const duplicate = structuredClone(scene); duplicate.tracks[1].id = duplicate.tracks[0].id; assert.equal(validateBackgroundSceneV2(duplicate).valid, false);
 const badGeometry = structuredClone(scene); badGeometry.tracks[1].segments[0].widthPx = 0; assert.equal(validateBackgroundSceneV2(badGeometry).valid, false);
+const badCrop = structuredClone(scene); badCrop.tracks[1].segments[0].cropLeftPx = -1; assert.equal(validateBackgroundSceneV2(badCrop).valid, false);
+const outOfBoundsCrop = structuredClone(scene); outOfBoundsCrop.tracks[1].segments[0].cropLeftPx = 1; assert.equal(validateBackgroundSceneV2(outOfBoundsCrop).valid, false);
 console.log("BackgroundV2Serialization.smoke: PASS");

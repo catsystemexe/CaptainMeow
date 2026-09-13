@@ -12,7 +12,7 @@ export type V2SegmentEditResult =
   | { ok: true; scene: BackgroundSceneV2; trackId: string; segmentId: string }
   | { ok: false; scene: BackgroundSceneV2; code: V2SegmentEditErrorCode; error: string };
 export type V2SegmentDragMode = "move" | "resize-left" | "resize-right";
-export type V2SegmentPatch = Partial<Pick<BackgroundSegment, "name" | "locked" | "flipX" | "flipY" | "startTrackX" | "widthPx" | "offsetY" | "opacity" | "blend" | "localZ" | "fadeInPx" | "fadeOutPx" | "enabled">>;
+export type V2SegmentPatch = Partial<Pick<BackgroundSegment, "name" | "locked" | "flipX" | "flipY" | "startTrackX" | "cropLeftPx" | "widthPx" | "offsetY" | "opacity" | "blend" | "localZ" | "fadeInPx" | "fadeOutPx" | "enabled">>;
 export interface V2SegmentOverlap { startX: number; endX: number; segmentIds: string[] }
 
 const fail = (scene: BackgroundSceneV2, code: V2SegmentEditErrorCode, error: string): V2SegmentEditResult => ({ ok: false, scene, code, error });
@@ -52,6 +52,10 @@ function editable(scene: BackgroundSceneV2, trackId: string, segmentId?: string)
 function validSegment(segment: BackgroundSegment): string | null {
   if (!Number.isFinite(segment.startTrackX) || segment.startTrackX < 0) return "startTrackX must be finite and non-negative.";
   if (!Number.isFinite(segment.widthPx) || segment.widthPx <= 0) return "widthPx must be finite and positive.";
+  const cropLeftPx = segment.cropLeftPx ?? 0;
+  if (!Number.isFinite(cropLeftPx) || cropLeftPx < 0) return "cropLeftPx must be finite and non-negative.";
+  const nativeWidth = BACKGROUND_ASSET_DECLARATIONS.find(({ definition }) => definition.id === segment.asset.id)?.background.preparation.nativeSize.width;
+  if (nativeWidth !== undefined && cropLeftPx + segment.widthPx > nativeWidth) return "Segment crop must remain within the asset native width.";
   if (!Number.isFinite(segment.offsetY) || !Number.isFinite(segment.localZ)) return "offsetY and localZ must be finite.";
   if (!Number.isFinite(segment.opacity) || segment.opacity < 0 || segment.opacity > 1) return "opacity must be finite and between 0 and 1.";
   if (segment.fadeInPx !== undefined && (!Number.isFinite(segment.fadeInPx) || segment.fadeInPx < 0)) return "fadeInPx must be finite and non-negative.";
@@ -109,11 +113,15 @@ export function applyV2SegmentDrag(scene: BackgroundSceneV2, trackId: string, se
   const segment = target.segment!, right = segment.startTrackX + segment.widthPx;
   if (mode === "move") return updateV2Segment(scene, trackId, segmentId, { startTrackX: Math.max(0, snapTimelineValue(segment.startTrackX + trackDeltaX, V2_SEGMENT_SNAP_PX)) });
   if (mode === "resize-right") {
-    const end = Math.max(segment.startTrackX + MIN_V2_SEGMENT_WIDTH, snapTimelineValue(right + trackDeltaX, V2_SEGMENT_SNAP_PX));
+    const nativeWidth = BACKGROUND_ASSET_DECLARATIONS.find(({ definition }) => definition.id === segment.asset.id)?.background.preparation.nativeSize.width;
+    const sourceEnd = segment.startTrackX + (nativeWidth ?? Number.POSITIVE_INFINITY) - (segment.cropLeftPx ?? 0);
+    const end = Math.min(sourceEnd, Math.max(segment.startTrackX + MIN_V2_SEGMENT_WIDTH, snapTimelineValue(right + trackDeltaX, V2_SEGMENT_SNAP_PX)));
     return updateV2Segment(scene, trackId, segmentId, { widthPx: end - segment.startTrackX });
   }
-  const start = Math.min(Math.max(0, snapTimelineValue(segment.startTrackX + trackDeltaX, V2_SEGMENT_SNAP_PX)), right - MIN_V2_SEGMENT_WIDTH);
-  return updateV2Segment(scene, trackId, segmentId, { startTrackX: start, widthPx: right - start });
+  const cropLeftPx = segment.cropLeftPx ?? 0;
+  const sourceStart = segment.startTrackX - cropLeftPx;
+  const start = Math.min(Math.max(sourceStart, snapTimelineValue(segment.startTrackX + trackDeltaX, V2_SEGMENT_SNAP_PX)), right - MIN_V2_SEGMENT_WIDTH);
+  return updateV2Segment(scene, trackId, segmentId, { startTrackX: start, cropLeftPx: start - sourceStart, widthPx: right - start });
 }
 
 export function calculateV2SegmentOverlaps(segments: readonly Pick<BackgroundSegment, "id" | "startTrackX" | "widthPx">[]): V2SegmentOverlap[] {

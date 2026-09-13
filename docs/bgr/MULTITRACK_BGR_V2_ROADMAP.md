@@ -142,6 +142,7 @@ Conceptual segment contract:
 interface BackgroundSegment {
   id: string;
   startTrackX: number;
+  cropLeftPx?: number;
   widthPx: number;
   asset: BackgroundAssetRef;
   offsetY: number;
@@ -155,6 +156,13 @@ interface BackgroundSegment {
 ```
 
 Track owns primary parallax. Per-segment parallax override is not part of the initial V2 contract.
+
+`Segment.widthPx` is the visible horizontal crop extent, and optional
+`Segment.cropLeftPx` is the source-space left crop offset (defaulting to zero).
+The source image remains at `startTrackX - cropLeftPx` and retains its native
+dimensions; trimming changes the visible interval rather than scaling the image.
+In contrast, authored `Object.width` and `Object.height` are actual rendered
+object geometry. Objects do not have segment trim semantics.
 
 ### 7. Derived overlap
 

@@ -1,5 +1,6 @@
 import type { BackgroundSceneV2 } from "./BackgroundV2Types";
 import { validateStarfieldConfig } from "./BackgroundV2Starfield";
+import { BACKGROUND_ASSET_DECLARATIONS } from "../../../assets/BackgroundAssets";
 
 export interface BackgroundV2ValidationIssue { path: string; message: string }
 export interface BackgroundV2ValidationResult { valid: boolean; errors: BackgroundV2ValidationIssue[] }
@@ -67,7 +68,7 @@ export function validateBackgroundSceneV2(value: unknown): BackgroundV2Validatio
         const ids = new Set<string>();
         items.forEach((item, ii) => {
           const ip = `${path}.${kind}[${ii}]`; if (!object(item)) { issue(ip, "must be an object"); return; }
-          rejectUnknown(item, kind === "segments" ? ["id", "name", "locked", "flipX", "flipY", "startTrackX", "widthPx", "asset", "offsetY", "opacity", "blend", "localZ", "fadeInPx", "fadeOutPx", "enabled"] : ["id", "name", "locked", "flipX", "flipY", "asset", "startTrackX", "y", "width", "height", "localZ", "opacity", "blend", "enabled"], ip, issue);
+          rejectUnknown(item, kind === "segments" ? ["id", "name", "locked", "flipX", "flipY", "startTrackX", "cropLeftPx", "widthPx", "asset", "offsetY", "opacity", "blend", "localZ", "fadeInPx", "fadeOutPx", "enabled"] : ["id", "name", "locked", "flipX", "flipY", "asset", "startTrackX", "y", "width", "height", "localZ", "opacity", "blend", "enabled"], ip, issue);
           if (!nonEmpty(item.id)) issue(`${ip}.id`, "must be a non-empty string"); else if (ids.has(item.id)) issue(`${ip}.id`, `must be unique within ${kind}`); else ids.add(item.id);
           if (item.name !== undefined && typeof item.name !== "string") issue(`${ip}.name`, "must be a string when present");
           for (const key of ["locked", "flipX", "flipY"]) if (item[key] !== undefined && typeof item[key] !== "boolean") issue(`${ip}.${key}`, "must be boolean when present");
@@ -76,6 +77,12 @@ export function validateBackgroundSceneV2(value: unknown): BackgroundV2Validatio
           const required = kind === "segments" ? ["startTrackX", "widthPx", "offsetY", "opacity", "localZ"] : ["startTrackX", "y", "opacity", "localZ"];
           for (const key of required) if (!finite(item[key])) issue(`${ip}.${key}`, "must be finite");
           if (kind === "segments" && finite(item.widthPx) && item.widthPx <= 0) issue(`${ip}.widthPx`, "must be greater than 0");
+          if (kind === "segments" && item.cropLeftPx !== undefined && (!finite(item.cropLeftPx) || (item.cropLeftPx as number) < 0)) issue(`${ip}.cropLeftPx`, "must be a finite non-negative number when present");
+          if (kind === "segments" && object(item.asset) && nonEmpty(item.asset.id) && finite(item.widthPx) && (item.cropLeftPx === undefined || finite(item.cropLeftPx))) {
+            const assetId = item.asset.id;
+            const nativeWidth = BACKGROUND_ASSET_DECLARATIONS.find(({ definition }) => definition.id === assetId)?.background.preparation.nativeSize.width;
+            if (nativeWidth !== undefined && (item.cropLeftPx ?? 0) + item.widthPx > nativeWidth) issue(ip, "crop interval must remain within the asset native width");
+          }
           for (const key of kind === "segments" ? ["fadeInPx", "fadeOutPx"] : ["width", "height"]) if (item[key] !== undefined && (!finite(item[key]) || (item[key] as number) < 0)) issue(`${ip}.${key}`, "must be a finite non-negative number when present");
           if (finite(item.opacity) && (item.opacity < 0 || item.opacity > 1)) issue(`${ip}.opacity`, "must be between 0 and 1");
           if (!blends.has(String(item.blend))) issue(`${ip}.blend`, "is invalid");

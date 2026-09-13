@@ -251,7 +251,7 @@ assert.deepEqual(
     asset: asset("higher-z"),
     screenX: 60,
     screenY: 0,
-    width: 32,
+    segmentClip: { x: 60, width: 32, cropLeftPx: 0 },
     opacity: 1,
     blend: "additive",
     effectiveZ: 120,
