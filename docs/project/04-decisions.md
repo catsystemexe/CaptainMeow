@@ -1,7 +1,7 @@
 # Captain Meow — Decisions
 
 Status: CANONICAL ACTIVE DECISION REGISTER
-Last updated: 2026-09-06
+Last updated: 2026-09-13
 
 This document records current approved project/workflow decisions that should remain visible after historical audit material becomes non-authoritative.
 
@@ -131,6 +131,29 @@ Decision:
 
 Active plan:
 - `docs/bgr/PIXEL_BGR_DEV_WORKSPACE_V1_WORK_PLAN.md`.
+
+## D-014 — Scene Logic uses separated Space / Trigger / Event / Action / State contracts
+Status: ACTIVE / TARGET ARCHITECTURE
+
+Decision:
+- Scene Logic MVP consists of `Space`, `Trigger`, `Event`, `Action`, `State`, and `Sequence`;
+- Space owns authored geometry as `Marker`, `Range`, or `Zone`;
+- Trigger owns activation conditions;
+- Event represents semantic occurrence and does not inherently own spatial geometry;
+- Action owns executable consequences;
+- State references authoritative runtime state rather than duplicating gameplay truth;
+- MVP Sequence is linear and composes Event, Action, and Wait steps;
+- existing V2 world-X Events and B5 Marker/Action contracts remain compatibility implementations during migration;
+- no second gameplay EventBus or parallel gameplay-state authority may be introduced;
+- Scene Logic is a follow-up architecture workstream and does not retroactively broaden the approved Pixel BGR Workspace Phase 1 implementation scope.
+
+Canonical target and migration details:
+- `docs/scene-logic/SCENE_LOGIC_MODEL_V1.md`;
+- `docs/scene-logic/SCENE_LOGIC_MIGRATION_CONTRACT.md`.
+
+Authority relationship:
+- P1.X.14 in `docs/bgr/PIXEL_BGR_DEV_WORKSPACE_V1_WORK_PLAN.md` remains the current implemented compatibility contract;
+- D-014 and `docs/scene-logic/SCENE_LOGIC_MODEL_V1.md` define the approved future target architecture.
 
 ## Decision hygiene
 

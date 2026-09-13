@@ -448,6 +448,22 @@ Each gutter row is ordered `role label → role visibility eye → selected-trac
 
 ## P1.X.14 — V2 events lane and contextual Y rail
 
+> **TARGET ARCHITECTURE NOTE / PARTIALLY SUPERSEDED**
+>
+> P1.X.14 below remains the **CURRENT IMPLEMENTED CONTRACT**: the existing V2
+> `events[]` world-X contract is the currently implemented compatibility model.
+> Its long-term Scene Logic architecture is superseded by the **APPROVED TARGET
+> ARCHITECTURE** in D-014 and
+> `docs/scene-logic/SCENE_LOGIC_MODEL_V1.md`:
+>
+> - Space owns geometry.
+> - Trigger owns activation conditions.
+> - Event owns semantic occurrence.
+>
+> Migration is incremental. Existing V2 event behavior and schema remain
+> supported until equivalent replacement behavior is implemented and verified.
+> This does not expand the current Pixel BGR Workspace Phase 1 scope.
+
 The maintained V2 authoring shape is:
 
 ```text
