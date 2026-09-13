@@ -109,7 +109,7 @@ Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
 Current focused batch:
-`SL-02 — Marker cross Trigger runtime`
+`SL-03 — Scene Event runtime adapter`
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
