@@ -1,0 +1,321 @@
+# Scene Logic Implementation Roadmap
+
+Status: APPROVED / NEXT PRODUCT WORKSTREAM
+
+## Workstream position and execution rule
+
+The current active implementation workstream remains Pixel BGR Dev Workspace v1. Scene Logic v1 is the approved follow-up product workstream. This roadmap does not broaden the current Pixel BGR Workspace Phase 1 scope, and Scene Logic implementation begins only through focused, separately approved batches.
+
+This document sequences implementation of the architecture approved by D-014. It is a planning contract, not a runtime claim or authorization to execute the entire roadmap. Exact TypeScript interfaces will be established only in the focused batches that verify their runtime owners and boundaries.
+
+## Implementation sequence
+
+```text
+M0  Canonical architecture          COMPLETE
+M1  Space foundation
+M2  Trigger foundation
+M3  Event integration
+M4  Action execution
+M5  State addressing
+M6  Scene Logic composition
+M7  Scene Lab authoring convergence
+M8  Legacy migration
+M9  Linear Sequence runtime
+M10 Sequence Lab
+```
+
+## M0 — Canonical architecture — COMPLETE
+
+**Goal:** Establish the target domain boundaries and incremental migration rules before implementation.
+
+**Scope:** D-014, `SCENE_LOGIC_MODEL_V1.md`, and `SCENE_LOGIC_MIGRATION_CONTRACT.md` are the canonical decision and contracts. Their key invariants are: Space owns geometry; Trigger owns activation; Event carries semantic meaning; Action represents an executable consequence; State addresses authoritative runtime state; and Sequence preserves the distinction between reusable definitions and identity-bearing instances. Runtime integration must retain the existing deterministic fixed-step, phase-owned EventBus and gameplay-state authorities.
+
+**Exclusions:** M0 defines no exact TypeScript interfaces, persistence schema, adapters, or editor controls, and changes no compatibility behavior.
+
+**Acceptance gate:** The canonical model, migration classification, runtime-authority constraints, and non-expansion of Pixel BGR Phase 1 are approved and recorded. **Gate complete.**
+
+## M1 — Space foundation
+
+**Goal:** Establish geometry-only Scene primitives.
+
+**Scope:**
+
+```text
+Space
+├─ Marker
+├─ Range
+└─ Zone
+```
+
+Add domain types, pure geometry helpers, validation, a Scene ownership/reference model, and targeted static tests. Space has stable identifiers and owns geometry only. BGR-track coupling is forbidden unless verified Scene ownership explicitly requires it.
+
+**Exclusions:** Actions, Trigger behavior, Event semantics, UI, and serialization migration.
+
+**Acceptance gate:** Geometry helpers are deterministic; identifiers are stable; validation has targeted coverage; and existing V2/B5 behavior does not regress.
+
+## M2 — Trigger foundation
+
+**Goal:** Evaluate bounded activation conditions independently from geometry, meaning, and consequences.
+
+**Scope:**
+
+```text
+Trigger
+├─ Space
+├─ Time
+└─ State
+```
+
+MVP relations are:
+
+```text
+Marker → cross
+
+Range / Zone
+→ enter
+→ inside
+→ exit
+
+Time
+→ at
+→ after
+
+State
+→ ==
+→ !=
+→ <
+→ <=
+→ >
+→ >=
+```
+
+All Trigger kinds share the `enabled`, `once`, and `repeat` lifecycle concepts. Trigger definitions and mutable runtime state remain distinct. Gameplay Trigger evaluation uses fixed-step simulation.
+
+**Exclusions:** A Trigger does not directly execute arbitrary Actions. This milestone does not establish a parallel timing clock or State store.
+
+**Acceptance gate:** Supported conditions produce repeatable occurrences under fixed-step execution; lifecycle behavior is covered; authored definitions remain unchanged by evaluation; and no Action is executed directly by a Trigger.
+
+## M3 — Event integration
+
+**Goal:** Introduce semantic Scene Logic Events while preserving existing runtime authority.
+
+**Scope:** Define the bounded semantic occurrence contract and an explicit adapter into the existing phase-owned runtime/EventBus where appropriate. Event represents meaning, not geometry. Not every Scene Logic Event must map one-to-one to an EventBus message.
+
+**Exclusions:** No second gameplay EventBus, duplicate event queue, or bypass of existing event-phase ownership and routing rules.
+
+**Acceptance gate:** The deterministic, ownership-preserving path is demonstrated:
+
+```text
+Trigger occurrence
+→ semantic Event
+→ authoritative runtime routing
+```
+
+## M4 — Action execution
+
+**Goal:** Route explicit Scene Logic consequences to verified existing runtime owners.
+
+**Scope:**
+
+```text
+Action
+├─ Entity
+├─ World
+├─ State
+└─ Flow
+```
+
+Only operations with verified runtime ownership may be added. The recommended initial proof is `World.stop_scroll` and `World.start_scroll`, plus one safely mapped Entity Action if appropriate. Actions invoke existing owning systems rather than reimplementing gameplay.
+
+**Exclusions:** Conceptual operations listed in the model are not automatically implementation scope. No parallel gameplay implementations or opaque composite Actions are permitted.
+
+**Acceptance gate:** Each implemented Action has a documented authoritative owner, deterministic routing, and targeted evidence that it invokes rather than duplicates existing behavior.
+
+### First vertical slice — early architecture proof
+
+After the initial Space, Trigger, Event, and Action groundwork, prove:
+
+```text
+Marker
+→ cross Trigger
+→ Scene Event
+→ stop_scroll Action
+```
+
+This vertical slice must precede broad horizontal expansion across every primitive family. Its purpose is to verify that the canonical abstractions compose with the real deterministic runtime before investing in a larger API surface.
+
+## M5 — State addressing
+
+**Goal:** Reference authoritative runtime state without shadow copies.
+
+**Scope:** Introduce a bounded State addressing/adapter contract. Conceptual namespaces may include `scene.*` and `entity.*`, but registration begins only with values whose owners are verified in current code. State Actions `set`, `increment`, and `decrement` apply only to explicitly writable registered values.
+
+**Exclusions:** Arbitrary object-property traversal, a generic parallel State database, implicit writability, and unverified values.
+
+**Acceptance gate:** Demonstrate:
+
+```text
+State Trigger
+→ Event
+→ Action
+```
+
+The path reads and, where registered, writes authoritative state without parallel storage.
+
+## M6 — Scene Logic composition
+
+**Goal:** Establish one coherent Scene-level target data contract.
+
+**Scope:**
+
+```text
+Scene
+├─ visual/background content
+├─ Space
+├─ Triggers
+├─ Events
+└─ Action bindings
+```
+
+Persistence/schema integration may be designed and implemented in this milestone. It must provide a backwards-compatible loading strategy, stable IDs, separation of authored state from runtime execution state, and explicit schema/version migration where needed. Legacy V2 `events[]` must not be silently reinterpreted.
+
+**Exclusions:** Compatibility removal and destructive reinterpretation of existing data.
+
+**Acceptance gate:** The following example round-trips through the supported Scene persistence path while preserving stable references and compatibility behavior:
+
+```text
+Marker boss_gate
+→ cross Trigger
+→ Event boss_encounter_started
+→ Action stop_scroll
+```
+
+## M7 — Scene Lab authoring convergence
+
+**Goal:** Align Scene Lab authoring with the canonical domain model.
+
+**Scope:** Target UX follows this principle:
+
+```text
+canvas / timeline
+= geometry / world representation
+
+inspector
+= logic relationships and properties
+```
+
+Space is directly representable spatially where appropriate. Trigger, Event, Action, and State do not inherently require independent geometry. Current `EVE / TRI / MAR` labels are transitional and do not define final domain architecture.
+
+**Exclusions:** Do not preserve transitional labels or geometry-bearing logic objects merely for UI continuity; do not make UI state runtime authority.
+
+**Acceptance gate:** Supported authoring relationships persist correctly, existing compatible content remains usable, and mandatory browser runtime/visual verification confirms the spatial and inspector interaction model.
+
+## M8 — Legacy migration
+
+**Goal:** Converge compatibility contracts onto one generic Scene Logic authoring system without premature removal.
+
+**Scope:** Audit each of the following and classify it as `MIGRATE`, `ADAPT`, `KEEP AS PRESENTATION-SPECIFIC`, or `RETIRE`:
+
+```text
+BackgroundMarker
+BackgroundMarkerAction
+BackgroundEnvironmentEvent
+BackgroundSceneEvent.signal
+BackgroundSceneEvent.level-end
+```
+
+**Exclusions:** Do not remove a compatibility path before equivalent target behavior is implemented and verified.
+
+**Acceptance gate:** Every listed contract has an evidence-backed classification and migration outcome; compatibility tests and required runtime verification pass; and two competing generic Scene Logic authoring systems do not remain.
+
+## M9 — Linear Sequence runtime
+
+**Goal:** Add deterministic execution of reusable linear orchestration while preserving instance identity.
+
+**Scope:**
+
+```text
+Sequence
+└─ Linear
+   ├─ Event Step
+   ├─ Action Step
+   └─ Wait Step
+```
+
+Implement distinct Sequence Definitions and Sequence Instances, identity-preserving insertion, deterministic fixed-step execution, duration-only Wait, entity references, and Space references. Instance lifecycle is `idle`, `running`, and `completed`.
+
+**Exclusions:** Branching, parallel execution, loops, nested sequences, `wait_until`, and generic expressions.
+
+**Acceptance gate:** Multiple identity-bearing instances can execute the supported steps deterministically, resolve validated entity/Space references, and complete without definition mutation or wall-clock dependence.
+
+## M10 — Sequence Lab
+
+**Goal:** Provide dedicated reusable Sequence Definition authoring.
+
+**Scope:**
+
+```text
+Sequence Lab
+→ author definition
+→ save
+→ Scene Lab
+→ insert Sequence Instance
+→ bind entity / Space references
+```
+
+Scene visualization may expose Sequence content while preserving instance membership.
+
+**Exclusions:** Destructive flattening of Sequence Instances and the advanced Sequence features excluded from M9.
+
+**Acceptance gate:** A reusable definition can be authored, saved, inserted as an identity-preserving Scene instance, bound to valid entity/Space references, reopened, and verified through mandatory browser runtime/visual checks.
+
+## Preferred focused implementation batches
+
+This is a tentative implementation decomposition, not permission to execute all batches automatically. Every batch requires the normal scoped approval, branch, validation, and integration workflow.
+
+```text
+SL-01  Space core types + pure geometry helpers
+SL-02  Marker cross Trigger runtime
+SL-03  Scene Event runtime adapter
+SL-04  first World Action adapter + vertical slice
+SL-05  Range / Zone + enter/inside/exit
+SL-06  Time Trigger
+SL-07  State reference registry + State Trigger
+SL-08  Entity / State / Flow Action adapters
+SL-09  Scene persistence/schema integration
+SL-10  Scene Lab Space authoring
+SL-11  Scene Lab Trigger/Event/Action authoring
+SL-12  legacy compatibility migration
+SL-13  Linear Sequence runtime
+SL-14  Sequence Scene integration
+SL-15  Sequence Lab MVP
+```
+
+## Immediate first implementation milestone
+
+### SL-01 — Space core types + pure geometry helpers
+
+SL-01 is the first future implementation batch. Its expected scope is:
+
+```text
+Marker
+Range
+Zone
+validation
+pure geometry helpers
+targeted tests
+```
+
+Its explicit exclusions are:
+
+```text
+Trigger runtime
+Event runtime
+Actions
+State adapters
+UI
+serialization migration
+legacy removal
+```
+
+SL-01 must receive focused approval before it is marked in progress or implemented.
