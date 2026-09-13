@@ -37,7 +37,9 @@ Primary goals:
 
 Persistent scene and gameplay data MUST reference assets by stable Asset ID.
 
-Filenames, filesystem paths, and user-facing display names MUST NOT serve as persistent asset identity.
+Generic assets may keep filenames, filesystem paths, and user-facing display names
+distinct from persistent identity. Canonical BGR assets use the stricter contract
+documented in section 8: the runtime filename stem is intentionally the Asset ID.
 
 Example:
 
@@ -77,7 +79,8 @@ Example:
 rock_large_01.png
 ```
 
-Filename is not persistent identity.
+For generic assets, filename is not persistent identity. Canonical BGR is the
+documented exception: its filename stem is the stable ID.
 
 ### Display Name
 Human-readable label shown in Scene Lab or other UI.
@@ -264,6 +267,21 @@ destructive lifecycle actions remain deferred.
 
 ## 8. Implemented current BGR preparation convention (Phase F1)
 
+### BGR asset identity contract
+
+For canonical BGR assets, the runtime URL filename stem is the Asset ID and the
+visible catalogue title. BGR declarations mechanically set the generic
+`AssetDefinition.displayName` field to that ID; there is no independently authored
+BGR display-name authority. Renaming an asset is therefore a repository migration
+or refactor, not a Scene Lab authoring action.
+
+SEG and OBJ instances retain unique internal IDs for selection, editing,
+serialization, duplication, and diagnostics. Their visible multitrack and Scene
+tree label is the referenced `entity.asset.id`, so multiple instances of the same
+asset share a visible asset label without sharing instance identity. Legacy
+optional instance `name` fields remain parse-compatible but Scene Lab does not
+author them for SEG/OBJ. Event naming is unchanged.
+
 `BACKGROUND_ASSET_DECLARATIONS` is the single owner of each BGR asset's identity,
 URL, technical/pixel-art classification, and `background.preparation` metadata.
 Do not add a parallel preparation map. Every current entry declares:
@@ -331,13 +349,13 @@ or normalize:
 
 | Asset ID | Usage / track role | Explicit instance size | Native-to-instance factors |
 |---|---|---:|---:|
-| `desert-test-sky` | static backdrop / camera-fixed | 1672 × native height | 1.000 × 1.000 |
-| `desert-test-far-mesas` | segment / far | 1672 × native height | 1.000 × 1.000 |
-| `desert-test-mid-mesas-a` | segment / mid | 1672 × native height | 1.000 × 1.000 |
-| `desert-test-mid-mesas-b` | segment / mid | 1672 × native height | 1.000 × 1.000 |
-| `desert-test-near-band` | segment / near; object / foreground | 1672 × native height; 1003 × 565 | 1.000 × 1.000; about 0.600 × 0.600 |
-| `desert-test-sun` | object / far | 836 × 471 | 0.500 × about 0.501 |
-| `desert-test-clouds` | object / far | 1254 × 706 | 0.750 × about 0.750 |
+| `desert_sky` | static backdrop / camera-fixed | 1672 × native height | 1.000 × 1.000 |
+| `desert_far_mesas` | segment / far | 1672 × native height | 1.000 × 1.000 |
+| `desert_mid_mesas_a` | segment / mid | 1672 × native height | 1.000 × 1.000 |
+| `desert_mid_mesas_b` | segment / mid | 1672 × native height | 1.000 × 1.000 |
+| `desert_near_band` | segment / near; object / foreground | 1672 × native height; 1003 × 565 | 1.000 × 1.000; about 0.600 × 0.600 |
+| `desert_sun` | object / far | 836 × 471 | 0.500 × about 0.501 |
+| `desert_clouds` | object / far | 1254 × 706 | 0.750 × about 0.750 |
 
 Thus 1672 is the native width of this fixture family, not evidence of a universal
 segment standard. The repository does not establish whether the object sizes are
@@ -500,10 +518,9 @@ Existing specialised content sources and generated atlas metadata remain valid o
 
 Phase E1/S2 implement a compact catalogue-native picker and preview context for new
 V2 segment and object insertion. Its options are projected from canonical BGR declarations:
-the mutable Display Name is the primary UI label, Asset ID remains the persisted
-identity, and the canonical runtime URL supplies both insertion delivery data and
-the bounded DOM image preview. Asset ID and runtime path remain visible as
-secondary technical details. H2a adds lifecycle and known-reference counts/details
+the Asset ID is the primary UI label and persisted identity, while the canonical
+runtime URL supplies both insertion delivery data and the bounded DOM image preview.
+The runtime path remains visible as a technical detail. H2a adds lifecycle and known-reference counts/details
 to the selected-asset context. Advanced grouping, filtering, and search remain
 future scope; V1 and the V2 static backdrop are unchanged.
 
@@ -709,7 +726,7 @@ The following are approved design direction for future implementation:
 | ID | Decision | Status |
 |---|---|---|
 | AS-01 | Persistent data references assets by stable Asset ID. | APPROVED |
-| AS-02 | Asset ID, filename, and Display Name are distinct concepts. | APPROVED |
+| AS-02 | Generic Asset ID, filename, and Display Name may be distinct; canonical BGR uses filename stem = ID = visible title. | APPROVED |
 | AS-03 | Scene Lab should consume a canonical catalogue rather than maintain a parallel asset list. | APPROVED |
 | AS-04 | Asset definition metadata and per-scene instance state are separate. | APPROVED |
 | AS-05 | Runtime optimisation must not redefine persistent asset identity. | APPROVED |

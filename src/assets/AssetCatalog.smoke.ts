@@ -21,9 +21,9 @@ assert.throws(
   /Duplicate Asset ID: test\.image/,
 );
 
-const segment = resolveAsset(assetId("desert-test-mid-mesas-a"));
+const segment = resolveAsset(assetId("desert_mid_mesas_a"));
 assert.equal(segment?.runtime.url, "/assets/bg/test/desert/desert_mid_mesas_a.png");
-const object = resolveAsset(assetId("desert-test-clouds"));
+const object = resolveAsset(assetId("desert_clouds"));
 assert.equal(object?.runtime.url, "/assets/bg/test/desert/desert_clouds.png");
 assert.equal(resolveAsset(assetId("missing")), null);
 
