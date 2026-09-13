@@ -4,8 +4,14 @@ import type {
   RangeSpaceTriggerDefinition,
   RangeZoneTriggerRelation,
   SpaceTriggerMode,
+  TimeTriggerDefinition,
   ZoneSpaceTriggerDefinition,
 } from "./Trigger";
+
+export interface TimeTriggerRuntimeState {
+  previousTime: number | null;
+  fired: boolean;
+}
 
 export interface MarkerCrossTriggerRuntimeState {
   previousX: number | null;
@@ -27,6 +33,29 @@ export function createMarkerCrossTriggerRuntimeState(): MarkerCrossTriggerRuntim
 
 export function createContainmentTriggerRuntimeState(): ContainmentTriggerRuntimeState {
   return { previousInside: null, fired: false };
+}
+
+export function createTimeTriggerRuntimeState(): TimeTriggerRuntimeState {
+  return { previousTime: null, fired: false };
+}
+
+/** Evaluates caller-supplied authoritative simulation time, expressed in seconds. */
+export function evaluateTimeTrigger(
+  trigger: TimeTriggerDefinition,
+  state: TimeTriggerRuntimeState,
+  currentTime: number,
+): TriggerOccurrence | null {
+  const previousTime = state.previousTime;
+  state.previousTime = currentTime;
+  if (previousTime === null || !trigger.enabled || (trigger.mode === "once" && state.fired)) return null;
+
+  const occurred = trigger.relation === "at"
+    ? previousTime < trigger.timeSec && currentTime >= trigger.timeSec
+    : previousTime <= trigger.timeSec && currentTime > trigger.timeSec;
+  if (!occurred) return null;
+
+  if (trigger.mode === "once") state.fired = true;
+  return { triggerId: trigger.id };
 }
 
 function evaluateContainmentTransition(
