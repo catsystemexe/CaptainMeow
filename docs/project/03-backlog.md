@@ -109,7 +109,7 @@ Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
 Current focused batch:
-`SL-01 — Space core types + pure geometry helpers`
+`SL-02 — Marker cross Trigger runtime`
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
