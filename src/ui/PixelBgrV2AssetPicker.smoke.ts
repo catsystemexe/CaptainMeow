@@ -28,7 +28,7 @@ assert.deepEqual(persisted.tracks[0].objects.at(-1).asset,{id:selected.id});
 const ui=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
 assert.match(ui,/createSceneAssetContext\(this\.v2SelectedAssetId/,"right catalogue consumes the existing picker authority");
 assert.doesNotMatch(ui,/renderV2AssetPicker/,"legacy left picker surface is removed");
-assert.match(ui,/resolveV2PickerAsset\(BACKGROUND_ASSET_CATALOG,this\.v2SelectedAssetId\)/,"both insert actions resolve explicit picker authority");
+assert.match(ui,/resolveV2PickerAsset\(BACKGROUND_ASSET_CATALOG,item\.id\)/,"P3 insertion resolves the explicitly clicked asset");
 assert.match(ui,/this\.v2SelectedAssetId=syncV2PickerAssetId\(segment\.asset\.id\)/);assert.match(ui,/this\.v2SelectedAssetId=syncV2PickerAssetId\(object\.asset\.id\)/);
 assert.doesNotMatch(ui,/const catalog=BACKGROUND_ASSET_CATALOG\[0\]/,"insert no longer silently chooses the first entry");
 console.log("PixelBgrV2AssetPicker.smoke: PASS");
