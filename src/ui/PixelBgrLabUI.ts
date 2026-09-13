@@ -36,7 +36,7 @@ import { v2YRailValue, type V2YRailDrag } from "./PixelBgrV2YRail";
 import { rememberSceneLabCatalogEntry, resolveSceneLabV2Entry } from "./SceneLabLastScene";
 import { v2EntityDisplayName } from "./PixelBgrV2EntityDisplayName";
 import { initialV2AssetId, resolveV2PickerAsset, syncV2PickerAssetId } from "./PixelBgrV2AssetPicker";
-import { createSceneAssetContext, SCENE_ASSET_CONTEXT_CSS } from "./SceneAssetContext";
+import { assetContextLaneActions, createSceneAssetContext, SCENE_ASSET_CONTEXT_CSS, type SceneAssetContextItem } from "./SceneAssetContext";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -324,7 +324,19 @@ export class PixelBgrLabUI {
     if(this.message){const message=el("div","cm-pixel-msg");message.textContent=this.message;tree.append(message);}return tree;
   }
   private renderSceneAssetContext():HTMLElement {
-    return createSceneAssetContext(this.v2SelectedAssetId,assetId=>{this.v2SelectedAssetId=assetId;this.render();});
+    return createSceneAssetContext(this.v2SelectedAssetId,assetId=>{this.v2SelectedAssetId=assetId;this.render();},(event,item)=>this.openSceneAssetInsertMenu(event,item));
+  }
+  private openSceneAssetInsertMenu(event:MouseEvent,item:SceneAssetContextItem):void {
+    event.stopPropagation();this.closeLaneInsertMenu?.();
+    const menu=el("div","cm-v2-lane-add-menu cm-scene-asset-insert-menu");menu.setAttribute("role","menu");menu.setAttribute("aria-label",`Insert ${item.displayName}`);
+    const anchor=event.currentTarget instanceof HTMLElement?event.currentTarget:null;
+    const close=()=>{menu.remove();document.removeEventListener("pointerdown",outside);document.removeEventListener("keydown",keydown);if(this.closeLaneInsertMenu===close)this.closeLaneInsertMenu=null;};
+    const outside=(pointerEvent:PointerEvent)=>{if(pointerEvent.target instanceof Node&&!menu.contains(pointerEvent.target))close();};
+    const keydown=(keyEvent:KeyboardEvent)=>{if(keyEvent.key==="Escape"){keyEvent.preventDefault();close();anchor?.focus();}};
+    const insert=(kind:"segment"|"object",role:"foreground"|"near"|"mid"|"far",laneLabel:string)=>{close();const scene=getBackgroundSceneV2(globalThis);if(!scene)return;const lane=projectBackgroundV2Timeline(scene,{},this.currentX()).lanes.find(value=>value.role===role);if(!lane){this.message=`Cannot insert in ${laneLabel}: lane is unavailable.`;this.render();return;}const track=resolveV2LaneInsertTrack(scene,lane,this.v2SelectedTrackId);if(!track){this.message=`Cannot insert in ${laneLabel}: lane has no track.`;this.render();return;}const asset=resolveV2PickerAsset(BACKGROUND_ASSET_CATALOG,item.id);if(!asset){this.message=`Cannot insert: asset '${item.id}' is unknown or unresolved.`;this.render();return;}const selectedSegment=track.id===this.v2SelectedTrackId?findV2Segment(scene,track.id,this.v2SelectedSegmentId):null;if(kind==="segment")this.applyV2Edit(insertV2LaneSegment(scene,track.id,this.currentX(),asset,selectedSegment?.id));else this.applyV2ObjectEdit(insertV2LaneObject(scene,track.id,this.currentX(),asset));};
+    const heading=el("div","cm-scene-asset-insert-heading");heading.textContent=item.displayName;menu.appendChild(heading);
+    const actions=assetContextLaneActions(item);for(const action of actions){const actionButton=button(`${action.kind==="segment"?"Segment":"Object"} · ${action.laneLabel}`,()=>insert(action.kind,action.role,action.laneLabel));actionButton.setAttribute("role","menuitem");menu.appendChild(actionButton);}if(actions.length===0){const info=el("div","cm-scene-asset-insert-empty");info.textContent="No lane insertion for BGR asset";menu.appendChild(info);}
+    document.body.appendChild(menu);const margin=6;const rect=menu.getBoundingClientRect();menu.style.left=`${Math.min(Math.max(margin,event.clientX),Math.max(margin,window.innerWidth-rect.width-margin))}px`;menu.style.top=`${Math.min(Math.max(margin,event.clientY),Math.max(margin,window.innerHeight-rect.height-margin))}px`;this.closeLaneInsertMenu=close;document.addEventListener("pointerdown",outside);document.addEventListener("keydown",keydown);menu.querySelector<HTMLButtonElement>("button")?.focus();
   }
   private sceneContentsIdentityChild(label:string):HTMLElement {const child=el("div","cm-scene-tree-child");child.append(document.createTextNode(""),document.createTextNode(label));return child;}
   private sceneContentsEnvironmentChild(scene:BackgroundSceneV2):HTMLElement {const starfield=scene.environment.starfield!;const child=el("div","cm-scene-environment-row");const seed=num(starfield.seed,1,value=>this.applyV2EnvironmentEdit(updateV2Starfield(scene,{seed:value})));seed.title="Starfield seed";seed.setAttribute("aria-label","Starfield seed");const density=num(starfield.density,.05,value=>this.applyV2EnvironmentEdit(updateV2Starfield(scene,{density:value})));density.title="Starfield density";density.setAttribute("aria-label","Starfield density");child.append("starfield",seed,density,this.iconButton("Randomize starfield seed",RotateCcw,"RotateCcw",()=>{const values=new Uint32Array(1);crypto.getRandomValues(values);this.applyV2EnvironmentEdit(randomizeV2StarfieldSeed(scene,values[0]));}));return child;}
