@@ -109,7 +109,7 @@ Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
 Current focused batch:
-`SL-04 — first World Action adapter + vertical slice`
+`SL-05 — Range / Zone + enter / inside / exit`
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
