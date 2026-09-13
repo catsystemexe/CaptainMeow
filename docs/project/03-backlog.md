@@ -109,7 +109,7 @@ Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
 Current focused batch:
-`SL-06 — Time Trigger (at / after)`
+`SL-07 — State reference registry + State Trigger`
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
