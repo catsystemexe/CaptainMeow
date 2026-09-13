@@ -97,7 +97,7 @@ Approved implementation order:
 Do not redesign BGR data/runtime architecture or resume micro-polish of the obsolete floating-overlay model as part of Phase 1.
 
 ### CM-SCENE-LOGIC-001 — Scene Logic v1
-Status: APPROVED / NEXT
+Status: IN PROGRESS
 
 Canonical architecture:
 - `docs/scene-logic/SCENE_LOGIC_MODEL_V1.md`
@@ -108,7 +108,7 @@ Migration contract:
 Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
-Implementation begins with:
+Current focused batch:
 `SL-01 — Space core types + pure geometry helpers`
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
