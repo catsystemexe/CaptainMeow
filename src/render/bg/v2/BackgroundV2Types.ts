@@ -36,6 +36,8 @@ export interface BackgroundSegment {
   flipX?: boolean;
   flipY?: boolean;
   startTrackX: number;
+  /** Source-space pixels hidden to the left of the visible segment interval. */
+  cropLeftPx?: number;
   widthPx: number;
   asset: BackgroundAssetRef;
   offsetY: number;
@@ -105,6 +107,7 @@ export interface BackgroundRenderInstance {
   screenY: number;
   width?: number;
   height?: number;
+  segmentClip?: { x: number; width: number; cropLeftPx: number };
   opacity: number;
   blend: BackgroundBlendMode;
   effectiveZ: number;

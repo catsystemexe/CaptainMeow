@@ -21,7 +21,7 @@ const segment = first.tracks.flatMap((track) => track.segments).find(({ id }) =>
 assert(segment && Number.isFinite(segment.widthPx) && segment.widthPx > 0, "segment has an explicit finite boundary");
 const frame = evaluateBackgroundScene(first, { playerWorldX: 0, cameraScrollX: 0, cameraScrollY: 0, viewportWidth: 896, viewportHeight: 504 });
 const segmentCommand = materializeBackgroundFrameCommands(frame, { playerWorldX: 0 }).behindGameplay.find(({ sourceSegmentId }) => sourceSegmentId === segment.id);
-assert.equal(segmentCommand?.width, segment.widthPx, "authored segment width propagates to draw geometry");
+assert.notEqual(segmentCommand?.width, segment.widthPx, "segment crop extent does not become draw geometry");
 assert.equal(segmentCommand?.clip?.width, segment.widthPx, "clip geometry matches the authored segment boundary");
 assert(first.tracks.some(({ role, objects: trackObjects }) => role === "foreground" && trackObjects.some(({ id }) => id === "gameplay-overlap")), "foreground sample exists");
 

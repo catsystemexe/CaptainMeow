@@ -68,8 +68,9 @@ export function isCompatibilityInstanceActive(instance: BackgroundRenderInstance
 
 function commandFor(instance: BackgroundRenderInstance, compatibility?: BackgroundV1CompatibilityState): BackgroundSpriteDrawCommand {
   const declaration = BACKGROUND_ASSET_DECLARATIONS.find(({ definition }) => definition.id === instance.asset.id);
-  const clip = instance.sourceSegmentId && instance.width !== undefined
-    ? { x: instance.screenX, y: 0, width: Math.max(0, instance.width), height: Number.POSITIVE_INFINITY }
+  const nativeSize = declaration?.background.preparation.nativeSize;
+  const clip = instance.sourceSegmentId && instance.segmentClip
+    ? { x: instance.segmentClip.x, y: 0, width: Math.max(0, instance.segmentClip.width), height: Number.POSITIVE_INFINITY }
     : instance.width !== undefined && instance.height !== undefined
       ? { x: instance.screenX, y: instance.screenY, width: Math.max(0, instance.width), height: Math.max(0, instance.height) }
       : undefined;
@@ -81,10 +82,14 @@ function commandFor(instance: BackgroundRenderInstance, compatibility?: Backgrou
     expectedTextureSize: declaration?.background.preparation.nativeSize,
     resourceKey: backgroundTextureResourceKey(instance.asset.url),
     url: normalizeBackgroundTextureUrl(instance.asset.url),
-    x: instance.screenX,
+    // A flipped segment mirrors its authored crop interval, rather than changing
+    // which source pixels the interval selects.
+    x: instance.sourceSegmentId && instance.flipX && instance.segmentClip && nativeSize
+      ? instance.segmentClip.x - (nativeSize.width - instance.segmentClip.cropLeftPx - instance.segmentClip.width)
+      : instance.screenX,
     y: instance.screenY,
-    width: instance.width,
-    height: instance.height,
+    width: instance.sourceSegmentId ? nativeSize?.width : instance.width,
+    height: instance.sourceSegmentId ? nativeSize?.height : instance.height,
     opacity: clamp01(instance.opacity, 1),
     blend: instance.blend,
     effectiveZ: instance.effectiveZ,

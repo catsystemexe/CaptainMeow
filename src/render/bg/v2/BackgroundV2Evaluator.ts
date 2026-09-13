@@ -30,14 +30,16 @@ function evaluateTrack(
 
   track.segments.forEach((segment, segmentIndex) => {
     if (!segment.enabled) return;
-    const screen = trackPointToScreen({ x: segment.startTrackX, y: segment.offsetY }, cameraScroll, track.parallax);
+    const cropLeftPx = segment.cropLeftPx ?? 0;
+    const visibleScreen = trackPointToScreen({ x: segment.startTrackX, y: segment.offsetY }, cameraScroll, track.parallax);
+    const sourceScreen = trackPointToScreen({ x: segment.startTrackX - cropLeftPx, y: segment.offsetY }, cameraScroll, track.parallax);
     instances.push({
       instance: {
         instanceId: `${track.id}:segment:${segment.id}`,
         asset: { ...segment.asset },
-        screenX: screen.x,
-        screenY: screen.y,
-        width: segment.widthPx,
+        screenX: sourceScreen.x,
+        screenY: sourceScreen.y,
+        segmentClip: { x: visibleScreen.x, width: segment.widthPx, cropLeftPx },
         opacity: segment.opacity,
         blend: segment.blend,
         effectiveZ: calculateEffectiveZ(track.zBase, segment.localZ),
