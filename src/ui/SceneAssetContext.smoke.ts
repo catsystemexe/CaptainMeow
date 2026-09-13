@@ -120,13 +120,14 @@ assert.match(uiSource, /createSceneAssetContext\(this\.v2SelectedAssetId,assetId
 assert.doesNotMatch(uiSource, /tree\.append\(this\.renderV2AssetPicker\(\)\)/, "old left picker is absent");
 assert.match(uiSource, /this\.v2SelectedAssetId=syncV2PickerAssetId\(segment\.asset\.id\)/, "SEG selection still synchronizes asset context");
 assert.match(uiSource, /this\.v2SelectedAssetId=syncV2PickerAssetId\(object\.asset\.id\)/, "OBJ selection still synchronizes asset context");
-assert.match(uiSource, /resolveV2PickerAsset\(BACKGROUND_ASSET_CATALOG,this\.v2SelectedAssetId\)/, "lane insertion still resolves the selected asset");
 assert.match(uiSource, /resolveV2PickerAsset\(BACKGROUND_ASSET_CATALOG,item\.id\)/, "context insertion resolves the clicked asset rather than catalogue selection");
 assert.match(uiSource, /resolveV2LaneInsertTrack\(scene,lane,this\.v2SelectedTrackId\)/, "context insertion reuses canonical lane track resolution");
 assert.match(uiSource, /insertV2LaneSegment\(scene,track\.id,this\.currentX\(\),asset,selectedSegment\?\.id\)/, "segment insertion reuses the player world-X authority and canonical helper");
 assert.match(uiSource, /insertV2LaneObject\(scene,track\.id,this\.currentX\(\),asset\)/, "object insertion reuses the player world-X authority and canonical helper");
 assert.doesNotMatch(uiSource, /insertV2Lane(?:Segment|Object)\([^\n]*event\.clientX/, "pointer X is never passed to insertion helpers");
-assert.match(uiSource, /this\.closeLaneInsertMenu\?\.\(\)/, "opening/rerendering closes the prior shared menu instance");
+assert.match(uiSource, /this\.closeInsertMenu\?\.\(\)/, "opening/rerendering closes the prior shared insert menu instance");
+assert.match(uiSource, /cm-v2-insert-menu cm-scene-asset-insert-menu/, "P3 uses the semantic insert-menu class");
+assert.doesNotMatch(uiSource, /closeLaneInsertMenu|cm-v2-lane-add-menu|openV2LaneInsertMenu/, "obsolete lane-add menu state, class, and handler are absent");
 assert.match(uiSource, /document\.removeEventListener\("pointerdown",outside\).*document\.removeEventListener\("keydown",keydown\)/, "menu close removes outside and Escape listeners");
 assert.match(uiSource, /Math\.min\(Math\.max\(margin,event\.clientX\).*window\.innerWidth-rect\.width-margin/, "menu pointer position is viewport-clamped without becoming scene X");
 assert.doesNotMatch(uiSource, /openSceneAssetInsertMenu[\s\S]*?activeSceneAssetFilter\s*=/, "context insertion does not reset the presentation filter");
