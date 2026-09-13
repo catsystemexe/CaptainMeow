@@ -7,9 +7,11 @@ import {
   validateMarkerCrossTrigger,
   validateRangeSpaceTrigger,
   validateZoneSpaceTrigger,
+  validateTimeTrigger,
   type MarkerCrossTriggerDefinition,
   type RangeSpaceTriggerDefinition,
   type ZoneSpaceTriggerDefinition,
+  type TimeTriggerDefinition,
 } from "./Trigger";
 import {
   createContainmentTriggerRuntimeState,
@@ -17,7 +19,72 @@ import {
   evaluateMarkerCrossTrigger,
   evaluateRangeSpaceTrigger,
   evaluateZoneSpaceTrigger,
+  createTimeTriggerRuntimeState,
+  evaluateTimeTrigger,
 } from "./TriggerRuntime";
+
+const atTime: TimeTriggerDefinition = {
+  id: "at_ten",
+  kind: "time",
+  relation: "at",
+  timeSec: 10,
+  mode: "repeat",
+  enabled: true,
+};
+const afterTime: TimeTriggerDefinition = { ...atTime, id: "after_ten", relation: "after" };
+function timeSamples(trigger: TimeTriggerDefinition, times: readonly number[]): Array<string | null> {
+  const state = createTimeTriggerRuntimeState();
+  return times.map((time) => evaluateTimeTrigger(trigger, state, time)?.triggerId ?? null);
+}
+
+assert.equal(validateTimeTrigger(atTime).valid, true);
+for (const [field, value] of [
+  ["id", " "], ["kind", "space"], ["relation", "before"], ["timeSec", -1],
+  ["mode", "many"], ["enabled", "yes"],
+] as const) {
+  const result = validateTimeTrigger({ ...atTime, [field]: value });
+  assert.equal(result.valid, false);
+  assert(result.issues.some((issue) => issue.field === field), `invalid Time Trigger ${field} is reported`);
+}
+for (const timeSec of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+  const result = validateTimeTrigger({ ...atTime, timeSec });
+  assert.equal(result.valid, false);
+  assert(result.issues.some((issue) => issue.field === "timeSec"), "non-finite Time threshold is reported");
+}
+assert.equal(validateTimeTrigger(null).valid, false);
+assert.equal(validateTimeTrigger([]).valid, false);
+
+assert.deepEqual(timeSamples(atTime, [0]), [null], "first Time sample below the threshold is baseline only");
+assert.deepEqual(timeSamples(atTime, [10]), [null], "first Time sample at the threshold is baseline only");
+assert.deepEqual(timeSamples(atTime, [15]), [null], "first Time sample beyond the threshold is baseline only");
+assert.deepEqual(timeSamples(atTime, [9, 10]), [null, atTime.id], "at fires when the threshold is reached");
+assert.deepEqual(timeSamples(atTime, [9, 11]), [null, atTime.id], "at fires across a large step");
+assert.deepEqual(timeSamples(atTime, [5, 9]), [null, null]);
+assert.deepEqual(timeSamples(atTime, [10, 11]), [null, null]);
+assert.deepEqual(timeSamples(atTime, [11, 12]), [null, null]);
+assert.deepEqual(timeSamples(atTime, [11, 5]), [null, null], "backward Time movement does not fire");
+
+assert.deepEqual(timeSamples(afterTime, [9, 10]), [null, null], "after does not fire upon reaching the threshold");
+assert.deepEqual(timeSamples(afterTime, [10, 10, 10.1]), [null, null, afterTime.id], "after fires only strictly beyond the threshold");
+assert.deepEqual(timeSamples(afterTime, [9, 11]), [null, afterTime.id], "after fires across a large step");
+assert.deepEqual(timeSamples(afterTime, [11, 12]), [null, null]);
+assert.deepEqual(timeSamples(atTime, [9, 11, 5, 10]), [null, atTime.id, null, atTime.id], "repeat at can fire after a backward seek");
+assert.deepEqual(timeSamples(afterTime, [10, 11, 5, 10, 11]), [null, afterTime.id, null, null, afterTime.id], "repeat after can fire after a backward seek");
+assert.deepEqual(timeSamples({ ...atTime, mode: "once" }, [9, 11, 5, 10]), [null, atTime.id, null, null], "once remains latched after a seek");
+
+const disabledTimeState = createTimeTriggerRuntimeState();
+evaluateTimeTrigger({ ...atTime, enabled: false }, disabledTimeState, 9);
+evaluateTimeTrigger({ ...atTime, enabled: false }, disabledTimeState, 11);
+assert.equal(evaluateTimeTrigger(atTime, disabledTimeState, 11), null, "enabling does not retro-fire a disabled crossing");
+evaluateTimeTrigger(atTime, disabledTimeState, 5);
+assert.deepEqual(evaluateTimeTrigger(atTime, disabledTimeState, 10), { triggerId: atTime.id });
+
+const timeDefinitionBefore = { ...atTime };
+const timeState = createTimeTriggerRuntimeState();
+evaluateTimeTrigger(atTime, timeState, 9);
+evaluateTimeTrigger(atTime, timeState, 10);
+assert.deepEqual(atTime, timeDefinitionBefore, "Time evaluation does not mutate authored Trigger data");
+assert.deepEqual(timeState, { previousTime: 10, fired: false }, "Time lifecycle mutation remains in separate runtime state");
 
 const marker: Marker = { id: "gate", position: 100 };
 const once: MarkerCrossTriggerDefinition = {
@@ -174,4 +241,4 @@ assert.deepEqual(range, rangeBefore, "evaluation does not mutate Range geometry"
 assert.deepEqual(rangeTrigger, rangeTriggerBefore, "evaluation does not mutate authored Range Trigger data");
 assert.deepEqual(containmentState, { previousInside: true, fired: false }, "containment lifecycle state remains separate");
 
-console.log("[SMOKE] Scene Logic Space Trigger runtime OK ✅");
+console.log("[SMOKE] Scene Logic Trigger runtime OK ✅");
