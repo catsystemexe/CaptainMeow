@@ -1,8 +1,20 @@
 import type { Marker, Range, Zone } from "./Space";
 
-export type SpaceTriggerMode = "once" | "repeat";
+export type TriggerMode = "once" | "repeat";
+export type SpaceTriggerMode = TriggerMode;
 export type MarkerCrossTriggerMode = SpaceTriggerMode;
 export type RangeZoneTriggerRelation = "enter" | "inside" | "exit";
+export type TimeTriggerRelation = "at" | "after";
+
+/** Authored time threshold in seconds; the runtime clock remains caller-owned. */
+export interface TimeTriggerDefinition {
+  readonly id: string;
+  readonly kind: "time";
+  readonly relation: TimeTriggerRelation;
+  readonly timeSec: number;
+  readonly mode: TriggerMode;
+  readonly enabled: boolean;
+}
 
 /** Authored activation condition. Marker geometry remains separately owned by Space. */
 export interface MarkerCrossTriggerDefinition {
@@ -40,6 +52,33 @@ export interface TriggerValidationIssue {
 export interface TriggerValidationResult {
   readonly valid: boolean;
   readonly issues: readonly TriggerValidationIssue[];
+}
+
+export function validateTimeTrigger(trigger: unknown): TriggerValidationResult {
+  const issues: TriggerValidationIssue[] = [];
+  const value = trigger as Record<string, unknown> | null;
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { valid: false, issues: [{ field: "trigger", message: "trigger must be an object" }] };
+  }
+  if (typeof value.id !== "string" || value.id.trim().length === 0) {
+    issues.push({ field: "id", message: "id must be a non-empty string" });
+  }
+  if (value.kind !== "time") issues.push({ field: "kind", message: 'kind must be "time"' });
+  if (value.relation !== "at" && value.relation !== "after") {
+    issues.push({ field: "relation", message: 'relation must be "at" or "after"' });
+  }
+  if (typeof value.timeSec !== "number" || !Number.isFinite(value.timeSec) || value.timeSec < 0) {
+    issues.push({ field: "timeSec", message: "timeSec must be a finite non-negative number" });
+  }
+  if (value.mode !== "once" && value.mode !== "repeat") {
+    issues.push({ field: "mode", message: 'mode must be "once" or "repeat"' });
+  }
+  if (typeof value.enabled !== "boolean") {
+    issues.push({ field: "enabled", message: "enabled must be a boolean" });
+  }
+
+  return { valid: issues.length === 0, issues };
 }
 
 /** Validates authored/external data without expanding into a generic Trigger schema. */
