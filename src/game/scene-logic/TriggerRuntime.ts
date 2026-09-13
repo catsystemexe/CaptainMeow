@@ -1,5 +1,11 @@
-import type { Marker } from "./Space";
-import type { MarkerCrossTriggerDefinition } from "./Trigger";
+import { rangeContains, zoneContains, type Marker, type Range, type Zone } from "./Space";
+import type {
+  MarkerCrossTriggerDefinition,
+  RangeSpaceTriggerDefinition,
+  RangeZoneTriggerRelation,
+  SpaceTriggerMode,
+  ZoneSpaceTriggerDefinition,
+} from "./Trigger";
 
 export interface MarkerCrossTriggerRuntimeState {
   previousX: number | null;
@@ -10,8 +16,77 @@ export interface TriggerOccurrence {
   readonly triggerId: string;
 }
 
+export interface ContainmentTriggerRuntimeState {
+  previousInside: boolean | null;
+  fired: boolean;
+}
+
 export function createMarkerCrossTriggerRuntimeState(): MarkerCrossTriggerRuntimeState {
   return { previousX: null, fired: false };
+}
+
+export function createContainmentTriggerRuntimeState(): ContainmentTriggerRuntimeState {
+  return { previousInside: null, fired: false };
+}
+
+function evaluateContainmentTransition(
+  triggerId: string,
+  relation: RangeZoneTriggerRelation,
+  mode: SpaceTriggerMode,
+  enabled: boolean,
+  state: ContainmentTriggerRuntimeState,
+  currentInside: boolean,
+): TriggerOccurrence | null {
+  const previousInside = state.previousInside;
+  state.previousInside = currentInside;
+  if (previousInside === null || !enabled || (mode === "once" && state.fired)) return null;
+
+  const occurred = relation === "exit"
+    ? previousInside && !currentInside
+    : !previousInside && currentInside;
+  if (!occurred) return null;
+
+  if (mode === "once") state.fired = true;
+  return { triggerId };
+}
+
+export function evaluateRangeSpaceTrigger(
+  trigger: RangeSpaceTriggerDefinition,
+  range: Range,
+  state: ContainmentTriggerRuntimeState,
+  currentX: number,
+): TriggerOccurrence | null {
+  if (range.id !== trigger.rangeId) {
+    throw new Error(`Range Trigger "${trigger.id}" expected Range "${trigger.rangeId}", received "${range.id}"`);
+  }
+  return evaluateContainmentTransition(
+    trigger.id,
+    trigger.relation,
+    trigger.mode,
+    trigger.enabled,
+    state,
+    rangeContains(range, currentX),
+  );
+}
+
+export function evaluateZoneSpaceTrigger(
+  trigger: ZoneSpaceTriggerDefinition,
+  zone: Zone,
+  state: ContainmentTriggerRuntimeState,
+  currentX: number,
+  currentY: number,
+): TriggerOccurrence | null {
+  if (zone.id !== trigger.zoneId) {
+    throw new Error(`Zone Trigger "${trigger.id}" expected Zone "${trigger.zoneId}", received "${zone.id}"`);
+  }
+  return evaluateContainmentTransition(
+    trigger.id,
+    trigger.relation,
+    trigger.mode,
+    trigger.enabled,
+    state,
+    zoneContains(zone, currentX, currentY),
+  );
 }
 
 /**
