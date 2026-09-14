@@ -1,0 +1,10 @@
+import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import { defaultStateTriggerValue, stateTriggerReferencePatch, stateTriggerRelations } from "./SceneLogicEditing";
+const source=readFileSync(new URL("./PixelBgrLabUI.ts",import.meta.url),"utf8");
+assert.match(source,/sceneContentsLogicRow/);assert.match(source,/dataset\.inspector="logic"/);assert.doesNotMatch(source,/sceneContentsRow\("TRI"/);assert.match(source,/sceneContentsRow\("EVE"/);
+assert.match(source,/this\.select\(trigger\.markerId,logic\.spaces\.markers\.map/);assert.match(source,/document\.createTextNode\("cross"\)/,"Marker relation remains read-only");
+assert.match(source,/this\.select\(trigger\.rangeId,logic\.spaces\.ranges\.map/);assert.match(source,/this\.select\(trigger\.zoneId,logic\.spaces\.zones\.map/);assert.equal(source.match(/\["enter","inside","exit"\]/g)?.length,2,"Range and Zone expose all relations");
+assert.match(source,/this\.select\(trigger\.stateId,logic\.states\.map/);assert.match(source,/stateTriggerReferencePatch\(nextState,trigger\.relation,trigger\.value\)/);assert.match(source,/state\?\.valueType==="boolean"\?check/);assert.match(source,/state\?\.valueType==="number"\?num/);assert.match(source,/:text\(String\(trigger\.value\)/);
+assert.deepEqual(stateTriggerRelations("number"),["==","!=","<","<=",">",">="]);assert.deepEqual(stateTriggerRelations("boolean"),["==","!="]);assert.deepEqual(stateTriggerRelations("string"),["==","!="]);assert.equal(defaultStateTriggerValue("boolean"),false);assert.equal(defaultStateTriggerValue("number"),0);assert.equal(defaultStateTriggerValue("string"),"");assert.deepEqual(stateTriggerReferencePatch({id:"bool",address:"player.alive",valueType:"boolean"},">",3),{stateId:"bool",relation:"==",value:false});
+console.log("Scene Lab Logic authoring UI smoke passed");

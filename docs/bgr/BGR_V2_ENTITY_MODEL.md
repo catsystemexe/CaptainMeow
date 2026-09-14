@@ -16,7 +16,7 @@ SEG and OBJ are peers contained directly by a Layer. Neither contains the other.
 
 An **Event (EVE)** is scene-global rather than a Layer child. It has canonical world X, enabled state, logical type, and a user-facing name where supported.
 
-**Trigger (TRI)** remains reserved. The former **MAR** placeholder is superseded in Scene Lab by canonical Scene Logic **SPACE** authoring. Legacy `BackgroundMarker` remains a separate B5 compatibility contract; this BGR entity model does not redefine Scene Logic architecture.
+**LOGIC** now authors canonical Scene Logic Trigger, Event, Action, and relationship definitions. The former **TRI** reservation is removed, while **SPACE** owns canonical geometry authoring. Legacy `BackgroundMarker` remains a separate B5 compatibility contract; this BGR entity model does not redefine Scene Logic architecture.
 
 ## Stable identity and display names
 
@@ -38,7 +38,7 @@ The existing unified entity context-menu authority provides:
 
 - SEG and OBJ: Lock/Unlock, Duplicate, Flip Horizontal, Flip Vertical, Rename, Delete.
 - EVE: Lock/Unlock, Duplicate, Rename, Delete; Events never receive Flip commands.
-- TRI: reserved, with no functional item menu yet.
+- LOGIC: canonical Trigger, Event, Action, State-reference, and binding authoring; logic definitions have no independent geometry.
 - SPACE: canonical Scene Logic geometry authoring; it supersedes the former MAR placeholder without reinterpreting legacy B5 `BackgroundMarker`.
 
 Opening an entity menu selects that entity. Visual and Event selections remain independent, right-click never begins a drag, and opening/dismissing a menu does not mutate scene data. Duplicate uses canonical helpers and deterministic offsets; a created copy is unlocked. Rename is inline, trims whitespace, commits with Enter or blur, cancels with Escape, and never changes stable identity. Repeat-track Segment commands continue to respect sequence-only authoring authority.
