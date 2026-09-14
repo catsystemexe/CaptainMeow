@@ -55,10 +55,10 @@ assert.deepEqual(workspace.center.children, [workspace.viewport, workspace.timel
 const scene = lab.indexOf('summary.append(`SCENE:');
 assert(scene >= 0, "SCENE identity remains visible");
 assert(!lab.includes("summary.append(sceneEye") && !lab.includes("Scene visibility is controlled"), "SCENE has no Eye or Power action");
-const categories=["BGR","ENV","SEG","OBJ","EVE","TRI","MAR"];
-let cursor=-1;for(const category of categories){const next=lab.indexOf(`this.sceneContentsRow("${category}"`,cursor+1);assert(next>cursor,`${category} appears in exact tree order`);cursor=next;}
+const categories=["BGR","ENV","SEG","OBJ","EVE","TRI","SPACE"];
+let cursor=-1;for(const category of categories){const token=category==="SPACE"?"this.sceneContentsSpaceRow(scene,spaceCount)":`this.sceneContentsRow("${category}"`;const next=lab.indexOf(token,cursor+1);assert(next>cursor,`${category} appears in exact tree order`);cursor=next;}
 for(const category of ["BGR","ENV","SEG","OBJ"])assert.match(lab,new RegExp(`sceneContentsRow\\("${category}","visibility"`),`${category} uses Eye visibility semantics`);
-for(const category of ["EVE","TRI","MAR"])assert.match(lab,new RegExp(`sceneContentsRow\\("${category}","activation"`),`${category} uses Power activation semantics`);
+for(const category of ["EVE","TRI"])assert.match(lab,new RegExp(`sceneContentsRow\\("${category}","activation"`),`${category} uses Power activation semantics`);
 assert(lab.includes('action.dataset.action=kind')&&lab.includes('labelButton.dataset.accordionAction="true"')&&lab.includes('toggle.dataset.accordionAction="true"'),"action icon and accordion targets are distinct");
 assert(lab.includes("const expandable=count>=2")&&lab.includes("count===1||open"),"two-plus item categories expose accordion while a single item stays inline");
 assert(lab.includes('private readonly sceneContentsExpanded = new Set<string>')&&!lab.includes("scene.contentsExpanded"),"accordion state is UI-only");
@@ -67,7 +67,11 @@ assert(lab.includes("setV2EventsEnabled")&&lab.includes("updateV2SceneEvent(next
 assert(lab.includes("const result=updateV2SceneEvent(scene,event.id,{enabled:!event.enabled})"),"per-Event Power uses the same invariant-preserving helper");
 assert(lab.includes('const ordinal=el("span","cm-scene-tree-ordinal");ordinal.textContent=`${index+1}.`')&&lab.includes("row.append(power,ordinal,label,type)"),"Event ordinal is independent of both editable signal names and level-end labels");
 assert(lab.includes("row.replaceChild(this.v2RenameInput")&&!lab.includes("row.replaceChild(input,ordinal)"),"contextual inline rename preserves the visible ordinal");
-assert(lab.includes('sceneContentsRow("TRI","activation","none",0,()=>{},undefined,true,"reserved")')&&lab.includes('sceneContentsRow("MAR","activation","none",0,()=>{},undefined,true,"reserved")'),"TRI/MAR are disabled reserved rows without items");
+assert(lab.includes('sceneContentsRow("TRI","activation","none",0,()=>{},undefined,true,"reserved")')&&!lab.includes('sceneContentsRow("MAR"'),"TRI remains reserved and MAR is removed");
+assert(lab.includes('this.sceneContentsSpaceRow(scene,spaceCount)')&&lab.includes('menu.append(button("Marker"')&&lab.includes('button("Range"')&&lab.includes('button("Zone"'),"SPACE uses the compact insert menu with all three kinds");
+assert(lab.includes('private v2SelectedSpace: V2SpaceSelection | null')&&lab.includes('renderSpaceInspector')&&lab.includes('cm-space-readonly'),"unified Space selection opens an inspector with read-only ID");
+assert(!lab.match(/sceneContentsSpaceRow[\s\S]{0,700}(Eye|Power)/),"SPACE has neither Eye nor Power semantics");
+assert(lab.includes('deleteSpace(scene,selection)')&&lab.includes('this.message=result.error'),"referenced delete failures reach UI status");
 assert(!lab.includes("renderV2EventSurface")&&!lab.includes("renderV2ReservedInspector")&&!lab.includes('plainV2InspectorHeader("EVENT")'),"standalone EVENT/TRIGGER/MARKER blocks are removed");
 assert(lab.includes('private selectV2Event(eventId:string,render=true):void {this.v2SelectedEventId=eventId')&&lab.includes('private selectV2Segment(trackId:string,segmentId:string,render=true):void {this.v2SelectedTrackId=trackId'),"Event and visual selection remain independent");
 assert(lab.includes('el("input","cm-v2-logic-name-edit")') && lab.includes('updateV2SceneEvent(scene,event.id,{name:value||undefined})')&&lab.includes("queueMicrotask"), "contextual inline Event rename is wired");
