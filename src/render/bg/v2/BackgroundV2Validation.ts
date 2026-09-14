@@ -1,6 +1,7 @@
 import type { BackgroundSceneV2 } from "./BackgroundV2Types";
 import { validateStarfieldConfig } from "./BackgroundV2Starfield";
 import { BACKGROUND_ASSET_DECLARATIONS } from "../../../assets/BackgroundAssets";
+import { validateSceneLogicDocumentV1 } from "../../../game/scene-logic/SceneLogicDocument";
 
 export interface BackgroundV2ValidationIssue { path: string; message: string }
 export interface BackgroundV2ValidationResult { valid: boolean; errors: BackgroundV2ValidationIssue[] }
@@ -18,7 +19,7 @@ export function validateBackgroundSceneV2(value: unknown): BackgroundV2Validatio
   const errors: BackgroundV2ValidationIssue[] = [];
   const issue = (path: string, message: string) => errors.push({ path, message });
   if (!object(value)) return { valid: false, errors: [{ path: "scene", message: "must be an object" }] };
-  rejectUnknown(value, ["version", "id", "environment", "staticBackdrop", "tracks", "events"], "", issue);
+  rejectUnknown(value, ["version", "id", "environment", "staticBackdrop", "tracks", "events", "sceneLogic"], "", issue);
   if (value.version !== 2) issue("version", "must equal 2 (V1 is not imported automatically)");
   if (!nonEmpty(value.id)) issue("id", "must be a non-empty string");
   if (!object(value.environment)) issue("environment", "must be an object");
@@ -114,6 +115,10 @@ export function validateBackgroundSceneV2(value: unknown): BackgroundV2Validatio
       });
       if (levelEnds > 1) issue("events", "may contain only one level-end event");
     }
+  }
+  if (value.sceneLogic !== undefined) {
+    const result = validateSceneLogicDocumentV1(value.sceneLogic);
+    for (const error of result.errors) issue(error.path ? `sceneLogic.${error.path}` : "sceneLogic", error.message);
   }
   return { valid: errors.length === 0, errors };
 }

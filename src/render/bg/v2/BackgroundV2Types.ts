@@ -1,3 +1,5 @@
+import type { SceneLogicDocumentV1 } from "../../../game/scene-logic/SceneLogicDocument";
+
 export type BackgroundTrackRole = "far" | "mid" | "near" | "foreground" | "custom";
 export type BackgroundTrackMode = "sequence" | "repeat";
 export type BackgroundBlendMode = "normal" | "additive";
@@ -90,6 +92,8 @@ export interface BackgroundSceneV2 {
   staticBackdrop?: BackgroundStaticBackdrop;
   tracks: BackgroundTrack[];
   events?: BackgroundSceneEvent[];
+  /** Optional authored Scene Logic. Legacy scene events remain a separate contract. */
+  sceneLogic?: SceneLogicDocumentV1;
 }
 
 export interface BackgroundEvaluationContext {

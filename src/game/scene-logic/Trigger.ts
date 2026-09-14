@@ -56,6 +56,14 @@ export interface ZoneSpaceTriggerDefinition {
   readonly enabled: boolean;
 }
 
+/** The authored Trigger vocabulary supported by Scene Logic document V1. */
+export type SceneLogicTriggerDefinition =
+  | MarkerCrossTriggerDefinition
+  | RangeSpaceTriggerDefinition
+  | ZoneSpaceTriggerDefinition
+  | TimeTriggerDefinition
+  | StateTriggerDefinition;
+
 export interface TriggerValidationIssue {
   readonly field: string;
   readonly message: string;
