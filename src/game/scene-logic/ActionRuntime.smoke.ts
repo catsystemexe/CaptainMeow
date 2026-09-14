@@ -184,6 +184,12 @@ executeStateAction(decrementAction, states, stateRegistry);
 assert.equal(stateWorld.speedX, 45);
 executeStateAction({ ...incrementAction, value: 0 }, states, stateRegistry);
 assert.equal(stateWorld.speedX, 45, "zero is a deterministic valid amount");
+stateWorld.speedX = Number.MAX_VALUE;
+assert.throws(
+  () => executeStateAction({ ...incrementAction, value: Number.MAX_VALUE }, states, stateRegistry),
+  /computed a non-finite number/,
+);
+assert.equal(stateWorld.speedX, Number.MAX_VALUE, "overflow does not mutate authoritative State");
 assert.throws(() => executeStateAction({ ...setAction, stateId: "missing" }, states, stateRegistry), /missing State/);
 assert.throws(() => executeStateAction({ ...setAction, stateId: "player_alive", value: false }, states, stateRegistry), /read-only/);
 assert.throws(() => executeStateAction({ ...setAction, stateId: "player_shield" }, states, stateRegistry), /read-only/);

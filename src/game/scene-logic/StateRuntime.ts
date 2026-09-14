@@ -53,7 +53,12 @@ export function createSceneLogicStateRegistry(owners: {
     ["scene.scrollSpeed", {
       valueType: "number", writable: true,
       read: () => owners.world.speedX,
-      write: (value) => { owners.world.speedX = value as number; },
+      write: (value) => {
+        if (typeof value !== "number" || !Number.isFinite(value)) {
+          throw new Error('State writer for "scene.scrollSpeed" requires a finite number');
+        }
+        owners.world.speedX = value;
+      },
     }],
     ["player.alive", { valueType: "boolean", writable: false, read: () => owners.player.alive }],
     ["player.shield", { valueType: "number", writable: false, read: () => owners.player.shield }],

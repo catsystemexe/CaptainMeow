@@ -71,7 +71,11 @@ export function executeStateAction(
   if (typeof current !== "number" || !Number.isFinite(current)) {
     throw new Error(`State writer for "${definition.address}" returned an invalid number value`);
   }
-  writer.write(action.type === "increment" ? current + action.value : current - action.value);
+  const target = action.type === "increment" ? current + action.value : current - action.value;
+  if (!Number.isFinite(target)) {
+    throw new Error(`State Action "${action.id}" computed a non-finite number`);
+  }
+  writer.write(target);
 }
 
 export function executeFlowAction(action: FlowRestartLevelActionDefinition, adapter: FlowActionRuntimeAdapter): void {
