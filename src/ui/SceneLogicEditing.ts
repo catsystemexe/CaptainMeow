@@ -1,6 +1,6 @@
 import { validateSceneLogicDocumentV1, type SceneLogicDocumentV1 } from "../game/scene-logic/SceneLogicDocument";
 import { validateSceneEventDefinition } from "../game/scene-logic/Event";
-import { validateStateReferenceDefinition, type StateValue } from "../game/scene-logic/State";
+import { validateStateReferenceDefinition, type StateReferenceDefinition, type StateValue, type StateValueType } from "../game/scene-logic/State";
 import { validateMarkerCrossTrigger, validateRangeSpaceTrigger, validateStateTrigger, validateTimeTrigger, validateZoneSpaceTrigger, type RangeZoneTriggerRelation, type SceneLogicTriggerDefinition, type StateTriggerRelation, type TimeTriggerRelation, type TriggerMode } from "../game/scene-logic/Trigger";
 import { validateFlowRestartLevelAction, validateStateDecrementAction, validateStateIncrementAction, validateStateSetAction, validateWorldStopScrollAction, type SceneLogicActionDefinition } from "../game/scene-logic/Action";
 import type { BackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Types";
@@ -13,6 +13,30 @@ export const STATE_REFERENCE_PRESETS = [
   { id: "state_player_alive", address: "player.alive", valueType: "boolean" },
   { id: "state_player_shield", address: "player.shield", valueType: "number" },
 ] as const;
+export const NUMBER_STATE_TRIGGER_RELATIONS = ["==", "!=", "<", "<=", ">", ">="] as const;
+export const EQUALITY_STATE_TRIGGER_RELATIONS = ["==", "!="] as const;
+
+export function stateTriggerRelations(valueType: StateValueType): readonly StateTriggerRelation[] {
+  return valueType === "number" ? NUMBER_STATE_TRIGGER_RELATIONS : EQUALITY_STATE_TRIGGER_RELATIONS;
+}
+
+export function defaultStateTriggerValue(valueType: StateValueType): StateValue {
+  return valueType === "boolean" ? false : valueType === "number" ? 0 : "";
+}
+
+/** Produces an immediately valid patch when a State Trigger changes reference. */
+export function stateTriggerReferencePatch(
+  state: StateReferenceDefinition,
+  relation: StateTriggerRelation,
+  value: StateValue,
+): { stateId: string; relation: StateTriggerRelation; value: StateValue } {
+  const relations = stateTriggerRelations(state.valueType);
+  return {
+    stateId: state.id,
+    relation: relations.includes(relation) ? relation : "==",
+    value: typeof value === state.valueType ? value : defaultStateTriggerValue(state.valueType),
+  };
+}
 
 const fail = (scene: BackgroundSceneV2, error: string): LogicEditResult => ({ ok: false, scene, error });
 function save(scene: BackgroundSceneV2, logic: SceneLogicDocumentV1, selection?: LogicSelection): LogicEditResult {
