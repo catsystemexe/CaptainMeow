@@ -1,3 +1,4 @@
+import { formatWorldX } from "./SceneLabWorldXFormatting";
 import type { BackgroundChunk } from "../render/webgl/bg/layers/BackgroundSceneTypes";
 
 export interface TimelineRange { startX: number; endX: number }
@@ -37,10 +38,7 @@ export function timelineMajorTickInterval(zoom: number): 100 | 200 | 400 | 500 |
 }
 
 export function formatTimelineWorldX(x: number): string {
-  if (!Number.isFinite(x)) return "0";
-  if (Math.abs(x) < 1000) return String(Math.round(x));
-  const compact = Math.round((x / 1000) * 10) / 10;
-  return `${compact}k`;
+  return formatWorldX(x);
 }
 
 export function chunkEndX(chunk: Pick<BackgroundChunk, "startX" | "length">): number {
