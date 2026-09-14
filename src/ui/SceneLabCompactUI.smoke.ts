@@ -70,6 +70,15 @@ assert(lab.includes("row.replaceChild(this.v2RenameInput")&&!lab.includes("row.r
 assert(lab.includes('sceneContentsRow("TRI","activation","none",0,()=>{},undefined,true,"reserved")')&&!lab.includes('sceneContentsRow("MAR"'),"TRI remains reserved and MAR is removed");
 assert(lab.includes('this.sceneContentsSpaceRow(scene,spaceCount)')&&lab.includes('menu.append(button("Marker"')&&lab.includes('button("Range"')&&lab.includes('button("Zone"'),"SPACE uses the compact insert menu with all three kinds");
 assert(lab.includes('private v2SelectedSpace: V2SpaceSelection | null')&&lab.includes('renderSpaceInspector')&&lab.includes('cm-space-readonly'),"unified Space selection opens an inspector with read-only ID");
+assert(lab.includes('type V2RightContext = "scene-asset" | "space"')&&lab.includes('private v2RightContext: V2RightContext = "scene-asset"'),"right-panel presentation context is UI-only and separate from stored selection identity");
+assert(lab.includes('this.v2RightContext==="space" ? this.renderSpaceInspector(v2Scene) : this.renderSceneAssetContext()'),"right-panel rendering uses the presentation discriminator rather than Space-selection truthiness");
+assert(lab.includes('this.v2RightContext==="space"&&(!this.v2SelectedSpace||!findSpace(v2Scene,this.v2SelectedSpace)))this.v2RightContext="scene-asset"'),"missing selected Space falls back deterministically to normal context");
+const selectionMethods=lab.slice(lab.indexOf('private selectV2Event('),lab.indexOf('private renderV2ContextualYSurface('));
+for(const kind of ["Event","Track","Segment","Object"])assert.match(selectionMethods,new RegExp(`selectV2${kind}\\([^}]+this\\.v2RightContext="scene-asset"`),`${kind} selection exits Space inspector presentation`);
+assert(!selectionMethods.includes('this.v2SelectedSpace='),"visual, Event, and Track selection preserve stored Space identity");
+const selectSpaceMethod=lab.slice(lab.indexOf('private selectV2Space('),lab.indexOf('private applySpaceEdit('));
+assert(selectSpaceMethod.includes('this.v2SelectedSpace=selection')&&selectSpaceMethod.includes('this.v2RightContext="space"'),"selecting or returning to a preserved Space identity activates its inspector context");
+for(const unrelated of ["v2SelectedSegmentId","v2SelectedObjectId","v2SelectedEventId"])assert(!selectSpaceMethod.includes(`this.${unrelated}=`),`Space selection preserves ${unrelated}`);
 assert(!lab.match(/sceneContentsSpaceRow[\s\S]{0,700}(Eye|Power)/),"SPACE has neither Eye nor Power semantics");
 assert(lab.includes('deleteSpace(scene,selection)')&&lab.includes('this.message=result.error'),"referenced delete failures reach UI status");
 assert(!lab.includes("renderV2EventSurface")&&!lab.includes("renderV2ReservedInspector")&&!lab.includes('plainV2InspectorHeader("EVENT")'),"standalone EVENT/TRIGGER/MARKER blocks are removed");
