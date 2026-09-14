@@ -41,6 +41,19 @@ player.shield = 25;
 assert.equal(readStateValue(shield), 25, "reader observes the current PlayerData Shield value");
 assert.throws(() => registry.resolve("unknown.address"), /not registered/);
 assert.throws(() => registry.resolve("player.energy"), /not registered/, "compatibility energy is not canonical State");
+assert.equal(registry.resolve("scene.scrollSpeed").writable, true);
+assert.equal(registry.resolve("player.alive").writable, false);
+assert.equal(registry.resolve("player.shield").writable, false);
+const scrollWriter = registry.resolveWritable("scene.scrollSpeed");
+assert.equal(scrollWriter.writable, true);
+scrollWriter.write(125);
+assert.equal(world.speedX, 125, "a direct finite numeric write reaches authoritative WorldState");
+for (const invalid of [false, "bad", Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+  assert.throws(() => scrollWriter.write(invalid as never), /requires a finite number/);
+  assert.equal(world.speedX, 125, "a rejected direct write leaves authoritative WorldState unchanged");
+}
+assert.throws(() => registry.resolveWritable("player.alive"), /read-only/);
+assert.throws(() => registry.resolveWritable("player.shield"), /read-only/);
 assert.throws(() => resolveStateReference({ ...states[0], valueType: "string" }, registry), /declares string/);
 
 const numberCases = [
