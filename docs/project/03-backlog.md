@@ -109,7 +109,7 @@ Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
 Current focused batch:
-`SL-09 — Scene persistence/schema integration`
+`SL-10 — Scene Lab Space authoring`
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
