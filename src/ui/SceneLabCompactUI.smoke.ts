@@ -55,10 +55,10 @@ assert.deepEqual(workspace.center.children, [workspace.viewport, workspace.timel
 const scene = lab.indexOf('summary.append(`SCENE:');
 assert(scene >= 0, "SCENE identity remains visible");
 assert(!lab.includes("summary.append(sceneEye") && !lab.includes("Scene visibility is controlled"), "SCENE has no Eye or Power action");
-const categories=["BGR","ENV","SEG","OBJ","EVE","TRI","SPACE"];
-let cursor=-1;for(const category of categories){const token=category==="SPACE"?"this.sceneContentsSpaceRow(scene,spaceCount)":`this.sceneContentsRow("${category}"`;const next=lab.indexOf(token,cursor+1);assert(next>cursor,`${category} appears in exact tree order`);cursor=next;}
+const categories=["BGR","ENV","SEG","OBJ","EVE","LOGIC","SPACE"];
+let cursor=-1;for(const category of categories){const token=category==="SPACE"?"this.sceneContentsSpaceRow(scene,spaceCount)":category==="LOGIC"?"this.sceneContentsLogicRow(scene)":`this.sceneContentsRow("${category}"`;const next=lab.indexOf(token,cursor+1);assert(next>cursor,`${category} appears in exact tree order`);cursor=next;}
 for(const category of ["BGR","ENV","SEG","OBJ"])assert.match(lab,new RegExp(`sceneContentsRow\\("${category}","visibility"`),`${category} uses Eye visibility semantics`);
-for(const category of ["EVE","TRI"])assert.match(lab,new RegExp(`sceneContentsRow\\("${category}","activation"`),`${category} uses Power activation semantics`);
+for(const category of ["EVE"])assert.match(lab,new RegExp(`sceneContentsRow\\("${category}","activation"`),`${category} uses Power activation semantics`);
 assert(lab.includes('action.dataset.action=kind')&&lab.includes('labelButton.dataset.accordionAction="true"')&&lab.includes('toggle.dataset.accordionAction="true"'),"action icon and accordion targets are distinct");
 assert(lab.includes("const expandable=count>=2")&&lab.includes("count===1||open"),"two-plus item categories expose accordion while a single item stays inline");
 assert(lab.includes('private readonly sceneContentsExpanded = new Set<string>')&&!lab.includes("scene.contentsExpanded"),"accordion state is UI-only");
@@ -67,11 +67,11 @@ assert(lab.includes("setV2EventsEnabled")&&lab.includes("updateV2SceneEvent(next
 assert(lab.includes("const result=updateV2SceneEvent(scene,event.id,{enabled:!event.enabled})"),"per-Event Power uses the same invariant-preserving helper");
 assert(lab.includes('const ordinal=el("span","cm-scene-tree-ordinal");ordinal.textContent=`${index+1}.`')&&lab.includes("row.append(power,ordinal,label,type)"),"Event ordinal is independent of both editable signal names and level-end labels");
 assert(lab.includes("row.replaceChild(this.v2RenameInput")&&!lab.includes("row.replaceChild(input,ordinal)"),"contextual inline rename preserves the visible ordinal");
-assert(lab.includes('sceneContentsRow("TRI","activation","none",0,()=>{},undefined,true,"reserved")')&&!lab.includes('sceneContentsRow("MAR"'),"TRI remains reserved and MAR is removed");
+assert(lab.includes('this.sceneContentsLogicRow(scene)')&&!lab.includes('sceneContentsRow("TRI"')&&!lab.includes('sceneContentsRow("MAR"'),"LOGIC replaces reserved TRI and MAR remains removed");
 assert(lab.includes('this.sceneContentsSpaceRow(scene,spaceCount)')&&lab.includes('menu.append(button("Marker"')&&lab.includes('button("Range"')&&lab.includes('button("Zone"'),"SPACE uses the compact insert menu with all three kinds");
 assert(lab.includes('private v2SelectedSpace: V2SpaceSelection | null')&&lab.includes('renderSpaceInspector')&&lab.includes('cm-space-readonly'),"unified Space selection opens an inspector with read-only ID");
-assert(lab.includes('type V2RightContext = "scene-asset" | "space"')&&lab.includes('private v2RightContext: V2RightContext = "scene-asset"'),"right-panel presentation context is UI-only and separate from stored selection identity");
-assert(lab.includes('this.v2RightContext==="space" ? this.renderSpaceInspector(v2Scene) : this.renderSceneAssetContext()'),"right-panel rendering uses the presentation discriminator rather than Space-selection truthiness");
+assert(lab.includes('type V2RightContext = "scene-asset" | "space" | "logic"')&&lab.includes('private v2RightContext: V2RightContext = "scene-asset"'),"right-panel presentation context is UI-only and separate from stored selection identity");
+assert(lab.includes('this.v2RightContext==="space" ? this.renderSpaceInspector(v2Scene) : this.v2RightContext==="logic" ? this.renderLogicInspector(v2Scene) : this.renderSceneAssetContext()'),"right-panel rendering uses the presentation discriminator rather than Space-selection truthiness");
 assert(lab.includes('this.v2RightContext==="space"&&(!this.v2SelectedSpace||!findSpace(v2Scene,this.v2SelectedSpace)))this.v2RightContext="scene-asset"'),"missing selected Space falls back deterministically to normal context");
 const selectionMethods=lab.slice(lab.indexOf('private selectV2Event('),lab.indexOf('private renderV2ContextualYSurface('));
 for(const kind of ["Event","Track","Segment","Object"])assert.match(selectionMethods,new RegExp(`selectV2${kind}\\([^}]+this\\.v2RightContext="scene-asset"`),`${kind} selection exits Space inspector presentation`);
