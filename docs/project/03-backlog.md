@@ -109,7 +109,7 @@ Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
 Current focused batch:
-`SL-08 — State + Flow Action adapters; Entity Actions audited/deferred`
+`SL-09 — Scene persistence/schema integration`
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
