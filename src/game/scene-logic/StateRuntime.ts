@@ -4,38 +4,64 @@ import { isStateValue, stateValueType, type StateReferenceDefinition, type State
 
 export interface StateReader {
   readonly valueType: StateValueType;
+  readonly writable: false;
   read(): StateValue;
 }
 
+export interface StateWriter {
+  readonly valueType: StateValueType;
+  readonly writable: true;
+  read(): StateValue;
+  write(value: StateValue): void;
+}
+
+export type StateRegistryEntry = StateReader | StateWriter;
+
 export interface StateRegistry {
-  resolve(address: string): StateReader;
+  resolve(address: string): StateRegistryEntry;
+  resolveWritable(address: string): StateWriter;
 }
 
 export interface ResolvedStateReference {
   readonly definition: StateReferenceDefinition;
-  readonly reader: StateReader;
+  readonly reader: StateRegistryEntry;
 }
 
-function createRegistry(entries: ReadonlyArray<readonly [string, StateReader]>): StateRegistry {
+function createRegistry(entries: ReadonlyArray<readonly [string, StateRegistryEntry]>): StateRegistry {
   const readers = new Map(entries);
+  function resolve(address: string): StateRegistryEntry {
+    const reader = readers.get(address);
+    if (!reader) throw new Error(`State address "${address}" is not registered`);
+    return reader;
+  }
   return {
-    resolve(address: string): StateReader {
-      const reader = readers.get(address);
-      if (!reader) throw new Error(`State address "${address}" is not registered`);
-      return reader;
+    resolve,
+    resolveWritable(address: string): StateWriter {
+      const entry = resolve(address);
+      if (!entry.writable) throw new Error(`State address "${address}" is read-only`);
+      return entry;
     },
   };
 }
 
-/** Creates bounded live readers over the injected authoritative runtime owners. */
+/** Creates bounded live adapters over the injected authoritative runtime owners. */
 export function createSceneLogicStateRegistry(owners: {
   readonly world: WorldState;
   readonly player: PlayerData;
 }): StateRegistry {
   return createRegistry([
-    ["scene.scrollSpeed", { valueType: "number", read: () => owners.world.speedX }],
-    ["player.alive", { valueType: "boolean", read: () => owners.player.alive }],
-    ["player.shield", { valueType: "number", read: () => owners.player.shield }],
+    ["scene.scrollSpeed", {
+      valueType: "number", writable: true,
+      read: () => owners.world.speedX,
+      write: (value) => {
+        if (typeof value !== "number" || !Number.isFinite(value)) {
+          throw new Error('State writer for "scene.scrollSpeed" requires a finite number');
+        }
+        owners.world.speedX = value;
+      },
+    }],
+    ["player.alive", { valueType: "boolean", writable: false, read: () => owners.player.alive }],
+    ["player.shield", { valueType: "number", writable: false, read: () => owners.player.shield }],
   ]);
 }
 

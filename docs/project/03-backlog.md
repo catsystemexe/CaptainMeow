@@ -109,7 +109,7 @@ Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
 Current focused batch:
-`SL-07 — State reference registry + State Trigger`
+`SL-08 — State + Flow Action adapters; Entity Actions audited/deferred`
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
