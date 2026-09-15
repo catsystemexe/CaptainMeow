@@ -11,8 +11,8 @@ const migrationCommand = source.slice(migrationStart, migrationEnd);
 
 assert.match(contextMenu, /if\(event\.type==="signal"\).*Migrate to Scene Logic/,
   "migration command is added only for a selected signal");
-assert.doesNotMatch(contextMenu, /event\.type==="level-end"\).*Migrate to Scene Logic/,
-  "level-end has no migration command");
+assert.match(contextMenu, /event\.type==="level-end"\).*Migrate to Scene Logic/,
+  "level-end has an explicit migration command");
 assert.match(contextMenu, /disabled:locked/,
   "locked signal command is disabled");
 assert.match(migrationCommand, /source\.locked===true\)return/,
@@ -26,6 +26,8 @@ assert.match(migrationCommand, /v2SelectedLogic=\{kind:"event",id:result\.eventI
 
 const importCount = source.match(/migrateLegacySignalToSceneLogic/g)?.length ?? 0;
 assert.equal(importCount, 2, "migration helper is imported and called only by the explicit command");
+assert.match(source, /migrateV2LevelEnd[\s\S]*?source\.locked===true\)return[\s\S]*?confirm\([\s\S]*?migrateLegacyLevelEndToSceneLogic\(scene,eventId\)[\s\S]*?v2SelectedLogic=\{kind:"event",id:result\.eventId\}/,
+  "level-end command guards locked/cancel paths and selects its canonical Event");
 assert.doesNotMatch(source.slice(source.indexOf("private loadV2"), source.indexOf("private toggleSceneMenu")), /migrateLegacySignal/,
   "scene loading does not migrate automatically");
 console.log("PixelBgrV2SceneEvents.smoke: PASS");

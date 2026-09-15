@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createBackgroundV2DesertTestScene } from "../render/bg/v2/BackgroundV2DesertTestScene";
 import { parseBackgroundSceneV2, serializeBackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Serialization";
 import type { BackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Types";
-import { migrateLegacySignalToSceneLogic } from "./SceneLogicLegacyMigration";
+import { migrateLegacyLevelEndToSceneLogic, migrateLegacySignalToSceneLogic } from "./SceneLogicLegacyMigration";
 
 const signalScene = (enabled = true): BackgroundSceneV2 => ({
   ...createBackgroundV2DesertTestScene(),
@@ -93,4 +93,63 @@ if (parsed.ok) {
   assert.deepEqual(parsed.scene.sceneLogic, basic.scene.sceneLogic);
   assert.equal(parsed.scene.events?.some(event => event.id === "boss"), false);
 }
+const levelEnd = migrateLegacyLevelEndToSceneLogic(signalScene(), "end");
+assert(levelEnd.ok);
+if (!levelEnd.ok) throw new Error(levelEnd.error);
+assert.deepEqual([levelEnd.markerId, levelEnd.triggerId, levelEnd.eventId, levelEnd.actionId], ["end:marker", "end:trigger", "end:event", "end:action"]);
+assert.deepEqual(levelEnd.scene.sceneLogic?.spaces.markers, [{ id: "end:marker", position: 10000 }]);
+assert.deepEqual(levelEnd.scene.sceneLogic?.triggers, [{ id: "end:trigger", kind: "space", relation: "cross", markerId: "end:marker", mode: "once", enabled: true }]);
+assert.deepEqual(levelEnd.scene.sceneLogic?.events, [{ id: "end:event", category: "scene", type: "level_complete" }]);
+assert.deepEqual(levelEnd.scene.sceneLogic?.actions, [{ id: "end:action", category: "flow", type: "complete_level" }]);
+assert.deepEqual(levelEnd.scene.sceneLogic?.triggerEventBindings, [{ triggerId: "end:trigger", eventId: "end:event" }]);
+assert.deepEqual(levelEnd.scene.sceneLogic?.eventActionBindings, [{ eventId: "end:event", actionId: "end:action" }]);
+assert.deepEqual(levelEnd.scene.events?.map(event => event.id), ["boss", "keep"]);
+assert(parseBackgroundSceneV2(serializeBackgroundSceneV2(levelEnd.scene)).ok);
+
+const disabledEnd = signalScene();
+disabledEnd.events![2] = { ...disabledEnd.events![2], enabled: false };
+const disabledEndResult = migrateLegacyLevelEndToSceneLogic(disabledEnd, "end");
+assert(disabledEndResult.ok);
+if (disabledEndResult.ok) assert.equal(disabledEndResult.scene.sceneLogic?.triggers[0].enabled, false);
+
+const collisionEnd = signalScene();
+collisionEnd.sceneLogic = {
+  version: 1,
+  spaces: { markers: [{ id: "end:marker", position: 1 }], ranges: [{ id: "end:marker-2", start: 2, end: 3 }], zones: [{ id: "end:marker-3", minX: 0, maxX: 1, minY: 0, maxY: 1 }] },
+  states: [], triggers: [{ id: "end:trigger", kind: "time", relation: "at", timeSec: 1, mode: "once", enabled: true }],
+  events: [{ id: "end:event", category: "scene", type: "existing" }], actions: [{ id: "end:action", category: "world", type: "stop_scroll" }],
+  triggerEventBindings: [], eventActionBindings: [],
+};
+const collisionEndResult = migrateLegacyLevelEndToSceneLogic(collisionEnd, "end");
+assert(collisionEndResult.ok);
+if (collisionEndResult.ok) assert.deepEqual([collisionEndResult.markerId, collisionEndResult.triggerId, collisionEndResult.eventId, collisionEndResult.actionId], ["end:marker-4", "end:trigger-2", "end:event-2", "end:action-2"]);
+
+for (const [scene, id, code] of [
+  [{ ...signalScene(), events: [{ id: "end", type: "level-end" as const, worldX: 10, enabled: true, locked: true }] }, "end", "locked"],
+  [signalScene(), "missing", "event-not-found"],
+  [signalScene(), "boss", "not-level-end"],
+] as const) {
+  const snapshot = structuredClone(scene);
+  const result = migrateLegacyLevelEndToSceneLogic(scene, id);
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, code);
+  assert.strictEqual(result.scene, scene);
+  assert.deepEqual(scene, snapshot);
+}
+const invalidEnd = signalScene();
+invalidEnd.tracks[1].id = invalidEnd.tracks[0].id;
+const invalidEndResult = migrateLegacyLevelEndToSceneLogic(invalidEnd, "end");
+assert.equal(invalidEndResult.ok, false);
+assert.strictEqual(invalidEndResult.scene, invalidEnd);
+const existingCompletion = signalScene();
+existingCompletion.sceneLogic = {
+  version: 1, spaces: { markers: [], ranges: [], zones: [] }, states: [], triggers: [],
+  events: [{ id: "complete", category: "scene", type: "level_complete" }],
+  actions: [{ id: "complete", category: "flow", type: "complete_level" }],
+  triggerEventBindings: [], eventActionBindings: [{ eventId: "complete", actionId: "complete" }],
+};
+const guarded = migrateLegacyLevelEndToSceneLogic(existingCompletion, "end");
+assert.equal(guarded.ok, false);
+if (!guarded.ok) assert.equal(guarded.code, "existing-completion-chain");
+assert.strictEqual(guarded.scene, existingCompletion);
 console.log("SceneLogicLegacyMigration.smoke: PASS");
