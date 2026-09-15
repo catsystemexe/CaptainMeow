@@ -141,6 +141,8 @@ Trigger
 
 A **Sequence Definition** is a reusable authored description of ordered steps. A **Sequence Instance** is a particular insertion and execution of that definition within a Scene. Inserting a Sequence into a Scene MUST preserve the instance's identity; it MUST NOT flatten the steps into unrelated copied primitives.
 
+**SL-13 runtime-core status:** The standalone runtime implements stable Definition/Instance identity, `idle → running → completed`, referenced Event and Action steps, and duration-only Wait steps driven only by caller-supplied fixed-step time. Immediate steps and zero-duration waits advance in authored order in the same update; positive waits consume available simulation time and carry leftover time into later steps. Execution uses injected Event/Action adapters, creates no EventBus, and does not mutate authored Definitions. Scene ownership/persistence, entity/Space bindings, `Action.start_sequence` composition, and authoring UI remain deferred to SL-14/SL-15.
+
 ## Conceptual data flow
 
 The common spatial flow is:
