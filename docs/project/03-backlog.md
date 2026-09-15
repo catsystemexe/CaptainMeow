@@ -109,9 +109,9 @@ Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
 Completed focused discovery:
-`SL-12B — authoritative completion contract audit` (documentation-only; both completion Action implementation and `level-end` migration remain blocked)
+`SL-12B — authoritative completion contract audit` (documentation-only; its lifecycle ambiguity was subsequently resolved by the approved SL-12B.1 MVP decision)
 
-The broader SL-12 effort remains in progress: `level-end` migration is deferred pending an implemented Scene/Level lifecycle owner, completion state machine, and progression/reset contract documented in `docs/scene-logic/SL12B_COMPLETION_CONTRACT_AUDIT.md`; B5 remains presentation-specific.
+SL-12B.1 establishes `1 Level = 1 Scene`, authoritative `ACTIVE | COMPLETED` session lifecycle, `Flow.complete_level`, gameplay freeze with live presentation, and same-Level `PLAY AGAIN`. The broader SL-12 effort remains in progress: legacy `level-end` migration and production Trigger/Event/Action composition remain deferred to SL-12C, including reset/rebaseline of future Scene Logic runtime state. B5 remains presentation-specific.
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
