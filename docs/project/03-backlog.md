@@ -111,7 +111,7 @@ Implementation roadmap:
 Completed focused discovery:
 `SL-12B — authoritative completion contract audit` (documentation-only; its lifecycle ambiguity was subsequently resolved by the approved SL-12B.1 MVP decision)
 
-SL-12B.1 establishes `1 Level = 1 Scene`, authoritative `ACTIVE | COMPLETED` session lifecycle, `Flow.complete_level`, gameplay freeze with live presentation, and same-Level `PLAY AGAIN`. SL-12C now supplies explicit legacy `level-end` migration plus the focused production Marker-cross → Scene Event → Flow completion composition, including restart/Scene-change/authoring-seek reset and rebaseline semantics. Legacy `level-end` itself remains runtime-inert, generic Scene Logic/Sequence execution remains deferred, and B5 remains presentation-specific.
+SL-12B.1 establishes `1 Level = 1 Scene`, authoritative `ACTIVE | COMPLETED` session lifecycle, `Flow.complete_level`, gameplay freeze with live presentation, and same-Level `PLAY AGAIN`. SL-12C supplies explicit legacy `level-end` migration plus the focused production Marker-cross → Scene Event → Flow completion composition, including restart/Scene-change/authoring-seek reset and rebaseline semantics. SL-13 adds the standalone deterministic linear Sequence runtime core with identity-bearing Definitions/Instances and Event, Action, and duration-only Wait steps. Legacy `level-end` itself remains runtime-inert; Sequence Scene integration, entity/Space instance bindings, `Action.start_sequence` production wiring, persistence, and Sequence Lab remain deferred; B5 remains presentation-specific.
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 

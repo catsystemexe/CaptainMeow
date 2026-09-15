@@ -92,6 +92,7 @@ const SMOKES = [
   "../game/systems/SpawnOwnership.contract.smoke",
   "../game/systems/DirectorToSimulationSpawn.integration.smoke",
   "../game/enemies/EnemyGroups.smoke",
+  "../game/scene-logic/SequenceRuntime.smoke",
 ];
 
 async function main() {
