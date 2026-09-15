@@ -250,6 +250,8 @@ Implement distinct Sequence Definitions and Sequence Instances, identity-preserv
 
 **Acceptance gate:** Multiple identity-bearing instances can execute the supported steps deterministically, resolve validated entity/Space references, and complete without definition mutation or wall-clock dependence.
 
+**SL-13 status:** The standalone linear runtime core now implements reusable Definitions, identity-bearing Instances, the `idle | running | completed` lifecycle, referenced Event/Action steps, duration-only Wait steps, pure validation, injected ownership adapters, deterministic same-update zero-wait/immediate traversal, and leftover-dt carry-forward. Definitions remain unchanged and multiple Instances retain independent cursors/wait progress. No EventBus was added. Entity/Space bindings cannot be owned honestly by this standalone layer because the current Event/Action definitions contain no such generic binding contract; those bindings, Scene persistence/composition, `Action.start_sequence` production wiring, and Sequence Lab remain explicitly deferred to SL-14/SL-15.
+
 ## M10 — Sequence Lab
 
 **Goal:** Provide dedicated reusable Sequence Definition authoring.
