@@ -228,7 +228,7 @@ BackgroundSceneEvent.level-end
 
 **Acceptance gate:** Every listed contract has an evidence-backed classification and migration outcome; compatibility tests and required runtime verification pass; and two competing generic Scene Logic authoring systems do not remain.
 
-**SL-12 audit status:** The source-first classification and migration design are recorded in `SL12_LEGACY_COMPATIBILITY_AUDIT.md`. SL-12B's focused lifecycle discovery is recorded in `SL12B_COMPLETION_CONTRACT_AUDIT.md`: neither a completion Action nor `level-end` migration is ready because the runtime has no authoritative Level owner or gameplay Scene lifecycle, completion state machine, or progression/reset contract. B5 markers/actions/environment diagnostics remain presentation-specific; V2 signal is the only legacy contract with an implemented explicit author-migration command.
+**SL-12 audit status:** The source-first classification and migration design are recorded in `SL12_LEGACY_COMPATIBILITY_AUDIT.md`. The approved SL-12B.1 MVP decision resolves the completion ambiguity as `1 Level = 1 Scene`: `Flow.complete_level` transitions authoritative session state to `COMPLETED`, freezes gameplay while presentation continues, and exposes `LEVEL COMPLETE` / `PLAY AGAIN` to restart the same Level. Legacy `level-end` migration and production Scene Logic composition remain deferred to SL-12C; restart composition must reset/rebaseline future Scene Logic runtime state. B5 markers/actions/environment diagnostics remain presentation-specific.
 
 ## M9 — Linear Sequence runtime
 

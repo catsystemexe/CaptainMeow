@@ -24,5 +24,8 @@ assert(source.includes("pixelBgrLabUi.mountEnemyLab(enemyLabPanel)"), "Pixel BGR
 assert(source.includes('await import("./ui/BgLabUI")'), "BG Lab remains initialized");
 assert(source.includes('await import("./ui/GridLabUI")'), "Grid Lab remains initialized");
 assert(source.includes('this.setDisplayMode("dev")') === false, "main does not introduce a second GAME/DEV state owner");
+assert.match(source, /onPlayAgain: \(\) => \{\s*game\.reset\(\);\s*startPlay\(\);\s*\}/, "PLAY AGAIN uses canonical reset before resuming play");
+assert(source.indexOf("loop.step(dt)") < source.indexOf("hud.update?.("), "HUD continues updating from authoritative state after the simulation step");
+assert(source.indexOf("hud.update?.(") < source.indexOf("gfx.renderScene(() =>"), "rendering remains on the live frame path after HUD state updates");
 
 console.log("Main startup order smoke passed");

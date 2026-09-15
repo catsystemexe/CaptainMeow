@@ -24,6 +24,8 @@ const logic: SceneLogicDocumentV1 = {
   actions: [
     { id: "stop_scroll", category: "world", type: "stop_scroll" },
     { id: "set_scroll_speed_zero", category: "state", type: "set", stateId: "scroll_speed", value: 0 },
+    { id: "complete_level", category: "flow", type: "complete_level" },
+    { id: "restart_level", category: "flow", type: "restart_level" },
   ],
   triggerEventBindings: [
     { triggerId: "boss_gate_cross", eventId: "boss_encounter_started" },
@@ -73,6 +75,7 @@ expectInvalid((d) => { (d.spaces as Mutable).runtimeState = {}; }, /^spaces\.run
 expectInvalid((d) => { ((d.spaces as Mutable).markers as Mutable[])[0].previousX = 0; }, /^spaces\.markers\[0\]\.previousX$/);
 expectInvalid((d) => { ((d.triggers as Mutable[])[0]).fired = true; }, /^triggers\[0\]\.fired$/);
 expectInvalid((d) => { ((d.actions as Mutable[])[0]).armed = true; }, /^actions\[0\]\.armed$/);
+expectInvalid((d) => { ((d.actions as Mutable[])[2]).reward = 1; }, /^actions\[2\]\.reward$/);
 expectInvalid((d) => { ((d.spaces as Mutable).ranges as Mutable[])[0].id = "boss_gate"; }, /^spaces\.ranges\[0\]\.id$/);
 for (const collection of ["states", "triggers", "events", "actions"] as const) {
   expectInvalid((d) => { const values = d[collection] as Mutable[]; values.push(structuredClone(values[0])); }, new RegExp(`^${collection}\\[${(logic[collection] as readonly unknown[]).length}\\]\\.id$`));

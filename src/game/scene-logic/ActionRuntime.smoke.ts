@@ -5,6 +5,7 @@ import { WorldScrollSystem } from "../systems/WorldScrollSystem";
 import {
   resolveBoundAction,
   resolveBoundWorldAction,
+  validateFlowCompleteLevelAction,
   validateFlowRestartLevelAction,
   validateStateDecrementAction,
   validateStateIncrementAction,
@@ -236,7 +237,11 @@ for (const invalid of [null, [], { ...restartAction, id: "" }, { ...restartActio
   assert.equal(validateFlowRestartLevelAction(invalid).valid, false);
 }
 let restartCalls = 0;
-const flowAdapter = createFlowActionRuntimeAdapter({ restartLevel: () => { restartCalls += 1; } });
+let completeCalls = 0;
+const flowAdapter = createFlowActionRuntimeAdapter({
+  restartLevel: () => { restartCalls += 1; },
+  completeLevel: () => { completeCalls += 1; },
+});
 const restartOccurrence = { eventId: "restart_event", type: "restart_requested", sourceTriggerId: "restart_trigger" };
 const restartBinding: EventActionBinding = { eventId: restartOccurrence.eventId, actionId: restartAction.id };
 assert.throws(() => materializeAction({ ...restartOccurrence, eventId: "wrong" }, restartBinding, restartAction), /does not match binding Event/);
@@ -246,5 +251,16 @@ const restartBefore = { ...restartAction };
 executeFlowAction(materializeAction(restartOccurrence, restartBinding, restartAction), flowAdapter);
 assert.equal(restartCalls, 1, "Flow.restart_level delegates exactly once to its injected reset owner");
 assert.deepEqual(restartAction, restartBefore);
+
+const completeAction = { id: "complete", category: "flow", type: "complete_level" } as const;
+assert.equal(validateFlowCompleteLevelAction(completeAction).valid, true);
+for (const invalid of [null, [], { ...completeAction, id: "" }, { ...completeAction, category: "state" }, { ...completeAction, type: "restart_level" }]) {
+  assert.equal(validateFlowCompleteLevelAction(invalid).valid, false);
+}
+const completeBefore = { ...completeAction };
+executeFlowAction(completeAction, flowAdapter);
+assert.equal(completeCalls, 1, "Flow.complete_level delegates exactly once per execute invocation");
+assert.equal(restartCalls, 1, "Flow.complete_level does not invoke restart");
+assert.deepEqual(completeAction, completeBefore, "Flow execution does not mutate the authored Action");
 
 console.log("[SMOKE] Scene Logic World, State, and Flow Action adapters OK ✅");

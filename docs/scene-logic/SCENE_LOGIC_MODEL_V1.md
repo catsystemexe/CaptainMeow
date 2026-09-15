@@ -173,7 +173,9 @@ Gameplay-relevant Trigger evaluation, Event routing, Actions, waits, and Sequenc
 
 A **Scene** is the authored context that owns or references Scene Logic placements and Sequence Instances. Space geometry is expressed in the Scene's relevant coordinate system, while logic remains separate from visual/background geometry ownership.
 
-A **Level** may compose one or more Scenes and remains the broader gameplay-flow context. Scene Logic may express `complete_scene`, `complete_level`, or `restart_level` Actions, but those Actions invoke authoritative flow behavior; they do not redefine Scene or Level lifecycle ownership.
+For the MVP, **1 Level = 1 Scene**. The session is the authoritative Level lifecycle owner with `ACTIVE` and `COMPLETED` states. `Flow.complete_level` idempotently transitions `ACTIVE → COMPLETED`; gameplay simulation freezes while rendering/UI continues, and the HUD offers `LEVEL COMPLETE` plus `PLAY AGAIN`. Play again restarts the same Level/Scene through the canonical reset path and returns it to `ACTIVE`.
+
+Scene Logic Actions invoke that authoritative flow behavior; they do not own completion or mutate rendering/HUD state. Multi-Scene Levels, next-Level progression, and production Trigger/Event/Action composition are outside this MVP decision.
 
 ## Explicit MVP exclusions
 
