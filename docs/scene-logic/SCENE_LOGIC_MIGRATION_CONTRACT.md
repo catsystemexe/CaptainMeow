@@ -74,7 +74,9 @@ The current Scene Lab exposes three distinct V2 surfaces: `EVE` authors the inde
 
 The evidence-backed SL-12 classification and migration design are recorded in `SL12_LEGACY_COMPATIBILITY_AUDIT.md`. In particular, B5 marker behavior remains presentation-specific, legacy V2 signals are candidates for explicit author migration rather than load-time reinterpretation, and legacy `level-end` remains compatibility data until an authoritative completion owner and implemented Action exist.
 
-SL-12A implements the authorized exception for legacy V2 `signal`: an explicit Scene Lab command converts one selected unlocked signal into Marker → cross Trigger → Scene Event plus one Trigger/Event binding. It deterministically allocates first-free IDs from the legacy ID, validates the candidate canonical document and full V2 scene, removes the source only on success, and performs no automatic or runtime migration. `level-end` and B5 remain outside that implementation.
+SL-12A implements the authorized exception for legacy V2 `signal`: an explicit Scene Lab command converts one selected unlocked signal into Marker → cross Trigger → Scene Event plus one Trigger/Event binding. It deterministically allocates first-free IDs from the legacy ID, validates the candidate canonical document and full V2 scene, removes the source only on success, and performs no automatic or runtime migration. Signal behavior remains unchanged.
+
+SL-12C applies the same explicit-only, atomic pattern to one unlocked `level-end`. It maps `worldX` to a Marker, creates an enabled-matching forward `cross`/`once` Trigger, a Scene `level_complete` Event, a Flow `complete_level` Action, and both bindings. Qualified IDs use deterministic first-free `:marker`, `:trigger`, `:event`, and `:action` stems; the Space allocator shares the Marker/Range/Zone collision domain. A recognized existing completion Event/Action chain, lock, invalid candidate, or missing/wrong source returns the original Scene unchanged. Loading never performs migration. B5 remains outside this implementation.
 
 ## Sequence migration classification
 

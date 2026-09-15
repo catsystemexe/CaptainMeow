@@ -1,5 +1,9 @@
 # SL-12B Completion Contract Audit
 
+## SL-12C implementation update
+
+The production gap identified by this audit is now closed for the approved completion vertical slice only. `SceneLogicRuntime` evaluates persisted active-Scene Marker cross Triggers from authoritative player world-X after the Simulation update, materializes bound Scene Events, and holds a bounded same-tick list of bound Flow Actions until the existing Flow boundary. `Flow.complete_level` delegates to the authoritative composed completion owner; no EventBus type or second EventBus was added. Restart, Scene replacement, and authoring seek discard once/baseline memory, and the first later gameplay sample establishes a new baseline. Legacy-only `level-end` remains runtime-inert. These statements do not imply generic Trigger/Action or Sequence production support.
+
 ## Approved post-audit resolution (SL-12B.1)
 
 The product decision made after this audit resolves its lifecycle ambiguity for the MVP:

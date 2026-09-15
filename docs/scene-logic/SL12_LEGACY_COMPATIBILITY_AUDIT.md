@@ -1,5 +1,9 @@
 # SL-12 Legacy Compatibility Audit
 
+## Implemented resolution (SL-12C)
+
+The previously deferred `level-end` slice is now implemented. Scene Lab explicitly migrates one unlocked source into Marker → forward cross/once Trigger → Scene `level_complete` Event → Flow `complete_level` Action with both bindings, deterministic collision-safe IDs, full-document/full-Scene validation, and atomic source removal. Production gameplay owns a focused runtime composition: it reads the active V2 Scene, samples authoritative player world-X after Simulation, and flushes bound Flow Actions at the existing Flow boundary without another EventBus. Restart, Scene replacement, and authoring seek reset/rebaseline Trigger memory; seek itself never evaluates logic. Unmigrated legacy `level-end` remains persistence/authoring compatibility data and is runtime-inert. Generic Scene Logic and Sequence runtime remain outside this resolution.
+
 ## Baseline
 
 - Repository: `catsystemexe/CaptainMeow` (`origin` confirmed for fetch and push).
