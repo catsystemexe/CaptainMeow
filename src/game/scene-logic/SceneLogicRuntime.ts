@@ -22,8 +22,26 @@ export class SceneLogicRuntime {
     this.pendingFlowActions = [];
   }
 
-  /** Authoring seek/restart re-arms authored Triggers but never evaluates the seek position. */
+  /** Restart re-arms authored Triggers and requires a fresh first-sample baseline. */
   reset(): void { this.activate(this.document); }
+
+  /**
+   * Records an authoring seek destination without evaluating it. Existing once
+   * memory is preserved; this cannot emit an Event or enqueue an Action.
+   */
+  rebaselinePlayerWorldX(currentX: number): void {
+    this.pendingFlowActions = [];
+    const activeMarkerTriggerIds = new Set<string>();
+    for (const trigger of this.document?.triggers ?? []) {
+      if (trigger.kind !== "space" || trigger.relation !== "cross") continue;
+      activeMarkerTriggerIds.add(trigger.id);
+      const existing = this.markerStates.get(trigger.id);
+      this.markerStates.set(trigger.id, { previousX: currentX, fired: existing?.fired ?? false });
+    }
+    for (const triggerId of this.markerStates.keys()) {
+      if (!activeMarkerTriggerIds.has(triggerId)) this.markerStates.delete(triggerId);
+    }
+  }
 
   evaluatePlayerWorldX(currentX: number): readonly SceneEventOccurrence[] {
     const document = this.document;
