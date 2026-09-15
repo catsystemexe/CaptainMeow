@@ -66,6 +66,28 @@ runtime.evaluatePlayerWorldX(17_000);
 runtime.evaluatePlayerWorldX(17_920);
 runtime.flushFlowActions();
 assert.equal(completions, 3, "a genuine future crossing after authoring seek still fires");
+
+let oncePreservingCompletions = 0;
+const oncePreservingRuntime = new SceneLogicRuntime({
+  restartLevel: () => {},
+  completeLevel: () => { oncePreservingCompletions++; },
+});
+oncePreservingRuntime.activate(document);
+oncePreservingRuntime.evaluatePlayerWorldX(90);
+oncePreservingRuntime.evaluatePlayerWorldX(100);
+oncePreservingRuntime.flushFlowActions();
+assert.equal(oncePreservingCompletions, 1, "once Trigger fires on its initial genuine crossing");
+oncePreservingRuntime.rebaselinePlayerWorldX(50);
+oncePreservingRuntime.evaluatePlayerWorldX(50);
+oncePreservingRuntime.evaluatePlayerWorldX(100);
+oncePreservingRuntime.flushFlowActions();
+assert.equal(oncePreservingCompletions, 1, "authoring seek preserves fired once memory");
+oncePreservingRuntime.reset();
+oncePreservingRuntime.evaluatePlayerWorldX(50);
+oncePreservingRuntime.evaluatePlayerWorldX(100);
+oncePreservingRuntime.flushFlowActions();
+assert.equal(oncePreservingCompletions, 2, "restart reset re-arms fired once memory");
+
 runtime.activate({ ...document, triggers: [{ ...document.triggers[0], enabled: false }] });
 runtime.evaluatePlayerWorldX(90); runtime.evaluatePlayerWorldX(110); runtime.flushFlowActions();
 assert.equal(completions, 3, "disabled crossing stays inert");

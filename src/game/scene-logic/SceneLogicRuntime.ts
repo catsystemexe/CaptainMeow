@@ -26,16 +26,20 @@ export class SceneLogicRuntime {
   reset(): void { this.activate(this.document); }
 
   /**
-   * Re-arms Marker Triggers and records an authoring seek destination without
-   * evaluating it. This changes runtime memory only: it cannot emit an Event or
-   * enqueue an Action.
+   * Records an authoring seek destination without evaluating it. Existing once
+   * memory is preserved; this cannot emit an Event or enqueue an Action.
    */
   rebaselinePlayerWorldX(currentX: number): void {
-    this.markerStates.clear();
     this.pendingFlowActions = [];
+    const activeMarkerTriggerIds = new Set<string>();
     for (const trigger of this.document?.triggers ?? []) {
       if (trigger.kind !== "space" || trigger.relation !== "cross") continue;
-      this.markerStates.set(trigger.id, { previousX: currentX, fired: false });
+      activeMarkerTriggerIds.add(trigger.id);
+      const existing = this.markerStates.get(trigger.id);
+      this.markerStates.set(trigger.id, { previousX: currentX, fired: existing?.fired ?? false });
+    }
+    for (const triggerId of this.markerStates.keys()) {
+      if (!activeMarkerTriggerIds.has(triggerId)) this.markerStates.delete(triggerId);
     }
   }
 
