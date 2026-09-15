@@ -37,6 +37,9 @@ import { applyWeaponLevelControlActions } from "../systems/WeaponLevelControls";
 import { ProjectileSystem } from "../systems/ProjectileSystem";
 import { VFXSystem } from "../vfx/VFXSystem";
 import { seekGameplayToPlayerX } from "../authoring/GameplaySeek";
+import { getBackgroundSceneV2 } from "../../render/BackgroundState";
+import { createFlowActionRuntimeAdapter } from "../scene-logic/ActionRuntime";
+import { SceneLogicRuntime } from "../scene-logic/SceneLogicRuntime";
 
 
 
@@ -431,8 +434,8 @@ export async function createGame(
         };
         pauseAfterSeek?: boolean;
       } = {},
-    ) =>
-      seekGameplayToPlayerX(targetX, options, {
+    ) => {
+      const result = seekGameplayToPlayerX(targetX, options, {
         playerEnt,
         playerRef,
         store: store as any,
@@ -447,6 +450,9 @@ export async function createGame(
           Number(playerEnt?.pos?.x ?? 100) -
           Number(world?.scrollX ?? 0),
       });
+      sceneLogicRuntime.reset();
+      return result;
+    };
 
   // ---- Soft reset (no reload), keeps refs stable
   const RESET_CFG = {
@@ -524,9 +530,19 @@ export async function createGame(
     // director runtime reset (keeps same instance)
         director.reset();
 
+    activeScene = getBackgroundSceneV2(globalThis);
+    sceneLogicRuntime.activate(activeScene?.sceneLogic);
+
     //  DEV: always restart wave.test after respawn for target practice
     // director.forceWave("wave.test", { solo: true, reset: true });
         }
+
+  let activeScene = getBackgroundSceneV2(globalThis);
+  const sceneLogicRuntime = new SceneLogicRuntime(createFlowActionRuntimeAdapter({
+    restartLevel: resetGame,
+    completeLevel: () => completeLevel(session),
+  }));
+  sceneLogicRuntime.activate(activeScene?.sceneLogic);
 
   const loop = new Loop<CMEventMap>({
     eventBus: bus,
@@ -593,6 +609,12 @@ export async function createGame(
         projectileSystem.update(ctx.dt);
         enemySystem.update(ctx);
         particleStore.update(ctx.dt);
+        const scene = getBackgroundSceneV2(globalThis);
+        if (scene !== activeScene) {
+          activeScene = scene;
+          sceneLogicRuntime.activate(scene?.sceneLogic);
+        }
+        sceneLogicRuntime.evaluatePlayerWorldX(Number(playerEnt.pos.x));
       },
     },
 
@@ -614,6 +636,7 @@ export async function createGame(
           update: (ctx, events) => {
             if (!isLevelActive(session)) return;
             flow.update(ctx, events as any);
+            sceneLogicRuntime.flushFlowActions();
           },
         },
 
