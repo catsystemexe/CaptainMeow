@@ -585,11 +585,6 @@ export async function createGame(
           }
         }
 
-            if (session.gameOver || !isLevelActive(session)) return;
-            if (session.gameOver || !isLevelActive(session)) return;
-            if (!isLevelActive(session)) return;
-            if (!isLevelActive(session)) return;
-  completeLevel: () => completeLevel(session),
          directorPhase.update(ctx, events as any);
 
       
@@ -603,26 +598,28 @@ export async function createGame(
 
         collision: {
           update: (_ctx, _events) => {
-            if (session.gameOver) return;
+            if (session.gameOver || !isLevelActive(session)) return;
             collision.update(_ctx.dt);
           },
         },
 
         impact: {
           update: (ctx, events) => {
-            if (session.gameOver) return;
+            if (session.gameOver || !isLevelActive(session)) return;
             (impact as any).update(ctx, events as any);
           },
         },
 
         flow: {
           update: (ctx, events) => {
+            if (!isLevelActive(session)) return;
             flow.update(ctx, events as any);
           },
         },
 
         cleanup: {
           update: (_ctx, _events) => {
+            if (!isLevelActive(session)) return;
             store.cleanup();
           },
         },
@@ -643,6 +640,7 @@ return {
   spawn,
   world,
   reset: resetGame,
+  completeLevel: () => completeLevel(session),
     seekGameplayToPlayerX: seekGameplayToPlayerXForAuthoring,
 };
 }
