@@ -66,11 +66,13 @@ The existing deterministic, phase-owned EventBus/runtime architecture remains au
 
 Scene Logic MUST NOT introduce a parallel generic State database. Future State references and State Actions must access authoritative Scene, world, or entity state through explicit contracts or adapters.
 
-## Scene Lab labels
+## Scene Lab surfaces
 
 **CURRENT — transitional UI structure**
 
-The current `EVE / TRI / MAR` rows are transitional Scene Lab UI structure. Those labels do not define final domain authority and MUST NOT override the Space / Trigger / Event separation in the target model.
+The current Scene Lab exposes three distinct V2 surfaces: `EVE` authors the independent legacy `BackgroundSceneV2.events[]` compatibility contract, `SPACE` authors canonical geometry in `sceneLogic.spaces`, and `LOGIC` authors canonical Trigger/Event/Action/State-reference definitions and bindings. The legacy B5 Marker editor remains a separate V1 background presentation surface. These labels and surfaces do not override the Space / Trigger / Event / Action separation in the target model.
+
+The evidence-backed SL-12 classification and migration design are recorded in `SL12_LEGACY_COMPATIBILITY_AUDIT.md`. In particular, B5 marker behavior remains presentation-specific, legacy V2 signals are candidates for explicit author migration rather than load-time reinterpretation, and legacy `level-end` remains compatibility data until an authoritative completion owner and implemented Action exist.
 
 This contract does not authorize a Scene Lab UI or serialization change.
 

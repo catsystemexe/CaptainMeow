@@ -109,7 +109,7 @@ Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
 Current focused batch:
-`SL-11 — Scene Lab Trigger/Event/Action authoring`
+`SL-12 — legacy compatibility migration audit and design`
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
