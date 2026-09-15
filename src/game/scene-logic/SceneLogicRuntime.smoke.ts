@@ -40,12 +40,59 @@ resetLevel(session); runtime.activate(document);
 runtime.evaluatePlayerWorldX(110); runtime.flushFlowActions();
 assert.equal(completions, 2, "Scene replacement baseline cannot synthesize a crossing");
 runtime.reset(); runtime.evaluatePlayerWorldX(150); runtime.flushFlowActions();
-assert.equal(completions, 2, "authoring seek reset does not execute and resumed sample rebaselines");
+assert.equal(completions, 2, "restart reset does not execute and its first sample rebaselines");
+
+// Production authoring-seek lifecycle: teleport while paused, explicitly record
+// the authoritative destination, then resume without evaluating the teleport.
+let paused = true;
+let authoritativePlayerX = 14_900;
+const authoringSeekDocument: SceneLogicDocumentV1 = {
+  ...document,
+  spaces: { ...document.spaces, markers: [{ id: "end-marker", position: 17_920 }] },
+};
+runtime.activate(authoringSeekDocument);
+runtime.evaluatePlayerWorldX(authoritativePlayerX);
+authoritativePlayerX = 19_740;
+runtime.rebaselinePlayerWorldX(authoritativePlayerX);
+assert.equal(paused, true, "authoring seek keeps the requested paused state");
+runtime.flushFlowActions();
+assert.equal(completions, 2, "seek itself queues no Flow action");
+paused = false;
+assert.deepEqual(runtime.evaluatePlayerWorldX(authoritativePlayerX), [], "first resumed sample beyond Marker does not replay the seek crossing");
+runtime.flushFlowActions();
+runtime.evaluatePlayerWorldX(19_800); runtime.flushFlowActions();
+assert.equal(completions, 2, "remaining beyond Marker cannot synthesize a historical crossing");
+runtime.evaluatePlayerWorldX(17_000);
+runtime.evaluatePlayerWorldX(17_920);
+runtime.flushFlowActions();
+assert.equal(completions, 3, "a genuine future crossing after authoring seek still fires");
+
+let oncePreservingCompletions = 0;
+const oncePreservingRuntime = new SceneLogicRuntime({
+  restartLevel: () => {},
+  completeLevel: () => { oncePreservingCompletions++; },
+});
+oncePreservingRuntime.activate(document);
+oncePreservingRuntime.evaluatePlayerWorldX(90);
+oncePreservingRuntime.evaluatePlayerWorldX(100);
+oncePreservingRuntime.flushFlowActions();
+assert.equal(oncePreservingCompletions, 1, "once Trigger fires on its initial genuine crossing");
+oncePreservingRuntime.rebaselinePlayerWorldX(50);
+oncePreservingRuntime.evaluatePlayerWorldX(50);
+oncePreservingRuntime.evaluatePlayerWorldX(100);
+oncePreservingRuntime.flushFlowActions();
+assert.equal(oncePreservingCompletions, 1, "authoring seek preserves fired once memory");
+oncePreservingRuntime.reset();
+oncePreservingRuntime.evaluatePlayerWorldX(50);
+oncePreservingRuntime.evaluatePlayerWorldX(100);
+oncePreservingRuntime.flushFlowActions();
+assert.equal(oncePreservingCompletions, 2, "restart reset re-arms fired once memory");
+
 runtime.activate({ ...document, triggers: [{ ...document.triggers[0], enabled: false }] });
 runtime.evaluatePlayerWorldX(90); runtime.evaluatePlayerWorldX(110); runtime.flushFlowActions();
-assert.equal(completions, 2, "disabled crossing stays inert");
+assert.equal(completions, 3, "disabled crossing stays inert");
 runtime.activate(document); runtime.evaluatePlayerWorldX(110); runtime.evaluatePlayerWorldX(90); runtime.flushFlowActions();
-assert.equal(completions, 2, "backward crossing stays inert");
+assert.equal(completions, 3, "backward crossing stays inert");
 runtime.activate(undefined); runtime.evaluatePlayerWorldX(0); runtime.evaluatePlayerWorldX(1000); runtime.flushFlowActions();
-assert.equal(completions, 2, "legacy-only Scene has no executable canonical document");
+assert.equal(completions, 3, "legacy-only Scene has no executable canonical document");
 console.log("SceneLogicRuntime.smoke: PASS");

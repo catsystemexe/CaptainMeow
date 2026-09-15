@@ -450,7 +450,7 @@ export async function createGame(
           Number(playerEnt?.pos?.x ?? 100) -
           Number(world?.scrollX ?? 0),
       });
-      sceneLogicRuntime.reset();
+      sceneLogicRuntime.rebaselinePlayerWorldX(Number(playerEnt.pos.x));
       return result;
     };
 

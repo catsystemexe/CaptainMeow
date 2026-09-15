@@ -228,7 +228,7 @@ BackgroundSceneEvent.level-end
 
 **Acceptance gate:** Every listed contract has an evidence-backed classification and migration outcome; compatibility tests and required runtime verification pass; and two competing generic Scene Logic authoring systems do not remain.
 
-**SL-12 status:** SL-12C implements explicit unlocked `level-end` migration and the focused production Marker-cross → Scene Event → Flow Action completion slice. The composed runtime reads the active V2 Scene document, evaluates authoritative player world-X after Simulation, and executes `Flow.complete_level` at the existing Flow boundary. Restart, Scene replacement, and authoring seek clear/rebaseline runtime memory. Legacy `level-end` remains persisted but runtime-inert; B5 markers/actions/environment diagnostics remain presentation-specific. This does not establish generic Scene Logic or Sequence runtime support.
+**SL-12 status:** SL-12C implements explicit unlocked `level-end` migration and the focused production Marker-cross → Scene Event → Flow Action completion slice. The composed runtime reads the active V2 Scene document, evaluates authoritative player world-X after Simulation, and executes `Flow.complete_level` at the existing Flow boundary. Restart and Scene replacement re-arm Trigger runtime state and establish a fresh first-sample baseline; authoring seek preserves once/fired state and records the actual post-seek authoritative player world-X without evaluating logic, emitting an Event, or queuing an Action. Legacy `level-end` remains persisted but runtime-inert; B5 markers/actions/environment diagnostics remain presentation-specific. This does not establish generic Scene Logic or Sequence runtime support.
 
 ## M9 — Linear Sequence runtime
 
