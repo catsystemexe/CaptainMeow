@@ -108,10 +108,10 @@ Migration contract:
 Implementation roadmap:
 - `docs/scene-logic/SCENE_LOGIC_ROADMAP.md`
 
-Current focused batch:
-`SL-12A — explicit legacy V2 signal author migration` (implemented; post-merge runtime gate pending)
+Completed focused discovery:
+`SL-12B — authoritative completion contract audit` (documentation-only; both completion Action implementation and `level-end` migration remain blocked)
 
-The broader SL-12 effort remains in progress: `level-end` migration is deferred pending an authoritative completion contract, and B5 remains presentation-specific.
+The broader SL-12 effort remains in progress: `level-end` migration is deferred pending an implemented Scene/Level lifecycle owner, completion state machine, and progression/reset contract documented in `docs/scene-logic/SL12B_COMPLETION_CONTRACT_AUDIT.md`; B5 remains presentation-specific.
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
