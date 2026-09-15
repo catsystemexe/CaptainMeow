@@ -526,7 +526,7 @@ async function main() {
         // audio pump (per-frame, parallel to VFX)
         (game as any).audio?.update?.(dt);
 // per-frame aim (cosmetic; gameplay aim je i tak ze sampled actions v ticku)
-      if (game?.inputMgr?.getAimTargetNow && game?.playerEnt?.aimDir) {
+      if (session?.levelState === "active" && game?.inputMgr?.getAimTargetNow && game?.playerEnt?.aimDir) {
         const t = game.inputMgr.getAimTargetNow(LOGIC_W, LOGIC_H);
         // playerEnt.pos is WORLD; aim target is SCREEN -> compare in SCREEN space
         const wsx = Number((game as any).world?.scrollX ?? 0);

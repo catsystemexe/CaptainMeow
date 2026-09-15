@@ -7,6 +7,7 @@ const SMOKES = [
   "../engine/core/EventBus.smoke",
   "../engine/ecs/EntityStore.smoke",
   "../game/systems/PlayerSystem.smoke",
+  "../game/boot/LevelLifecycle.smoke",
   "../game/systems/WeaponSystem.smoke",
   "../game/systems/WeaponLevelControls.smoke",
   "../ui/HUDArcade.smoke",

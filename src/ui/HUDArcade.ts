@@ -28,6 +28,7 @@ type HudRefs = {
   cdFill: HTMLDivElement;
   pause: HTMLDivElement;
   gameOver: HTMLDivElement;
+  levelComplete: HTMLDivElement;
   title: HTMLDivElement;
 };
 
@@ -52,9 +53,10 @@ type SessionLike = {
   lives?: number;
   wave?: number;
   gameOver?: boolean;
+  levelState?: "active" | "completed";
 };
 
-type HudMode = "PLAY" | "TITLE" | "GAME_OVER";
+type HudMode = "PLAY" | "TITLE" | "GAME_OVER" | "LEVEL_COMPLETE";
 
 // --- Fonts ----------------------------------------------------------------
 const LABEL_FONT = "'Orbitron', sans-serif";
@@ -740,14 +742,30 @@ export function createHUDArcade(root: HTMLElement, options: { onPlayAgain?: () =
   playAgain.addEventListener("click", () => options.onPlayAgain?.());
   gameOver.appendChild(playAgain);
 
+  const levelComplete = mkChild(
+    layer,
+    "hudLevelComplete",
+    "position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;" +
+      `text-align:center;font-family:${LABEL_FONT};font-weight:700;font-size:30px;` +
+      "letter-spacing:3px;line-height:1.5;display:none;white-space:pre;",
+  );
+  const levelCompleteTitle = mkChild(levelComplete, "hudLevelCompleteTitle", "margin-bottom:22px;");
+  levelCompleteTitle.textContent = "LEVEL COMPLETE";
+  const levelCompletePlayAgain = playAgain.cloneNode(true) as HTMLButtonElement;
+  levelCompletePlayAgain.id = "hudLevelCompletePlayAgain";
+  levelCompletePlayAgain.textContent = "PLAY AGAIN";
+  levelCompletePlayAgain.addEventListener("click", () => options.onPlayAgain?.());
+  levelComplete.appendChild(levelCompletePlayAgain);
+
   const refs: HudRefs = {
     layer, panel, lives, energySegments, shieldBlock: energyBlock, shieldLabel: energyLabel,
-    wave, score, w1, w2, w1Level, w2Level, bomb, cdFill, pause, gameOver, title,
+    wave, score, w1, w2, w1Level, w2Level, bomb, cdFill, pause, gameOver, levelComplete, title,
   };
 
   function applyMode() {
     refs.title.style.display = mode === "TITLE" ? "block" : "none";
     refs.gameOver.style.display = mode === "GAME_OVER" ? "block" : "none";
+    refs.levelComplete.style.display = mode === "LEVEL_COMPLETE" ? "block" : "none";
     refs.panel.style.display = mode === "PLAY" ? "flex" : "none";
   }
   applyMode();
@@ -906,7 +924,9 @@ export function createHUDArcade(root: HTMLElement, options: { onPlayAgain?: () =
       // auto-switch to GAME_OVER if session says so
       if (s.gameOver) {
         if (mode !== "GAME_OVER") { mode = "GAME_OVER"; applyMode(); }
-      } else if (mode === "GAME_OVER") {
+      } else if (s.levelState === "completed") {
+        if (mode !== "LEVEL_COMPLETE") { mode = "LEVEL_COMPLETE"; applyMode(); }
+      } else if (mode === "GAME_OVER" || mode === "LEVEL_COMPLETE") {
         mode = "PLAY";
         applyMode();
       }

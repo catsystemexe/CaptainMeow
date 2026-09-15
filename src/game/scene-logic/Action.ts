@@ -37,6 +37,16 @@ export interface FlowRestartLevelActionDefinition {
   readonly type: "restart_level";
 }
 
+export interface FlowCompleteLevelActionDefinition {
+  readonly id: string;
+  readonly category: "flow";
+  readonly type: "complete_level";
+}
+
+export type FlowActionDefinition =
+  | FlowRestartLevelActionDefinition
+  | FlowCompleteLevelActionDefinition;
+
 export type StateActionDefinition =
   | StateSetActionDefinition
   | StateIncrementActionDefinition
@@ -45,7 +55,7 @@ export type StateActionDefinition =
 export type SceneLogicActionDefinition =
   | WorldStopScrollActionDefinition
   | StateActionDefinition
-  | FlowRestartLevelActionDefinition;
+  | FlowActionDefinition;
 
 /** Authored composition between a semantic Event and one executable Action. */
 export interface EventActionBinding {
@@ -123,6 +133,16 @@ export function validateFlowRestartLevelAction(action: unknown): ActionValidatio
   if (!nonEmptyString(value.id)) issues.push({ field: "id", message: "id must be a non-empty string" });
   if (value.category !== "flow") issues.push({ field: "category", message: 'category must be "flow"' });
   if (value.type !== "restart_level") issues.push({ field: "type", message: 'type must be "restart_level"' });
+  return { valid: issues.length === 0, issues };
+}
+
+export function validateFlowCompleteLevelAction(action: unknown): ActionValidationResult {
+  const issues: ActionValidationIssue[] = [];
+  const value = actionObject(action);
+  if (!value) return invalidObject();
+  if (!nonEmptyString(value.id)) issues.push({ field: "id", message: "id must be a non-empty string" });
+  if (value.category !== "flow") issues.push({ field: "category", message: 'category must be "flow"' });
+  if (value.type !== "complete_level") issues.push({ field: "type", message: 'type must be "complete_level"' });
   return { valid: issues.length === 0, issues };
 }
 
