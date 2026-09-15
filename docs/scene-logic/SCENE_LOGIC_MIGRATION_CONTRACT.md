@@ -74,7 +74,7 @@ The current Scene Lab exposes three distinct V2 surfaces: `EVE` authors the inde
 
 The evidence-backed SL-12 classification and migration design are recorded in `SL12_LEGACY_COMPATIBILITY_AUDIT.md`. In particular, B5 marker behavior remains presentation-specific, legacy V2 signals are candidates for explicit author migration rather than load-time reinterpretation, and legacy `level-end` remains compatibility data until an authoritative completion owner and implemented Action exist.
 
-This contract does not authorize a Scene Lab UI or serialization change.
+SL-12A implements the authorized exception for legacy V2 `signal`: an explicit Scene Lab command converts one selected unlocked signal into Marker → cross Trigger → Scene Event plus one Trigger/Event binding. It deterministically allocates first-free IDs from the legacy ID, validates the candidate canonical document and full V2 scene, removes the source only on success, and performs no automatic or runtime migration. `level-end` and B5 remain outside that implementation.
 
 ## Sequence migration classification
 
@@ -92,4 +92,4 @@ D-014 + SCENE_LOGIC_MODEL_V1.md
 = APPROVED future target architecture
 ```
 
-This migration contract does not broaden Pixel BGR Workspace Phase 1. It authorizes no runtime, schema, serialization, adapter, test, or UI implementation work.
+This migration contract does not broaden Pixel BGR Workspace Phase 1. Apart from the bounded SL-12A authoring/persistence command above, it authorizes no runtime, schema, load-time adapter, or additional migration UI work.

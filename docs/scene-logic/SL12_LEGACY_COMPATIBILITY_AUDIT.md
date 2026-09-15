@@ -122,7 +122,7 @@ Binding: { triggerId: <generated Trigger ID>, eventId: <generated Event ID> }
 - **C — explicit one-time author migration:** visible deterministic IDs, atomic validation, author-controlled source removal, straightforward backward compatibility, and a clear removal path. It adds a bounded command/preview but no permanent second runtime authority.
 - **D — coexistence:** safe today, but indefinite EVE/LOGIC duplication leaves authoring ambiguity and becomes a double-fire risk once canonical runtime wiring exists.
 
-**MIGRATE — Option C, explicit one-time author migration**, but not in SL-12. Static mapping is unambiguous; implementation still requires a focused author-command batch and later browser/runtime gates.
+**MIGRATE — Option C, explicit one-time author migration.** SL-12A now implements the focused authoring command for one selected unlocked signal. It builds and validates the complete canonical graph atomically, removes only that source signal on success, and leaves runtime evaluation unchanged. Browser/runtime verification remains a post-merge gate.
 
 ## BackgroundSceneEvent.level-end
 
@@ -191,14 +191,14 @@ There are not two generic systems today because EVE has no generic Trigger/Actio
 
 ## Recommended migration sequence
 
-1. **SL-12A — signal author-migration command (blocked from implementation only by focused approval).** Scope: one selected unlocked `BackgroundSceneEvent.signal`; exact mapping and allocator specified above; atomic preview/validation/removal. Exclude runtime evaluation, EventBus, Actions, level-end, B5 markers, and bulk migration. Static gate: editing/validation/persistence smokes prove collision allocation, lock refusal, rollback, and round trip. Runtime gate: Scene Lab browser verification proves preview/cancel/commit and no duplicate EVE/LOGIC/timeline item.
+1. **SL-12A — signal author-migration command (implemented; runtime gate pending).** Scope: one selected unlocked `BackgroundSceneEvent.signal`; exact mapping and allocator specified above; confirmation plus atomic validation/removal. Runtime evaluation, EventBus, Actions, level-end, B5 markers, and bulk migration remain excluded. Focused static coverage proves collision allocation, lock refusal, rollback, round trip, and explicit-only UI routing. The post-merge runtime gate must verify cancel/commit and the resulting EVE/SPACE/LOGIC state in Scene Lab.
 2. **SL-12B — authoritative completion contract discovery/design.** Scope: trace and approve the actual scene/level completion owner, semantic Event type, Action name, phase, reset/seek behavior, and adapter. Exact legacy contract: `BackgroundSceneEvent.level-end`. Exclude schema/runtime implementation and B5. Static gate: architecture decision cross-checked against EventBus/flow code. Runtime gate: none for design; a later implementation batch must require fixed-step and browser/gameplay verification.
 3. **SL-12C — level-end adapter/migration (blocked on SL-12B and Action implementation).** Scope: one explicit level-end conversion using the approved Marker → cross Trigger → Event → completion Action mapping. Exclude restart semantics, presentation actions, and bulk migration. Static gate: atomic ID/reference/persistence tests. Runtime gate: fixed-step crossing causes exactly one authoritative completion, including seek/reset/disabled cases.
 4. **No B5 migration batch is recommended.** Keep marker, marker actions, and environment diagnostic together as one presentation-specific compatibility subsystem. Consider retirement only after a separately approved presentation replacement exists and visual equivalence is verified.
 
 ## Explicit non-goals
 
-- No migration implementation, automatic adapter, compatibility removal, schema edit, or Scene Lab redesign.
+- No automatic adapter, runtime compatibility removal, schema edit, or Scene Lab redesign. The later SL-12A batch added only the explicitly approved signal authoring migration.
 - No runtime enablement of V2 `events[]` or authored `sceneLogic`.
 - No new EventBus, event type, Action, flow behavior, State database, or renderer behavior.
 - No conversion of B5 presentation effects into generic gameplay Actions.
@@ -209,7 +209,7 @@ There are not two generic systems today because EVE has no generic Trigger/Actio
 
 **READY FOR MIGRATION IMPLEMENTATION: NO**
 
-The signal mapping is ready for a separately approved authoring-only SL-12A batch. The overall legacy migration gate is **NO** because `level-end` lacks a verified authoritative completion owner and an implemented canonical completion Action, and because canonical scene-document runtime composition has no production fixed-step integration call site. B5 remains intentionally presentation-specific rather than a migration blocker.
+The authoring-only SL-12A signal mapping is implemented, with its post-merge runtime gate still required. The overall legacy migration gate remains **NO** because `level-end` lacks a verified authoritative completion owner and an implemented canonical completion Action, and because canonical scene-document runtime composition has no production fixed-step integration call site. B5 remains intentionally presentation-specific rather than a migration blocker.
 
 Blockers/unknowns are therefore explicit:
 
