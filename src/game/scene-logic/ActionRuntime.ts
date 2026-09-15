@@ -2,7 +2,7 @@ import type { WorldState } from "../data/WorldState";
 import { stateValueType, type StateReferenceDefinition } from "./State";
 import type { StateRegistry } from "./StateRuntime";
 import type {
-  EventActionBinding, FlowRestartLevelActionDefinition, SceneLogicActionDefinition,
+  EventActionBinding, FlowActionDefinition, SceneLogicActionDefinition,
   StateActionDefinition, WorldStopScrollActionDefinition,
 } from "./Action";
 import type { SceneEventOccurrence } from "./EventRuntime";
@@ -13,10 +13,12 @@ export function createWorldActionRuntimeAdapter(world: WorldState): WorldActionR
   return { stopScroll(): void { world.speedX = 0; } };
 }
 
-export interface FlowActionRuntimeAdapter { restartLevel(): void; }
+export interface FlowActionRuntimeAdapter { restartLevel(): void; completeLevel(): void; }
 
-export function createFlowActionRuntimeAdapter(owner: { readonly restartLevel: () => void }): FlowActionRuntimeAdapter {
-  return { restartLevel: owner.restartLevel };
+export function createFlowActionRuntimeAdapter(
+  owner: { readonly restartLevel: () => void; readonly completeLevel: () => void },
+): FlowActionRuntimeAdapter {
+  return { restartLevel: owner.restartLevel, completeLevel: owner.completeLevel };
 }
 
 /** Checks the Event/Action composition boundary without executing the Action. */
@@ -78,6 +80,7 @@ export function executeStateAction(
   writer.write(target);
 }
 
-export function executeFlowAction(action: FlowRestartLevelActionDefinition, adapter: FlowActionRuntimeAdapter): void {
-  adapter.restartLevel();
+export function executeFlowAction(action: FlowActionDefinition, adapter: FlowActionRuntimeAdapter): void {
+  if (action.type === "restart_level") adapter.restartLevel();
+  else adapter.completeLevel();
 }

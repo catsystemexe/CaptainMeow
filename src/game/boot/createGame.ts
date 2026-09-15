@@ -8,7 +8,7 @@ import { PowerupSystem } from "../systems/PowerupSystem";
 import { PickupSystem } from "../systems/PickupSystem";
 import { DIRECTOR_DEFS_MVP } from "../defs/DirectorDefs";
 import { EntityStore } from "../../engine/ecs/EntityStore";
-import { makeSessionState } from "../data/SessionState";
+import { completeLevel, isLevelActive, makeSessionState, resetLevel } from "../data/SessionState";
 import { WEAPON_DB } from "../defs/WeaponDB";
 import { FlowDispatcher } from "../systems/FlowDispatcher";
 import { FlowSystem } from "../systems/FlowSystem";
@@ -517,6 +517,7 @@ export async function createGame(
     session.lives = RESET_CFG.startLives;
     session.wave = 1;
     session.gameOver = false;
+    resetLevel(session);
     session.lastDeathPos = undefined;
     respawn.reset();
 
@@ -532,13 +533,14 @@ export async function createGame(
 
     input: {
       sample: (_ctx) => {
+        if (!isLevelActive(session)) return;
         inputMgr.sample(inputRt.actions, LOGIC_W, LOGIC_H);
       },
     },
 
     director: {
       update: (_ctx, _events) => {
-        if (session.gameOver) return;
+        if (session.gameOver || !isLevelActive(session)) return;
 
         const w = director.getHUDInfo().current;
         if (typeof w === "number" && Number.isFinite(w)) session.wave = w;
@@ -547,7 +549,7 @@ export async function createGame(
 
     simulation: {
       update: (ctx, events) => {
-        if (session.gameOver) return;
+        if (session.gameOver || !isLevelActive(session)) return;
 
         respawn.tick();
         pickupSystem.update(ctx.dt);
@@ -583,7 +585,11 @@ export async function createGame(
           }
         }
 
-        // â Director must run in Simulation because it emits SPAWN_* (Simulation-owned)
+            if (session.gameOver || !isLevelActive(session)) return;
+            if (session.gameOver || !isLevelActive(session)) return;
+            if (!isLevelActive(session)) return;
+            if (!isLevelActive(session)) return;
+  completeLevel: () => completeLevel(session),
          directorPhase.update(ctx, events as any);
 
       

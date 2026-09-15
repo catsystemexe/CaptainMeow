@@ -1,5 +1,6 @@
 import {
   validateEventActionBinding,
+  validateFlowCompleteLevelAction,
   validateFlowRestartLevelAction,
   validateStateDecrementAction,
   validateStateIncrementAction,
@@ -162,6 +163,7 @@ export function validateSceneLogicDocumentV1(value: unknown): SceneLogicDocument
     let result;
     if (item.category === "world" && item.type === "stop_scroll") result = validateWorldStopScrollAction(item);
     else if (item.category === "flow" && item.type === "restart_level") result = validateFlowRestartLevelAction(item);
+    else if (item.category === "flow" && item.type === "complete_level") result = validateFlowCompleteLevelAction(item);
     else if (item.category === "state" && item.type === "set") result = validateStateSetAction(item);
     else if (item.category === "state" && item.type === "increment") result = validateStateIncrementAction(item);
     else if (item.category === "state" && item.type === "decrement") result = validateStateDecrementAction(item);

@@ -293,6 +293,11 @@ assert(hudSource.includes('"SHIELD DOWN"'), "persistent critical label exists");
 assert(!hudSource.includes("player.shield ="), "HUD reactions do not mutate gameplay Shield");
 assert(hudSource.includes('playAgain.textContent = "PLAY AGAIN?"'), "game-over HUD exposes a prominent play-again action");
 assert(hudSource.includes('playAgain.addEventListener("click"'), "play-again action is mouse clickable");
+assert(hudSource.includes('levelCompleteTitle.textContent = "LEVEL COMPLETE"'), "completed level has a distinct LEVEL COMPLETE overlay");
+assert(hudSource.includes('levelCompletePlayAgain.textContent = "PLAY AGAIN"'), "completed level exposes the approved PLAY AGAIN action");
+assert(hudSource.includes('s.levelState === "completed"'), "level-complete visibility reads authoritative session state");
+assert(hudSource.indexOf("if (s.gameOver)") < hudSource.indexOf('s.levelState === "completed"'), "GAME OVER retains priority over level completion");
+assert(hudSource.includes('mode === "GAME_OVER" || mode === "LEVEL_COMPLETE"'), "both overlays return to PLAY when their authoritative state clears");
 assert(!hudSource.includes("Try again? Y/N"), "game-over HUD has no Y/N prompt");
 
 {
