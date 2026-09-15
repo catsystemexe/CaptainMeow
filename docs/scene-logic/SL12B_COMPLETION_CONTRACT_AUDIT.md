@@ -1,5 +1,17 @@
 # SL-12B Completion Contract Audit
 
+## Approved post-audit resolution (SL-12B.1)
+
+The product decision made after this audit resolves its lifecycle ambiguity for the MVP:
+
+- **1 Level = 1 Scene.**
+- The canonical completion Action is `Flow.complete_level`.
+- Completion transitions the authoritative session Level state from `ACTIVE` to `COMPLETED` idempotently.
+- `COMPLETED` freezes gameplay simulation and progression while rendering and UI continue.
+- The HUD presents `LEVEL COMPLETE` and `PLAY AGAIN`; play again uses the canonical soft reset to restart the same Level/Scene and return it to `ACTIVE`.
+
+The remainder of this document preserves the source audit that motivated the decision. Its Option D verdict is historical and superseded by the approved contract above. This batch does not migrate legacy V2 `level-end`, wire production Trigger/Event/Action composition, or define next-Level/progression behavior. Future SL-12C/runtime composition must reset and rebaseline Scene Logic runtime trigger state when the Level restarts.
+
 ## Baseline
 
 - Repository: `catsystemexe/CaptainMeow`; `origin` was confirmed as the fetch and push remote.
@@ -22,9 +34,9 @@ Implementation was treated as highest authority. The audit inspected:
 
 Repository-wide symbol and text searches covered restart/reset, game-over, victory/win, completion, level/scene, wave/session, transitions, and the exact legacy/helper/Action names. Backup and historical artifacts were excluded as authorities.
 
-## Executive verdict
+## Historical executive verdict (superseded by SL-12B.1)
 
-**Recommend Option D: neither `Flow.complete_level` nor `Flow.complete_scene` can honestly be implemented yet.** The historical label `level-end` proves only that an author can persist one inert world-X boundary per background Scene. It does not prove a Level domain, a Scene gameplay lifecycle, a completion transition, a next target, or save/progression behavior.
+**The audit recommended Option D before the product decision above.** At audit time, the historical label `level-end` proved only that an author could persist one inert world-X boundary per background Scene. The subsequently approved MVP contract now supplies the missing Level/Scene relationship, lifecycle transition, freeze consequence, and same-Level restart behavior.
 
 The closest implemented lifecycle authority is the game composition in `createGame`: it owns stable gameplay/session objects and a broad soft-reset closure. That closure is exposed as `game.reset()` and used by the HUD's “play again” path, but it is not a demonstrated level owner and does not even reset every value one would expect from a defined level restart (for example, world scroll and loop tick are not reset). [`createGame.ts` lines 451–528](../../src/game/boot/createGame.ts#L451-L528) [`createGame.ts` lines 624–640](../../src/game/boot/createGame.ts#L624-L640) [`main.ts` lines 171–175](../../src/main.ts#L171-L175)
 
