@@ -204,7 +204,7 @@ inspector
 = logic relationships and properties
 ```
 
-Space is directly representable spatially where appropriate. Trigger, Event, Action, and State do not inherently require independent geometry. Current `EVE / TRI / MAR` labels are transitional and do not define final domain architecture.
+Space is directly representable spatially where appropriate. Trigger, Event, Action, and State do not inherently require independent geometry. Current `EVE`, `SPACE`, and `LOGIC` surfaces must retain their documented compatibility/canonical boundaries and do not redefine domain architecture.
 
 **Exclusions:** Do not preserve transitional labels or geometry-bearing logic objects merely for UI continuity; do not make UI state runtime authority.
 
@@ -227,6 +227,8 @@ BackgroundSceneEvent.level-end
 **Exclusions:** Do not remove a compatibility path before equivalent target behavior is implemented and verified.
 
 **Acceptance gate:** Every listed contract has an evidence-backed classification and migration outcome; compatibility tests and required runtime verification pass; and two competing generic Scene Logic authoring systems do not remain.
+
+**SL-12 audit status:** The source-first classification and migration design are recorded in `SL12_LEGACY_COMPATIBILITY_AUDIT.md`. The audit gate is complete, but migration implementation is not ready as a whole: `BackgroundSceneEvent.level-end` is blocked on authoritative completion semantics and an implemented completion Action. B5 markers/actions/environment diagnostics remain presentation-specific; V2 signal is the only contract ready for a separately approved explicit author-migration batch.
 
 ## M9 — Linear Sequence runtime
 
@@ -291,11 +293,11 @@ SL-14  Sequence Scene integration
 SL-15  Sequence Lab MVP
 ```
 
-## Immediate first implementation milestone
+## Historical first implementation milestone
 
 ### SL-01 — Space core types + pure geometry helpers
 
-SL-01 is the first future implementation batch. Its expected scope is:
+SL-01 was the first implementation batch in this roadmap sequence. Its expected scope was:
 
 ```text
 Marker
