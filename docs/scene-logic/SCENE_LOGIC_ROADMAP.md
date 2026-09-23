@@ -20,8 +20,8 @@ M5  State addressing
 M6  Scene Logic composition
 M7  Scene Lab authoring convergence
 M8  Legacy migration
-M9  Linear Sequence runtime
-M10 Sequence Lab
+M9  Linear Sequence runtime          COMPLETE
+M10 Sequence Lab                     COMPLETE
 ```
 
 ## M0 — Canonical architecture — COMPLETE
@@ -244,17 +244,17 @@ Sequence
    └─ Wait Step
 ```
 
-Implement distinct Sequence Definitions and Sequence Instances, identity-preserving insertion, deterministic fixed-step execution, duration-only Wait, entity references, and Space references. Instance lifecycle is `idle`, `running`, and `completed`.
+Implement distinct Sequence Definitions and Sequence Instances, identity-preserving insertion, deterministic fixed-step execution, and duration-only Wait. Instance lifecycle is `idle`, `running`, and `completed`. Sequence Steps reference canonical Scene Events and Actions by stable authored ID.
 
 **Exclusions:** Branching, parallel execution, loops, nested sequences, `wait_until`, and generic expressions.
 
-**Acceptance gate:** Multiple identity-bearing instances can execute the supported steps deterministically, resolve validated entity/Space references, and complete without definition mutation or wall-clock dependence.
+**Acceptance gate:** Multiple identity-bearing instances can execute supported Event/Action/Wait Steps deterministically and complete without Definition mutation, duplicate runtime authority, or wall-clock dependence.
 
-**SL-13 status — CLOSED:** The standalone linear runtime core implements reusable Definitions, identity-bearing Instances, the `idle | running | completed` lifecycle, referenced Event/Action steps, duration-only Wait steps, pure validation, injected ownership adapters, deterministic same-update zero-wait/immediate traversal, and leftover-dt carry-forward. Definitions remain unchanged and multiple Instances retain independent cursors/wait progress. No EventBus was added. This standalone foundation was subsequently integrated into production by SL-14. Sequence-level Entity/Space authoring and binding remain deferred to SL-15/prerequisite architecture because the current Event/Action definitions contain no generic binding contract.
+**SL-13 status — CLOSED:** The standalone linear runtime core implements reusable Definitions, identity-bearing Instances, the `idle | running | completed` lifecycle, referenced Event/Action steps, duration-only Wait steps, pure validation, injected ownership adapters, deterministic same-update zero-wait/immediate traversal, and leftover-dt carry-forward. Definitions remain unchanged and multiple Instances retain independent cursors/wait progress. No EventBus was added. This standalone foundation was subsequently integrated into production by SL-14. Sequence-level Entity/Space parameter bindings are outside the V1 acceptance contract and remain a future capability pending a concrete consumer and stable Entity targeting authority.
 
 ## M10 — Sequence Lab
 
-**SL-15 status: IN PROGRESS. SL-15A — CLOSED.** SL-15A provides Definition authoring, ordered Event/Action/Wait editing, Scene Instance insertion, `Flow.start_sequence` authoring, and persistence/reopen coverage. It is merged and passed static plus browser runtime/visual acceptance. Sequence-level Entity/Space binding schema remains deferred, and no subsequent SL-15 batch is implicitly authorized.
+**SL-15 status: CLOSED. SL-15A — CLOSED.** SL-15A provides Definition authoring, ordered Event/Action/Wait editing, Scene Instance insertion, `Flow.start_sequence` authoring, and persistence/reopen coverage. It is merged and passed static plus browser runtime/visual acceptance. Sequence-level Entity/Space parameter bindings are explicitly outside V1 and do not block SL-15 closure.
 
 **Goal:** Provide dedicated reusable Sequence Definition authoring.
 
@@ -265,15 +265,15 @@ Sequence Lab
 → author definition
 → save
 → Scene Lab
-→ insert Sequence Instance
-→ bind entity / Space references
+→ insert identity-bearing Sequence Instance
+→ author Flow.start_sequence target
 ```
 
 Scene visualization may expose Sequence content while preserving instance membership.
 
 **Exclusions:** Destructive flattening of Sequence Instances and the advanced Sequence features excluded from M9.
 
-**Acceptance gate:** A reusable definition can be authored, saved, inserted as an identity-preserving Scene instance, bound to valid entity/Space references, reopened, and verified through mandatory browser runtime/visual checks.
+**Acceptance gate:** A reusable Definition can be authored, saved, inserted as an identity-preserving Scene Instance, targeted by `Flow.start_sequence`, reopened with stable Step/Instance references, and verified through mandatory browser runtime/visual checks. **Gate complete through SL-15A.**
 
 ## Preferred focused implementation batches
 
@@ -334,10 +334,10 @@ SL-14 Sequence Scene integration passed static verification and browser/runtime 
 - Scene replacement, PLAY AGAIN/restart re-arming, and authoring-seek rebaselining passed lifecycle acceptance. The `Sequence Verification V2` fixture proved marker crossing starts the Sequence once, completion is delayed rather than immediate, completed gameplay freezes while presentation remains responsive, restart permits a second genuine crossing, and Scene replacement does not leak Sequence progress. Browser verification established ordering, not instrumented exact 0.5-second timing; the Wait duration contract is covered independently by smoke verification.
 - Marker, Range, and Zone authoring bounds now share one authority across the visual timeline, GameplaySeek, and Scene activation. Generic terminal-geometry authoring permits a tail beyond a terminal Marker.
 - V1 remains unchanged, no second EventBus was introduced, and the V1 B2 Demo regression passed.
-- Sequence Lab moved into the SL-15A authoring slice, which is now CLOSED after static and browser runtime/visual acceptance. Sequence-level Entity/Space authoring and binding remain deferred pending the required architecture.
+- Sequence Lab moved into the SL-15A authoring slice, which is CLOSED after static and browser runtime/visual acceptance. Sequence-level Entity/Space parameter bindings are outside Scene Logic V1 and may be reconsidered only with a concrete consumer.
 
 
-## SL-15 implementation status — IN PROGRESS
+## SL-15 implementation status — CLOSED
 
 ### SL-15A — CLOSED
 
@@ -347,4 +347,16 @@ SL-15A Sequence Lab authoring MVP was merged in PR #305 at merge commit `648efa1
 - Browser runtime/visual acceptance passed for Definition authoring, ordered Wait/Event/Action Steps, Wait editing and reordering, identity-bearing Scene Sequence Instances, `Flow.start_sequence` authoring and target changes, referenced Instance/Definition deletion guards, normal Scene save/reopen persistence, Lab switching, authoring inertness, the SL-14 Sequence Verification V2 regression, and the V1 B2 Demo regression.
 - VS Agent browser tooling cannot exercise the native `prompt()` used to create a brand-new Scene Event. This is classified as a non-blocking TOOLING limitation; Sequence Lab Event/Action authoring was verified with existing canonical Event/Action references.
 - SL-15A changes authoring only and does not change Sequence runtime semantics, fixed-step ordering, Scene lifecycle, EventBus ownership, or persistence authority.
-- SL-15 remains IN PROGRESS. Sequence-level Entity/Space binding architecture, cross-Scene Definition libraries, and advanced Sequence features remain deferred. No SL-15B implementation is authorized by this closure.
+- SL-15 is CLOSED. Sequence-level Entity/Space parameter bindings, cross-Scene Definition libraries, and advanced Sequence features are outside V1 and remain future capabilities. No SL-15B implementation is required or authorized by this closure.
+
+
+### SL-15 V1 scope decision — bindings not required
+
+The V1 Sequence contract is complete without generic Entity/Space parameter bindings.
+
+- Current Sequence Steps consume canonical Event/Action IDs and duration waits; no Step has a Space-binding runtime consumer.
+- Current Scene Logic has no general Entity-targeted Action and no stable persisted authored gameplay Entity identity suitable for reusable Sequence targeting.
+- Adding binding maps now would introduce schema, validation, runtime-resolution, lifecycle, and editor contracts without a concrete consumer.
+- Bindings should be reconsidered only when a real product requirement creates a target-substitution problem: Entity-targeted Actions, Space-parameterized Steps, a cross-Scene Definition library, or repeated Sequence duplication caused by differing targets.
+
+This decision re-scopes the older aspirational M9/M10 binding language; it does not remove any implemented runtime or authoring capability.
