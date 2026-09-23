@@ -43,6 +43,7 @@ import { formatWorldX } from "./SceneLabWorldXFormatting";
 import { bindEventAction, bindTriggerEvent, createAction, createSceneEvent as createLogicEvent, createSpaceTrigger, createStateReference, createStateTrigger, createTimeTrigger, deleteAction as deleteLogicAction, deleteSceneEvent as deleteLogicEvent, deleteStateReference, deleteTrigger, stateActionReferencePatch, stateActionStates, stateTriggerReferencePatch, stateTriggerRelations, unbindEventAction, unbindTriggerEvent, updateAction, updateSceneEvent as updateLogicEvent, updateTrigger, type LogicEditResult, type LogicSelection } from "./SceneLogicEditing";
 import { sceneLogicInsertMenuCapabilities } from "./SceneLogicInsertMenu";
 import { migrateLegacyLevelEndToSceneLogic, migrateLegacySignalToSceneLogic } from "./SceneLogicLegacyMigration";
+import { activateV2SceneForAuthoring } from "./SceneLabSceneActivation";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
 function button(text: string, fn: () => void): HTMLButtonElement { const b = el("button"); b.type = "button"; b.textContent = text; b.onclick = fn; return b; }
@@ -171,7 +172,7 @@ export class PixelBgrLabUI {
     const changed = this.displayMode !== mode || this.visible !== (mode === "dev");
     if (mode === "dev" && changed) {
       const resolution = resolveSceneLabV2Entry(getBackgroundSceneV2(globalThis));
-      if (resolution.source !== "active") setBackgroundSceneV2(resolution.entry.create(), globalThis);
+      if (resolution.source !== "active") this.activateV2SceneForAuthoring(resolution.entry.create());
     }
     this.displayMode = mode;
     this.visible = mode === "dev";
@@ -382,24 +383,25 @@ export class PixelBgrLabUI {
   private setV2ObjectsEnabled(scene:BackgroundSceneV2,items:readonly {track:BackgroundTrack;object:BackgroundObject}[],enabled:boolean):void {let next=scene;for(const {track,object} of items){const result=updateV2Object(next,track.id,object.id,{enabled});if(!result.ok){this.message=result.error;this.render();return;}next=result.scene;}setBackgroundSceneV2(next,globalThis);}
   private setV2EventsEnabled(scene:BackgroundSceneV2,events:NonNullable<BackgroundSceneV2["events"]>,enabled:boolean):void {let next=scene;for(const event of events){const result=updateV2SceneEvent(next,event.id,{enabled});if(!result.ok){this.message=result.error;this.render();return;}next=result.scene;}setBackgroundSceneV2(next,globalThis);}
   private saveV2():void {const scene=getBackgroundSceneV2(globalThis);if(!scene)return;const result=saveBackgroundSceneV2(localStorage,scene);this.message=result.ok?`saved scene ${scene.id}`:`save failed: ${result.error}`;this.render();}
-  private loadV2():void {const result=loadBackgroundSceneV2(localStorage);if(result.ok){this.message=`loaded saved scene ${result.scene.id}`;setBackgroundSceneV2(result.scene,globalThis);}else{this.message=`load failed: ${result.error}`;this.render();}}
+  private activateV2SceneForAuthoring(scene:BackgroundSceneV2):void {activateV2SceneForAuthoring(scene,globalThis);requestBackgroundMarkerRuntimeReset(globalThis);this.render();}
+  private loadV2():void {const result=loadBackgroundSceneV2(localStorage);if(result.ok){this.message=`loaded saved scene ${result.scene.id}`;this.activateV2SceneForAuthoring(result.scene);}else{this.message=`load failed: ${result.error}`;this.render();}}
   private toggleSceneMenu():void {this.sceneMenuOpen?this.closeSceneMenu():this.openSceneMenu();}
   private openSceneMenu():void {if(this.sceneMenuOpen)return;this.sceneMenuOpen=true;document.addEventListener("pointerdown",this.onSceneMenuOutside);document.addEventListener("keydown",this.onSceneMenuKeydown);this.render();}
   private closeSceneMenu(render=true):void {if(!this.sceneMenuOpen)return;this.sceneMenuOpen=false;document.removeEventListener("pointerdown",this.onSceneMenuOutside);document.removeEventListener("keydown",this.onSceneMenuKeydown);if(render)this.render();}
   private onSceneMenuOutside=(event:PointerEvent):void=>{const target=event.target;if(!(target instanceof Element)||(!target.closest(".cm-scene-menu")&&!target.closest('button[aria-label="Open scene"]')))this.closeSceneMenu();};
   private onSceneMenuKeydown=(event:KeyboardEvent):void=>{if(event.key==="Escape"){event.preventDefault();this.closeSceneMenu();}};
-  private selectScene(entry:SceneLabCatalogEntry):void {this.closeSceneMenu(false);this.message="";rememberSceneLabCatalogEntry(entry);if(entry.version===2)setBackgroundSceneV2(entry.create(),globalThis);else{this.owner={kind:"global"};this.selectedLayerId="";this.setDraft(entry.create());}}
+  private selectScene(entry:SceneLabCatalogEntry):void {this.closeSceneMenu(false);this.message="";rememberSceneLabCatalogEntry(entry);if(entry.version===2)this.activateV2SceneForAuthoring(entry.create());else{this.owner={kind:"global"};this.selectedLayerId="";this.setDraft(entry.create());}}
   private renderSceneMenu():HTMLElement {const menu=el("div","cm-scene-menu");menu.setAttribute("role","menu");menu.setAttribute("aria-label","Available scenes");for(const entry of SCENE_LAB_SCENE_CATALOG){const item=button(entry.label,()=>this.selectScene(entry));item.setAttribute("role","menuitem");menu.appendChild(item);}const saved=loadBackgroundSceneV2(localStorage);if(saved.ok){const item=button(`Saved: ${saved.scene.id}`,()=>{this.closeSceneMenu(false);this.loadV2();});item.setAttribute("role","menuitem");menu.appendChild(item);}return menu;}
   private deleteSavedV2():void {if(!confirm("Delete the saved Scene Lab scene? The active scene will remain unchanged."))return;clearBackgroundSceneV2(localStorage);this.message="deleted saved scene (active scene unchanged)";this.render();}
   private duplicateV2():void {const scene=getBackgroundSceneV2(globalThis);if(!scene)return;setBackgroundSceneV2({...structuredClone(scene),id:`${scene.id||"scene"}-copy`},globalThis);}
   private exportV2File():void {const scene=getBackgroundSceneV2(globalThis);if(!scene)return;const blob=new Blob([serializeBackgroundSceneV2(scene)],{type:"application/json"});const a=el("a");a.href=URL.createObjectURL(blob);a.download=`${scene.id||"background-scene"}.background-v2.json`;a.click();URL.revokeObjectURL(a.href);this.message=`exported scene ${scene.id}`;this.render();}
-  private importV2File():void {const input=el("input");input.type="file";input.accept="application/json";input.onchange=()=>{const file=input.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const result=parseBackgroundSceneV2(String(reader.result??""));if(result.ok){this.message=`imported scene ${result.scene.id}`;setBackgroundSceneV2(result.scene,globalThis);}else{this.message=`import failed: ${result.error}`;this.render();}};reader.readAsText(file);};input.click();}
+  private importV2File():void {const input=el("input");input.type="file";input.accept="application/json";input.onchange=()=>{const file=input.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const result=parseBackgroundSceneV2(String(reader.result??""));if(result.ok){this.message=`imported scene ${result.scene.id}`;this.activateV2SceneForAuthoring(result.scene);}else{this.message=`import failed: ${result.error}`;this.render();}};reader.readAsText(file);};input.click();}
 
   private renderV2Timeline(projection: V2TimelineProjection): HTMLElement {
     const panel=el("div","cm-pixel-panel cm-v2-panel");
     const viewportRange=timelineViewportRange(this.currentScroll().x,this.logicW);
-    const logicSpaces=getBackgroundSceneV2(globalThis)?.sceneLogic?.spaces;const spaceXs=[...(logicSpaces?.markers.map(item=>item.position)??[]),...(logicSpaces?.ranges.flatMap(item=>[item.start,item.end])??[]),...(logicSpaces?.zones.flatMap(item=>[item.minX,item.maxX])??[])];
-    const timelineBounds={startX:Math.min(projection.bounds.startX,viewportRange.startX,...spaceXs),endX:Math.max(projection.bounds.endX,viewportRange.endX,...spaceXs)};
+    const logicSpaces=getBackgroundSceneV2(globalThis)?.sceneLogic?.spaces;
+    const timelineBounds=projection.bounds;
     const contentSpan=Math.max(720,timelineBounds.endX-timelineBounds.startX);
     const baseWidthPx=Math.max(this.workspace.viewport.clientWidth,Math.ceil(contentSpan));
     const scale=createExactTimelineScale(timelineBounds.startX,timelineBounds.endX,baseWidthPx,this.v2TimelineZoom);
@@ -800,7 +802,7 @@ export class PixelBgrLabUI {
     (globalThis as any).__CM?.game?.seekGameplayToPlayerX?.(x, { bounds, pauseAfterSeek });
     requestBackgroundMarkerRuntimeReset(globalThis);
   }
-  private renderPreview(chunks=this.draft.chunks, explicitBounds?: {startX:number;endX:number}, primary=false): HTMLElement { const p=el("div","cm-pixel-toolbar cm-pixel-preview cm-scene-transport"); const paused=this.gameplayPaused(); const start=explicitBounds?.startX??sceneTimelineBounds(chunks,0).startX; const iconSize=primary?30:16; const playPause=this.iconButton(paused?"Play (Space)":"Pause (Space)",paused?Play:Pause,paused?"Play":"Pause",()=>this.toggleGameplayPaused(),false,iconSize); p.append(this.iconButton("Reset to scene start",RotateCcw,"RotateCcw",()=>{(globalThis as any).__CM?.loop?.setPaused?.(true);this.setCurrentX(start,true);this.render();},false,iconSize),playPause); return p; }
+  private renderPreview(chunks=this.draft.chunks, explicitBounds?: {startX:number;endX:number}, primary=false): HTMLElement { const p=el("div","cm-pixel-toolbar cm-pixel-preview cm-scene-transport"); const paused=this.gameplayPaused(); const start=explicitBounds?.startX??sceneTimelineBounds(chunks,0).startX; const iconSize=primary?30:16; const playPause=this.iconButton(paused?"Play (Space)":"Pause (Space)",paused?Play:Pause,paused?"Play":"Pause",()=>this.toggleGameplayPaused(),false,iconSize); p.append(this.iconButton("Reset to scene start",RotateCcw,"RotateCcw",()=>{(globalThis as any).__CM?.game?.reset?.();this.setCurrentX(start,true);this.render();},false,iconSize),playPause); return p; }
 
   private selectedChunkStart(): number { if (this.owner.kind !== "chunk") return 0; const chunkId=(this.owner as {kind:"chunk";chunkId:string}).chunkId; return this.draft.chunks.find(c=>c.id===chunkId)?.startX ?? 0; }
   private selectedChunkEnd(): number { if (this.owner.kind !== "chunk") return this.logicW; const chunkId=(this.owner as {kind:"chunk";chunkId:string}).chunkId; const c = this.draft.chunks.find(x=>x.id===chunkId); return c ? c.startX + c.length : this.logicW; }
