@@ -1,4 +1,4 @@
-import type { SceneLogicDocumentV1 } from "../../../game/scene-logic/SceneLogicDocument";
+import type { SceneLogicDocument } from "../../../game/scene-logic/SceneLogicDocument";
 
 export type BackgroundTrackRole = "far" | "mid" | "near" | "foreground" | "custom";
 export type BackgroundTrackMode = "sequence" | "repeat";
@@ -93,7 +93,7 @@ export interface BackgroundSceneV2 {
   tracks: BackgroundTrack[];
   events?: BackgroundSceneEvent[];
   /** Optional authored Scene Logic. Legacy scene events remain a separate contract. */
-  sceneLogic?: SceneLogicDocumentV1;
+  sceneLogic?: SceneLogicDocument;
 }
 
 export interface BackgroundEvaluationContext {

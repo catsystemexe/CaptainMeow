@@ -1,36 +1,74 @@
-import type { FlowActionDefinition } from "./Action";
-import { executeFlowAction, materializeAction, type FlowActionRuntimeAdapter } from "./ActionRuntime";
-import { materializeSceneEvent, type SceneEventOccurrence, type SceneEventRuntimeAdapter } from "./EventRuntime";
-import type { SceneLogicDocumentV1 } from "./SceneLogicDocument";
+import type { SceneLogicActionDefinition } from "./Action";
+import {
+  executeFlowAction,
+  executeStateAction,
+  executeWorldAction,
+  materializeAction,
+  type FlowActionRuntimeAdapter,
+  type WorldActionRuntimeAdapter,
+} from "./ActionRuntime";
+import {
+  materializeSceneEvent,
+  materializeSequenceSceneEvent,
+  type SceneEventOccurrence,
+  type SceneEventRuntimeAdapter,
+} from "./EventRuntime";
+import type { SceneLogicDocument } from "./SceneLogicDocument";
+import {
+  createSequenceInstance,
+  startSequenceInstance,
+  updateSequenceInstance,
+  type SequenceInstance,
+} from "./SequenceRuntime";
+import type { StateRegistry } from "./StateRuntime";
 import { createMarkerCrossTriggerRuntimeState, evaluateMarkerCrossTrigger, type MarkerCrossTriggerRuntimeState } from "./TriggerRuntime";
 
-/** Runtime-memory-only owner for the production Marker-cross -> Scene Event -> Flow Action slice. */
+export interface SceneLogicActionOwners {
+  readonly world?: WorldActionRuntimeAdapter;
+  readonly states?: StateRegistry;
+}
+
+/** Runtime-memory owner for canonical Scene Logic, including V2 Sequence Instances. */
 export class SceneLogicRuntime {
-  private document: SceneLogicDocumentV1 | undefined;
+  private document: SceneLogicDocument | undefined;
   private readonly markerStates = new Map<string, MarkerCrossTriggerRuntimeState>();
-  private pendingFlowActions: FlowActionDefinition[] = [];
+  private readonly sequenceInstances = new Map<string, SequenceInstance>();
+  private pendingActions: SceneLogicActionDefinition[] = [];
+  private generation = 0;
 
   constructor(
     private readonly flowAdapter: FlowActionRuntimeAdapter,
     private readonly eventAdapter?: SceneEventRuntimeAdapter,
+    private readonly actionOwners: SceneLogicActionOwners = {},
   ) {}
 
-  /** A new Scene activation always discards once memory and requires a fresh position baseline. */
-  activate(document: SceneLogicDocumentV1 | undefined): void {
+  activate(document: SceneLogicDocument | undefined): void {
     this.document = document;
     this.markerStates.clear();
-    this.pendingFlowActions = [];
+    this.pendingActions = [];
+    this.sequenceInstances.clear();
+    this.generation += 1;
+    if (document?.version === 2) {
+      for (const authored of document.sequenceInstances) {
+        const definition = document.sequenceDefinitions.find(item => item.id === authored.definitionId);
+        if (!definition) continue; // Strict persistence validation owns rejection.
+        this.sequenceInstances.set(authored.id, createSequenceInstance(authored.id, definition, document));
+      }
+    }
   }
 
-  /** Restart re-arms authored Triggers and requires a fresh first-sample baseline. */
   reset(): void { this.activate(this.document); }
 
-  /**
-   * Records an authoring seek destination without evaluating it. Existing once
-   * memory is preserved; this cannot emit an Event or enqueue an Action.
-   */
+  getSequenceInstance(id: string): SequenceInstance | undefined { return this.sequenceInstances.get(id); }
+
+  startSequence(instanceId: string): void {
+    const instance = this.sequenceInstances.get(instanceId);
+    if (!instance) throw new Error(`Flow start_sequence references missing Sequence Instance "${instanceId}"`);
+    startSequenceInstance(instance);
+  }
+
   rebaselinePlayerWorldX(currentX: number): void {
-    this.pendingFlowActions = [];
+    this.pendingActions = [];
     const activeMarkerTriggerIds = new Set<string>();
     for (const trigger of this.document?.triggers ?? []) {
       if (trigger.kind !== "space" || trigger.relation !== "cross") continue;
@@ -38,9 +76,7 @@ export class SceneLogicRuntime {
       const existing = this.markerStates.get(trigger.id);
       this.markerStates.set(trigger.id, { previousX: currentX, fired: existing?.fired ?? false });
     }
-    for (const triggerId of this.markerStates.keys()) {
-      if (!activeMarkerTriggerIds.has(triggerId)) this.markerStates.delete(triggerId);
-    }
+    for (const triggerId of this.markerStates.keys()) if (!activeMarkerTriggerIds.has(triggerId)) this.markerStates.delete(triggerId);
   }
 
   evaluatePlayerWorldX(currentX: number): readonly SceneEventOccurrence[] {
@@ -58,22 +94,62 @@ export class SceneLogicRuntime {
       for (const binding of document.triggerEventBindings.filter(item => item.triggerId === trigger.id)) {
         const definition = document.events.find(item => item.id === binding.eventId);
         if (!definition) continue;
-        const eventOccurrence = materializeSceneEvent(triggerOccurrence, binding, definition);
-        occurrences.push(eventOccurrence);
-        this.eventAdapter?.dispatch(eventOccurrence);
-        for (const actionBinding of document.eventActionBindings.filter(item => item.eventId === definition.id)) {
-          const action = document.actions.find(item => item.id === actionBinding.actionId);
-          if (action?.category === "flow") this.pendingFlowActions.push(materializeAction(eventOccurrence, actionBinding, action));
-        }
+        const occurrence = materializeSceneEvent(triggerOccurrence, binding, definition);
+        occurrences.push(occurrence);
+        this.dispatchEvent(occurrence);
       }
     }
     return occurrences;
   }
 
-  /** Called at the existing Flow boundary, after the crossing tick's Simulation update. */
-  flushFlowActions(): void {
-    const pending = this.pendingFlowActions;
-    this.pendingFlowActions = [];
-    for (const action of pending) executeFlowAction(action, this.flowAdapter);
+  private dispatchEvent(occurrence: SceneEventOccurrence): void {
+    const document = this.document;
+    if (!document) return;
+    this.eventAdapter?.dispatch(occurrence);
+    for (const binding of document.eventActionBindings.filter(item => item.eventId === occurrence.eventId)) {
+      const action = document.actions.find(item => item.id === binding.actionId);
+      if (action) this.pendingActions.push(materializeAction(occurrence, binding, action));
+    }
+  }
+
+  /**
+   * Flow boundary policy: execute one pending snapshot, then (only while active)
+   * advance Sequences. Actions produced by that update remain for the next tick.
+   */
+  updateFlow(dt = 0, levelIsActive: () => boolean = () => true): void {
+    const pending = this.pendingActions;
+    this.pendingActions = [];
+    const generation = this.generation;
+    for (const action of pending) {
+      this.executeAction(action);
+      if (this.generation !== generation) return;
+      if (!levelIsActive()) return;
+    }
+    if (!levelIsActive()) return;
+    const document = this.document;
+    if (document?.version !== 2) return;
+    for (const instance of this.sequenceInstances.values()) {
+      updateSequenceInstance(instance, dt, {
+        events: document.events,
+        actions: document.actions,
+        dispatchEvent: (event, source) => this.dispatchEvent(materializeSequenceSceneEvent(event, source.id)),
+        executeAction: action => { this.pendingActions.push(action); },
+      });
+    }
+  }
+
+  /** Compatibility name retained for existing V1 callers. */
+  flushFlowActions(): void { this.updateFlow(0); }
+
+  private executeAction(action: SceneLogicActionDefinition): void {
+    if (action.category === "world") {
+      if (!this.actionOwners.world) throw new Error("World Action requires its runtime owner");
+      executeWorldAction(action, this.actionOwners.world);
+    } else if (action.category === "state") {
+      if (!this.document || !this.actionOwners.states) throw new Error("State Action requires its runtime owner");
+      executeStateAction(action, this.document.states, this.actionOwners.states);
+    } else if (action.type === "start_sequence") {
+      this.startSequence(action.sequenceInstanceId);
+    } else executeFlowAction(action, this.flowAdapter);
   }
 }

@@ -1,7 +1,7 @@
-import type { SceneLogicDocumentV1 } from "../game/scene-logic/SceneLogicDocument";
+import type { SceneLogicDocument } from "../game/scene-logic/SceneLogicDocument";
 import { STATE_REFERENCE_PRESETS } from "./SceneLogicEditing";
 
-export function sceneLogicInsertMenuCapabilities(logic: SceneLogicDocumentV1 | undefined) {
+export function sceneLogicInsertMenuCapabilities(logic: SceneLogicDocument | undefined) {
   const firstState = logic?.states[0];
   const firstNumberState = logic?.states.find(state => state.valueType === "number");
   return {

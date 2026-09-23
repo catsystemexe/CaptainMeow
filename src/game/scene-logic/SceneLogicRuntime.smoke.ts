@@ -96,3 +96,66 @@ assert.equal(completions, 3, "backward crossing stays inert");
 runtime.activate(undefined); runtime.evaluatePlayerWorldX(0); runtime.evaluatePlayerWorldX(1000); runtime.flushFlowActions();
 assert.equal(completions, 3, "legacy-only Scene has no executable canonical document");
 console.log("SceneLogicRuntime.smoke: PASS");
+
+const sequenceDocument = {
+  ...document,
+  version: 2 as const,
+  actions: [
+    { id: "start", category: "flow" as const, type: "start_sequence" as const, sequenceInstanceId: "finish:a" },
+    { id: "complete", category: "flow" as const, type: "complete_level" as const },
+  ],
+  eventActionBindings: [{ eventId: "end-event", actionId: "start" }],
+  sequenceDefinitions: [{ id: "finish", steps: [{ kind: "wait" as const, durationSec: 0.1 }, { kind: "action" as const, actionId: "complete" }] }],
+  sequenceInstances: [{ id: "finish:a", definitionId: "finish" }, { id: "finish:b", definitionId: "finish" }],
+};
+const sequenceSession = makeSessionState();
+const sequenceEvents: unknown[] = [];
+const sequenceRuntime = new SceneLogicRuntime(
+  { restartLevel: () => { resetLevel(sequenceSession); sequenceRuntime.reset(); }, completeLevel: () => completeLevel(sequenceSession) },
+  { dispatch: occurrence => sequenceEvents.push(occurrence) },
+);
+sequenceRuntime.activate(sequenceDocument);
+assert.equal(sequenceRuntime.getSequenceInstance("finish:a")?.status, "idle");
+sequenceRuntime.evaluatePlayerWorldX(90);
+sequenceRuntime.evaluatePlayerWorldX(100);
+sequenceRuntime.updateFlow(0.05, () => sequenceSession.levelState === "active");
+assert.equal(sequenceRuntime.getSequenceInstance("finish:a")?.status, "running", "crossing action starts the instance in the same Flow phase");
+assert.equal(sequenceRuntime.getSequenceInstance("finish:a")?.waitElapsedSec, 0.05);
+assert.equal(sequenceRuntime.getSequenceInstance("finish:b")?.status, "idle", "instances sharing a Definition are independent");
+sequenceRuntime.startSequence("finish:a");
+sequenceRuntime.updateFlow(0.05, () => sequenceSession.levelState === "active");
+assert.equal(sequenceSession.levelState, "active", "Sequence direct Action is queued for the next Flow tick");
+assert.equal(sequenceRuntime.getSequenceInstance("finish:a")?.status, "completed");
+sequenceRuntime.startSequence("finish:a");
+assert.equal(sequenceRuntime.getSequenceInstance("finish:a")?.status, "completed", "completed instances do not replay");
+sequenceRuntime.updateFlow(1 / 60, () => sequenceSession.levelState === "active");
+assert.equal(sequenceSession.levelState, "completed", "queued Sequence completion reaches the authoritative Flow owner");
+sequenceRuntime.reset();
+assert.equal(sequenceRuntime.getSequenceInstance("finish:a")?.status, "idle", "restart recreates idle Sequence memory");
+sequenceRuntime.startSequence("finish:a");
+sequenceRuntime.updateFlow(0.04);
+const progress = sequenceRuntime.getSequenceInstance("finish:a")?.waitElapsedSec;
+sequenceRuntime.rebaselinePlayerWorldX(500);
+assert.equal(sequenceRuntime.getSequenceInstance("finish:a")?.waitElapsedSec, progress, "authoring seek preserves Sequence progress");
+assert.equal(sequenceEvents.length, 1, "activation and Sequence wait/action steps dispatch no extra Events");
+
+const eventStepSession = makeSessionState();
+const eventStepOccurrences: unknown[] = [];
+const eventStepRuntime = new SceneLogicRuntime(
+  { restartLevel: () => resetLevel(eventStepSession), completeLevel: () => completeLevel(eventStepSession) },
+  { dispatch: occurrence => eventStepOccurrences.push(occurrence) },
+);
+eventStepRuntime.activate({
+  ...sequenceDocument,
+  triggers: [], triggerEventBindings: [],
+  actions: [{ id: "complete", category: "flow", type: "complete_level" }],
+  eventActionBindings: [{ eventId: "end-event", actionId: "complete" }],
+  sequenceDefinitions: [{ id: "semantic", steps: [{ kind: "event", eventId: "end-event" }] }],
+  sequenceInstances: [{ id: "semantic:a", definitionId: "semantic" }],
+});
+eventStepRuntime.startSequence("semantic:a");
+eventStepRuntime.updateFlow(1 / 60, () => eventStepSession.levelState === "active");
+assert.deepEqual(eventStepOccurrences, [{ eventId: "end-event", type: "level_complete", sourceSequenceInstanceId: "semantic:a" }]);
+assert.equal(eventStepSession.levelState, "active", "Event-bound Action waits for the next Flow tick");
+eventStepRuntime.updateFlow(1 / 60, () => eventStepSession.levelState === "active");
+assert.equal(eventStepSession.levelState, "completed", "Sequence Event uses normal Event-to-Action binding");

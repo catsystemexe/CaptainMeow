@@ -38,8 +38,9 @@ import { ProjectileSystem } from "../systems/ProjectileSystem";
 import { VFXSystem } from "../vfx/VFXSystem";
 import { seekGameplayToPlayerX } from "../authoring/GameplaySeek";
 import { getBackgroundSceneV2 } from "../../render/BackgroundState";
-import { createFlowActionRuntimeAdapter } from "../scene-logic/ActionRuntime";
+import { createFlowActionRuntimeAdapter, createWorldActionRuntimeAdapter } from "../scene-logic/ActionRuntime";
 import { SceneLogicRuntime } from "../scene-logic/SceneLogicRuntime";
+import { createSceneLogicStateRegistry } from "../scene-logic/StateRuntime";
 
 
 
@@ -541,7 +542,10 @@ export async function createGame(
   const sceneLogicRuntime = new SceneLogicRuntime(createFlowActionRuntimeAdapter({
     restartLevel: resetGame,
     completeLevel: () => completeLevel(session),
-  }));
+  }), undefined, {
+    world: createWorldActionRuntimeAdapter(world),
+    states: createSceneLogicStateRegistry({ world, player: playerEnt }),
+  });
   sceneLogicRuntime.activate(activeScene?.sceneLogic);
 
   const loop = new Loop<CMEventMap>({
@@ -636,7 +640,7 @@ export async function createGame(
           update: (ctx, events) => {
             if (!isLevelActive(session)) return;
             flow.update(ctx, events as any);
-            sceneLogicRuntime.flushFlowActions();
+            sceneLogicRuntime.updateFlow(ctx.dt, () => isLevelActive(session));
           },
         },
 

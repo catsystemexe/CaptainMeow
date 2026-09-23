@@ -1,7 +1,7 @@
 import type { BackgroundSceneV2 } from "./BackgroundV2Types";
 import { validateStarfieldConfig } from "./BackgroundV2Starfield";
 import { BACKGROUND_ASSET_DECLARATIONS } from "../../../assets/BackgroundAssets";
-import { validateSceneLogicDocumentV1 } from "../../../game/scene-logic/SceneLogicDocument";
+import { validateAnySceneLogicDocument } from "../../../game/scene-logic/SceneLogicDocument";
 
 export interface BackgroundV2ValidationIssue { path: string; message: string }
 export interface BackgroundV2ValidationResult { valid: boolean; errors: BackgroundV2ValidationIssue[] }
@@ -117,7 +117,7 @@ export function validateBackgroundSceneV2(value: unknown): BackgroundV2Validatio
     }
   }
   if (value.sceneLogic !== undefined) {
-    const result = validateSceneLogicDocumentV1(value.sceneLogic);
+    const result = validateAnySceneLogicDocument(value.sceneLogic);
     for (const error of result.errors) issue(error.path ? `sceneLogic.${error.path}` : "sceneLogic", error.message);
   }
   return { valid: errors.length === 0, errors };
