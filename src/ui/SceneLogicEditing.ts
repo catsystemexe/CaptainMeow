@@ -1,4 +1,4 @@
-import { validateSceneLogicDocumentV1, type SceneLogicDocumentV1 } from "../game/scene-logic/SceneLogicDocument";
+import { validateAnySceneLogicDocument, type SceneLogicDocument } from "../game/scene-logic/SceneLogicDocument";
 import { validateSceneEventDefinition } from "../game/scene-logic/Event";
 import { validateStateReferenceDefinition, type StateReferenceDefinition, type StateValue, type StateValueType } from "../game/scene-logic/State";
 import { validateMarkerCrossTrigger, validateRangeSpaceTrigger, validateStateTrigger, validateTimeTrigger, validateZoneSpaceTrigger, type RangeZoneTriggerRelation, type SceneLogicTriggerDefinition, type StateTriggerRelation, type TimeTriggerRelation, type TriggerMode } from "../game/scene-logic/Trigger";
@@ -55,12 +55,12 @@ export function stateActionReferencePatch(
 }
 
 const fail = (scene: BackgroundSceneV2, error: string): LogicEditResult => ({ ok: false, scene, error });
-function save(scene: BackgroundSceneV2, logic: SceneLogicDocumentV1, selection?: LogicSelection): LogicEditResult {
-  const validation = validateSceneLogicDocumentV1(logic);
+function save(scene: BackgroundSceneV2, logic: SceneLogicDocument, selection?: LogicSelection): LogicEditResult {
+  const validation = validateAnySceneLogicDocument(logic);
   return validation.valid ? { ok: true, scene: { ...scene, sceneLogic: logic }, selection } : fail(scene, validation.errors[0]?.message ?? "Invalid Scene Logic edit.");
 }
 function nextId(items: readonly { id: string }[], stem: string): string { let i=1; const used=new Set(items.map(x=>x.id)); while(used.has(`${stem}_${i}`))i++; return `${stem}_${i}`; }
-function triggerValidation(trigger: SceneLogicTriggerDefinition, logic: SceneLogicDocumentV1) {
+function triggerValidation(trigger: SceneLogicTriggerDefinition, logic: SceneLogicDocument) {
   if(trigger.kind==="time")return validateTimeTrigger(trigger);
   if(trigger.kind==="state")return validateStateTrigger(trigger,logic.states);
   if("markerId" in trigger)return validateMarkerCrossTrigger(trigger);
@@ -79,7 +79,7 @@ export function updateSceneEvent(scene:BackgroundSceneV2,id:string,type:string):
 export function deleteSceneEvent(scene:BackgroundSceneV2,id:string):LogicEditResult {const logic=ensureSceneLogicDocument(scene);if(logic.triggerEventBindings.some(x=>x.eventId===id)||logic.eventActionBindings.some(x=>x.eventId===id))return fail(scene,`Cannot delete Event '${id}': remove its bindings first.`);return save(scene,{...logic,events:logic.events.filter(x=>x.id!==id)});}
 
 export type ActionDraft={category:"world";type:"stop_scroll"}|{category:"flow";type:"restart_level"}|{category:"state";type:"set"|"increment"|"decrement";stateId:string;value:StateValue};
-function actionError(action:SceneLogicActionDefinition,logic:SceneLogicDocumentV1):string|null {const state=action.category==="state"?logic.states.find(x=>x.id===action.stateId):undefined;if(action.category==="state"&&!state)return `Missing State '${action.stateId}'.`;if(action.category==="state"&&action.type!=="set"&&state?.valueType!=="number")return "Increment/decrement require a number State.";if(action.category==="state"&&action.type==="set"&&typeof action.value!==state?.valueType)return `Set value must be ${state?.valueType}.`;const validation=action.category==="world"?validateWorldStopScrollAction(action):action.category==="flow"?validateFlowRestartLevelAction(action):action.type==="set"?validateStateSetAction(action):action.type==="increment"?validateStateIncrementAction(action):validateStateDecrementAction(action);return validation.valid?null:validation.issues[0].message;}
+function actionError(action:SceneLogicActionDefinition,logic:SceneLogicDocument):string|null {const state=action.category==="state"?logic.states.find(x=>x.id===action.stateId):undefined;if(action.category==="state"&&!state)return `Missing State '${action.stateId}'.`;if(action.category==="state"&&action.type!=="set"&&state?.valueType!=="number")return "Increment/decrement require a number State.";if(action.category==="state"&&action.type==="set"&&typeof action.value!==state?.valueType)return `Set value must be ${state?.valueType}.`;const validation=action.category==="world"?validateWorldStopScrollAction(action):action.category==="flow"?validateFlowRestartLevelAction(action):action.type==="set"?validateStateSetAction(action):action.type==="increment"?validateStateIncrementAction(action):validateStateDecrementAction(action);return validation.valid?null:validation.issues[0].message;}
 export function createAction(scene:BackgroundSceneV2,draft:ActionDraft):LogicEditResult {const logic=ensureSceneLogicDocument(scene);const action={id:nextId(logic.actions,"action"),...draft} as SceneLogicActionDefinition;const error=actionError(action,logic);if(error)return fail(scene,error);return save(scene,{...logic,actions:[...logic.actions,action]},{kind:"action",id:action.id});}
 export function updateAction(scene:BackgroundSceneV2,id:string,patch:Partial<{stateId:string;value:StateValue}>):LogicEditResult {const logic=ensureSceneLogicDocument(scene);const current=logic.actions.find(x=>x.id===id);if(!current)return fail(scene,`Action '${id}' was not found.`);const next={...current,...patch,id:current.id,category:current.category,type:current.type} as SceneLogicActionDefinition;const error=actionError(next,logic);if(error)return fail(scene,error);return save(scene,{...logic,actions:logic.actions.map(action=>action.id===id?next:action)},{kind:"action",id});}
 export function deleteAction(scene:BackgroundSceneV2,id:string):LogicEditResult {const logic=ensureSceneLogicDocument(scene);if(logic.eventActionBindings.some(x=>x.actionId===id))return fail(scene,`Cannot delete Action '${id}': remove its Event bindings first.`);return save(scene,{...logic,actions:logic.actions.filter(x=>x.id!==id)});}

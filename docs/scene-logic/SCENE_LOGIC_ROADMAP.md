@@ -323,3 +323,7 @@ legacy removal
 ```
 
 SL-01 must receive focused approval before it is marked in progress or implemented.
+
+## SL-14 implementation status
+
+SL-14 is implemented statically: strict Scene Logic V2 persistence owns reusable Sequence Definitions and identity-bearing Scene Instances; `Flow.start_sequence`, the canonical pending Action pipeline, fixed-step Flow updates, semantic Sequence Events, reset/replacement behavior, and V2-preserving ordinary Scene Lab edits are integrated. V1 remains unchanged and receives no automatic migration. Sequence Lab and Sequence-level Space/Entity bindings remain deferred to SL-15/prerequisite architecture; no unused binding fields were introduced.

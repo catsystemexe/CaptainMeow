@@ -68,6 +68,7 @@ function validateReferencedAction(action: SceneLogicActionDefinition): boolean {
     if (action.type === "increment") return validateStateIncrementAction(action).valid;
     return validateStateDecrementAction(action).valid;
   }
+  if (action.type === "start_sequence") return false;
   return action.type === "restart_level"
     ? validateFlowRestartLevelAction(action).valid
     : validateFlowCompleteLevelAction(action).valid;
@@ -80,9 +81,14 @@ export function validateSequenceDefinition(
 ): SequenceValidationResult {
   const issues: SequenceValidationIssue[] = [];
   if (!object(definition)) return { valid: false, issues: [{ path: "definition", message: "must be an object" }] };
+  for (const key of Object.keys(definition)) if (key !== "id" && key !== "steps") issues.push({ path: key, message: "unknown field" });
   if (!stableId(definition.id)) issues.push({ path: "id", message: "must be a non-empty string" });
   if (!Array.isArray(definition.steps)) issues.push({ path: "steps", message: "must be an ordered array" });
   else definition.steps.forEach((step, index) => {
+    if (object(step)) {
+      const allowed = step.kind === "event" ? ["kind", "eventId"] : step.kind === "action" ? ["kind", "actionId"] : ["kind", "durationSec"];
+      for (const key of Object.keys(step)) if (!allowed.includes(key)) issues.push({ path: `steps[${index}].${key}`, message: "unknown field" });
+    }
     for (const issue of validateSequenceStep(step, references).issues) {
       issues.push({ path: `steps[${index}].${issue.path}`, message: issue.message });
     }
