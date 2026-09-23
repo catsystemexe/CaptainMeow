@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { parseBackgroundSceneV2, serializeBackgroundSceneV2 } from "../../render/bg/v2/BackgroundV2Serialization";
 import type { BackgroundSceneV2 } from "../../render/bg/v2/BackgroundV2Types";
-import { validateSceneLogicDocumentV1, type SceneLogicDocumentV1 } from "./SceneLogicDocument";
+import { validateSceneLogicDocumentV1, validateSceneLogicDocumentV2, type SceneLogicDocumentV1 } from "./SceneLogicDocument";
 
 const logic: SceneLogicDocumentV1 = {
   version: 1,
@@ -96,3 +96,29 @@ expectInvalid((d) => { const values = d.triggerEventBindings as Mutable[]; value
 expectInvalid((d) => { const values = d.eventActionBindings as Mutable[]; values.push(structuredClone(values[0])); }, /^eventActionBindings\[2\]$/);
 
 console.log("SceneLogicDocument.smoke: PASS");
+
+const logicV2 = {
+  ...logic,
+  version: 2 as const,
+  actions: [
+    ...logic.actions,
+    { id: "start_finish", category: "flow" as const, type: "start_sequence" as const, sequenceInstanceId: "finish:a" },
+  ],
+  sequenceDefinitions: [{ id: "finish", steps: [{ kind: "wait" as const, durationSec: 0.1 }, { kind: "action" as const, actionId: "complete_level" }] }],
+  sequenceInstances: [{ id: "finish:a", definitionId: "finish" }, { id: "finish:b", definitionId: "finish" }],
+};
+assert.equal(validateSceneLogicDocumentV2(logicV2).valid, true);
+const sceneV2: BackgroundSceneV2 = { version: 2, id: "sequence-proof", environment: {}, tracks: [], sceneLogic: logicV2 };
+const parsedV2 = parseBackgroundSceneV2(serializeBackgroundSceneV2(sceneV2));
+assert(parsedV2.ok && JSON.stringify(parsedV2.scene.sceneLogic) === JSON.stringify(logicV2), "V2 Sequence authored data round-trips");
+const invalidV2 = (mutate: (value: Mutable) => void, path: RegExp) => {
+  const value = structuredClone(logicV2) as unknown as Mutable; mutate(value);
+  const result = validateSceneLogicDocumentV2(value);
+  assert(!result.valid && result.errors.some(error => path.test(error.path)), `expected V2 error ${path}`);
+};
+invalidV2(v => { (v.sequenceDefinitions as Mutable[]).push(structuredClone((v.sequenceDefinitions as Mutable[])[0])); }, /sequenceDefinitions\[1\]\.id/);
+invalidV2(v => { (v.sequenceInstances as Mutable[]).push(structuredClone((v.sequenceInstances as Mutable[])[0])); }, /sequenceInstances\[2\]\.id/);
+invalidV2(v => { (v.sequenceInstances as Mutable[])[0].definitionId = "missing"; }, /sequenceInstances\[0\]\.definitionId/);
+invalidV2(v => { (v.actions as Mutable[])[4].sequenceInstanceId = "missing"; }, /actions\[4\]\.sequenceInstanceId/);
+invalidV2(v => { (v.sequenceInstances as Mutable[])[0].status = "running"; }, /sequenceInstances\[0\]\.status/);
+invalidV2(v => { ((v.sequenceDefinitions as Mutable[])[0].steps as Mutable[])[1].actionId = "start_finish"; }, /sequenceDefinitions\[0\]\.steps\[1\]\.actionId/);

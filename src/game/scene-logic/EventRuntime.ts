@@ -5,7 +5,16 @@ import type { TriggerOccurrence } from "./TriggerRuntime";
 export interface SceneEventOccurrence {
   readonly eventId: string;
   readonly type: string;
-  readonly sourceTriggerId: string;
+  readonly sourceTriggerId?: string;
+  readonly sourceSequenceInstanceId?: string;
+}
+
+/** Materializes the same semantic Event path for a Sequence-owned occurrence. */
+export function materializeSequenceSceneEvent(
+  eventDefinition: SceneEventDefinition,
+  sequenceInstanceId: string,
+): SceneEventOccurrence {
+  return { eventId: eventDefinition.id, type: eventDefinition.type, sourceSequenceInstanceId: sequenceInstanceId };
 }
 
 /**

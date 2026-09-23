@@ -2,6 +2,7 @@ import {
   validateEventActionBinding,
   validateFlowCompleteLevelAction,
   validateFlowRestartLevelAction,
+  validateFlowStartSequenceAction,
   validateStateDecrementAction,
   validateStateIncrementAction,
   validateStateSetAction,
@@ -25,6 +26,7 @@ import {
   validateZoneSpaceTrigger,
   type SceneLogicTriggerDefinition,
 } from "./Trigger";
+import { validateSequenceDefinition, type SequenceDefinition } from "./Sequence";
 
 export interface SceneLogicDocumentV1 {
   readonly version: 1;
@@ -41,13 +43,26 @@ export interface SceneLogicDocumentV1 {
   readonly eventActionBindings: readonly EventActionBinding[];
 }
 
+export interface SceneSequenceInstanceDefinition {
+  readonly id: string;
+  readonly definitionId: string;
+}
+
+export interface SceneLogicDocumentV2 extends Omit<SceneLogicDocumentV1, "version"> {
+  readonly version: 2;
+  readonly sequenceDefinitions: readonly SequenceDefinition[];
+  readonly sequenceInstances: readonly SceneSequenceInstanceDefinition[];
+}
+
+export type SceneLogicDocument = SceneLogicDocumentV1 | SceneLogicDocumentV2;
+
 export interface SceneLogicDocumentValidationIssue { readonly path: string; readonly message: string }
 export interface SceneLogicDocumentValidationResult { readonly valid: boolean; readonly errors: readonly SceneLogicDocumentValidationIssue[] }
 
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-export function validateSceneLogicDocumentV1(value: unknown): SceneLogicDocumentValidationResult {
+function validateSceneLogicDocument(value: unknown, version: 1 | 2): SceneLogicDocumentValidationResult {
   const errors: SceneLogicDocumentValidationIssue[] = [];
   const issue = (path: string, message: string): void => { errors.push({ path, message }); };
   const unknownFields = (record: Record<string, unknown>, allowed: readonly string[], path: string): void => {
@@ -73,8 +88,8 @@ export function validateSceneLogicDocumentV1(value: unknown): SceneLogicDocument
   };
 
   if (!object(value)) return { valid: false, errors: [{ path: "", message: "must be an object" }] };
-  unknownFields(value, ["version", "spaces", "states", "triggers", "events", "actions", "triggerEventBindings", "eventActionBindings"], "");
-  if (value.version !== 1) issue("version", "must equal 1");
+  unknownFields(value, version === 1 ? ["version", "spaces", "states", "triggers", "events", "actions", "triggerEventBindings", "eventActionBindings"] : ["version", "spaces", "states", "triggers", "events", "actions", "triggerEventBindings", "eventActionBindings", "sequenceDefinitions", "sequenceInstances"], "");
+  if (value.version !== version) issue("version", `must equal ${version}`);
 
   let markers: unknown[] = []; let ranges: unknown[] = []; let zones: unknown[] = [];
   if (!object(value.spaces)) issue("spaces", "must be an object");
@@ -90,6 +105,8 @@ export function validateSceneLogicDocumentV1(value: unknown): SceneLogicDocument
   const actions = validateArray(value, "actions");
   const triggerEventBindings = validateArray(value, "triggerEventBindings");
   const eventActionBindings = validateArray(value, "eventActionBindings");
+  const sequenceDefinitions = version === 2 ? validateArray(value, "sequenceDefinitions") : [];
+  const sequenceInstances = version === 2 ? validateArray(value, "sequenceInstances") : [];
 
   markers.forEach((item, index) => {
     const path = `spaces.markers[${index}]`;
@@ -159,11 +176,12 @@ export function validateSceneLogicDocumentV1(value: unknown): SceneLogicDocument
     const path = `actions[${index}]`;
     if (!object(item)) { issue(path, "must be an object"); return; }
     const stateAction = item.category === "state";
-    unknownFields(item, stateAction ? ["id", "category", "type", "stateId", "value"] : ["id", "category", "type"], path);
+    unknownFields(item, stateAction ? ["id", "category", "type", "stateId", "value"] : item.type === "start_sequence" ? ["id", "category", "type", "sequenceInstanceId"] : ["id", "category", "type"], path);
     let result;
     if (item.category === "world" && item.type === "stop_scroll") result = validateWorldStopScrollAction(item);
     else if (item.category === "flow" && item.type === "restart_level") result = validateFlowRestartLevelAction(item);
     else if (item.category === "flow" && item.type === "complete_level") result = validateFlowCompleteLevelAction(item);
+    else if (version === 2 && item.category === "flow" && item.type === "start_sequence") result = validateFlowStartSequenceAction(item);
     else if (item.category === "state" && item.type === "set") result = validateStateSetAction(item);
     else if (item.category === "state" && item.type === "increment") result = validateStateIncrementAction(item);
     else if (item.category === "state" && item.type === "decrement") result = validateStateDecrementAction(item);
@@ -200,5 +218,43 @@ export function validateSceneLogicDocumentV1(value: unknown): SceneLogicDocument
     const pair = `${String(item.eventId)}\0${String(item.actionId)}`;
     if (bindingPairs.has(pair)) issue(path, "duplicate Event/Action binding"); else bindingPairs.add(pair);
   });
+  if (version === 2) {
+    const definitionIds = uniqueIds(sequenceDefinitions, "sequenceDefinitions");
+    const instanceIds = uniqueIds(sequenceInstances, "sequenceInstances");
+    sequenceDefinitions.forEach((definition, index) => {
+      const path = `sequenceDefinitions[${index}]`;
+      const result = validateSequenceDefinition(definition, {
+        events: events.filter(object) as unknown as SceneEventDefinition[],
+        actions: actions.filter(object) as unknown as SceneLogicActionDefinition[],
+      });
+      for (const item of result.issues) issue(`${path}.${item.path}`, item.message);
+    });
+    sequenceInstances.forEach((item, index) => {
+      const path = `sequenceInstances[${index}]`;
+      if (!object(item)) { issue(path, "must be an object"); return; }
+      unknownFields(item, ["id", "definitionId"], path);
+      if (typeof item.id !== "string" || item.id.trim().length === 0) issue(`${path}.id`, "must be a non-empty string");
+      if (typeof item.definitionId !== "string" || item.definitionId.trim().length === 0) issue(`${path}.definitionId`, "must be a non-empty string");
+      else if (!definitionIds.has(item.definitionId)) issue(`${path}.definitionId`, `references missing Sequence Definition "${item.definitionId}"`);
+    });
+    actions.forEach((item, index) => {
+      if (object(item) && item.category === "flow" && item.type === "start_sequence" &&
+          typeof item.sequenceInstanceId === "string" && !instanceIds.has(item.sequenceInstanceId)) {
+        issue(`actions[${index}].sequenceInstanceId`, `references missing Sequence Instance "${item.sequenceInstanceId}"`);
+      }
+    });
+  }
   return { valid: errors.length === 0, errors };
+}
+
+export function validateSceneLogicDocumentV1(value: unknown): SceneLogicDocumentValidationResult {
+  return validateSceneLogicDocument(value, 1);
+}
+
+export function validateSceneLogicDocumentV2(value: unknown): SceneLogicDocumentValidationResult {
+  return validateSceneLogicDocument(value, 2);
+}
+
+export function validateAnySceneLogicDocument(value: unknown): SceneLogicDocumentValidationResult {
+  return object(value) && value.version === 2 ? validateSceneLogicDocumentV2(value) : validateSceneLogicDocumentV1(value);
 }

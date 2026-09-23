@@ -1,4 +1,4 @@
-import { validateSceneLogicDocumentV1, type SceneLogicDocumentV1 } from "../game/scene-logic/SceneLogicDocument";
+import { validateAnySceneLogicDocument, type SceneLogicDocument } from "../game/scene-logic/SceneLogicDocument";
 import type { BackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Types";
 import { validateBackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Validation";
 import { ensureSceneLogicDocument } from "./SceneLogicSpaceEditing";
@@ -33,14 +33,14 @@ export function migrateLegacySignalToSceneLogic(scene: BackgroundSceneV2, source
   const markerId = firstFree(`${source.id}:marker`, spaceIds);
   const triggerId = firstFree(`${source.id}:trigger`, new Set(logic.triggers.map(item => item.id)));
   const eventId = firstFree(`${source.id}:event`, new Set(logic.events.map(item => item.id)));
-  const candidateLogic: SceneLogicDocumentV1 = {
+  const candidateLogic: SceneLogicDocument = {
     ...logic,
     spaces: { ...logic.spaces, markers: [...logic.spaces.markers, { id: markerId, position: source.worldX }] },
     triggers: [...logic.triggers, { id: triggerId, kind: "space", relation: "cross", markerId, mode: "once", enabled: source.enabled }],
     events: [...logic.events, { id: eventId, category: "scene", type: source.name }],
     triggerEventBindings: [...logic.triggerEventBindings, { triggerId, eventId }],
   };
-  const logicValidation = validateSceneLogicDocumentV1(candidateLogic);
+  const logicValidation = validateAnySceneLogicDocument(candidateLogic);
   if (!logicValidation.valid) return invalid(scene, logicValidation.errors.map(item => `${item.path}: ${item.message}`).join("; "));
 
   const candidate: BackgroundSceneV2 = {
@@ -70,7 +70,7 @@ export function migrateLegacyLevelEndToSceneLogic(scene: BackgroundSceneV2, sour
   const triggerId = firstFree(`${source.id}:trigger`, new Set(logic.triggers.map(item => item.id)));
   const eventId = firstFree(`${source.id}:event`, new Set(logic.events.map(item => item.id)));
   const actionId = firstFree(`${source.id}:action`, new Set(logic.actions.map(item => item.id)));
-  const candidateLogic: SceneLogicDocumentV1 = {
+  const candidateLogic: SceneLogicDocument = {
     ...logic,
     spaces: { ...logic.spaces, markers: [...logic.spaces.markers, { id: markerId, position: source.worldX }] },
     triggers: [...logic.triggers, { id: triggerId, kind: "space", relation: "cross", markerId, mode: "once", enabled: source.enabled }],
@@ -79,7 +79,7 @@ export function migrateLegacyLevelEndToSceneLogic(scene: BackgroundSceneV2, sour
     triggerEventBindings: [...logic.triggerEventBindings, { triggerId, eventId }],
     eventActionBindings: [...logic.eventActionBindings, { eventId, actionId }],
   };
-  const logicValidation = validateSceneLogicDocumentV1(candidateLogic);
+  const logicValidation = validateAnySceneLogicDocument(candidateLogic);
   if (!logicValidation.valid) return { ok: false, scene, code: "invalid-scene", error: logicValidation.errors.map(item => `${item.path}: ${item.message}`).join("; ") };
   const candidate: BackgroundSceneV2 = { ...scene, events: scene.events?.filter(event => event.id !== sourceEventId), sceneLogic: candidateLogic };
   const sceneValidation = validateBackgroundSceneV2(candidate);

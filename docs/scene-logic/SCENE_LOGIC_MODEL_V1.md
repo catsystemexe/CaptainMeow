@@ -196,3 +196,8 @@ The following are **OUT OF MVP**:
 - exact TypeScript interfaces, persistence schemas, adapters, or UI design.
 
 These exclusions are not implementation estimates. Any later addition requires an explicit contract beyond this V1 MVP.
+
+
+## Implemented version boundary
+
+The V1 wire contract remains strict and excludes Sequences. Production Sequence composition is implemented by the additive `SceneLogicDocumentV2` contract documented in `SCENE_LOGIC_PERSISTENCE_V2.md`; no V1 load-time migration occurs.

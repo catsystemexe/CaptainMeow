@@ -1,4 +1,4 @@
-import type { SceneLogicDocumentV1 } from "../game/scene-logic/SceneLogicDocument";
+import type { SceneLogicDocument } from "../game/scene-logic/SceneLogicDocument";
 import { validateMarker, validateRange, validateZone, type Marker, type Range, type Zone } from "../game/scene-logic/Space";
 import type { BackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Types";
 
@@ -10,7 +10,7 @@ export const DEFAULT_SPACE_WIDTH = 100;
 export const DEFAULT_ZONE_MIN_Y_FACTOR = 0.25;
 export const DEFAULT_ZONE_MAX_Y_FACTOR = 0.75;
 
-export function ensureSceneLogicDocument(scene: BackgroundSceneV2): SceneLogicDocumentV1 {
+export function ensureSceneLogicDocument(scene: BackgroundSceneV2): SceneLogicDocument {
   return scene.sceneLogic ?? { version: 1, spaces: { markers: [], ranges: [], zones: [] }, states: [], triggers: [], events: [], actions: [], triggerEventBindings: [], eventActionBindings: [] };
 }
 
@@ -23,7 +23,7 @@ function nextId(scene: BackgroundSceneV2, stem: V2SpaceSelection["kind"]): strin
   while (used.has(`${stem}_${index}`)) index += 1;
   return `${stem}_${index}`;
 }
-function replaceSpaces(scene: BackgroundSceneV2, spaces: SceneLogicDocumentV1["spaces"]): BackgroundSceneV2 {
+function replaceSpaces(scene: BackgroundSceneV2, spaces: SceneLogicDocument["spaces"]): BackgroundSceneV2 {
   const logic = ensureSceneLogicDocument(scene);
   return { ...scene, sceneLogic: { ...logic, spaces } };
 }

@@ -13,7 +13,7 @@ export function createWorldActionRuntimeAdapter(world: WorldState): WorldActionR
   return { stopScroll(): void { world.speedX = 0; } };
 }
 
-export interface FlowActionRuntimeAdapter { restartLevel(): void; completeLevel(): void; }
+export interface FlowActionRuntimeAdapter { restartLevel(): void; completeLevel(): void; startSequence?(instanceId: string): void; }
 
 export function createFlowActionRuntimeAdapter(
   owner: { readonly restartLevel: () => void; readonly completeLevel: () => void },
@@ -82,5 +82,9 @@ export function executeStateAction(
 
 export function executeFlowAction(action: FlowActionDefinition, adapter: FlowActionRuntimeAdapter): void {
   if (action.type === "restart_level") adapter.restartLevel();
-  else adapter.completeLevel();
+  else if (action.type === "complete_level") adapter.completeLevel();
+  else {
+    if (!adapter.startSequence) throw new Error("Flow start_sequence requires a Sequence runtime owner");
+    adapter.startSequence(action.sequenceInstanceId);
+  }
 }
