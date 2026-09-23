@@ -52,6 +52,8 @@ export function setV2RoleTracksEnabled(scene: BackgroundSceneV2, trackIds: reado
 const STANDARD_ROLES = ["foreground", "near", "mid", "far"] as const;
 const roleLabel = (role: BackgroundTrackRole): string => role === "foreground" ? "Front" : role[0].toUpperCase() + role.slice(1);
 const finite = (value: number): boolean => Number.isFinite(value);
+/** One logical gameplay viewport beyond terminal Scene Logic geometry keeps boundary spaces crossable in authoring. */
+export const SCENE_LAB_V2_LOGIC_TAIL_X = 896;
 
 export function projectBackgroundV2Timeline(
   scene: BackgroundSceneV2,
@@ -98,6 +100,11 @@ export function projectBackgroundV2Timeline(
   }
   for (const range of ranges) if (finite(range.startX) && finite(range.endX)) points.push(range.startX, range.endX);
   for (const marker of markers) if (finite(marker.x)) points.push(marker.x);
+  const logicPoints: number[] = [];
+  for (const marker of scene.sceneLogic?.spaces.markers ?? []) if (finite(marker.position)) logicPoints.push(marker.position);
+  for (const range of scene.sceneLogic?.spaces.ranges ?? []) if (finite(range.start) && finite(range.end)) logicPoints.push(range.start, range.end);
+  for (const zone of scene.sceneLogic?.spaces.zones ?? []) if (finite(zone.minX) && finite(zone.maxX)) logicPoints.push(zone.minX, zone.maxX);
+  points.push(...logicPoints);
   const events = orderedV2SceneEvents(scene).map(event => ({ id: event.id, type: event.type, label: v2EntityDisplayName(event), worldX: event.worldX, enabled: event.enabled, locked: event.locked }));
   for (const event of events) if (finite(event.worldX)) points.push(event.worldX);
 
@@ -110,7 +117,10 @@ export function projectBackgroundV2Timeline(
     events,
     environmentLabels,
     gameplay: { ranges, markers, available: ranges.length > 0 || markers.length > 0 },
-    bounds: { startX: Math.min(0, ...points), endX: Math.max(0, ...points) },
+    bounds: {
+      startX: Math.min(0, ...points),
+      endX: Math.max(0, ...points, ...(logicPoints.length > 0 ? [Math.max(...logicPoints) + SCENE_LAB_V2_LOGIC_TAIL_X] : [])),
+    },
     playerX: finite(playerX) ? playerX : 0,
   };
 }

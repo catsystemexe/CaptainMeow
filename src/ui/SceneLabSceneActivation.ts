@@ -1,5 +1,6 @@
 import { setBackgroundSceneV2 } from "../render/BackgroundState";
 import type { BackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Types";
+import { projectBackgroundV2Timeline } from "./PixelBgrV2TimelineProjection";
 
 export interface SceneLabAuthoringBounds {
   startX: number;
@@ -25,10 +26,10 @@ export interface SceneLabActivationDeps {
 /** Establishes a fresh, paused Level run for a Scene Lab document replacement. */
 export function activateV2SceneForAuthoring(
   scene: BackgroundSceneV2,
-  bounds: SceneLabAuthoringBounds,
   root: object = globalThis,
   deps: SceneLabActivationDeps = {},
 ): void {
+  const bounds = projectBackgroundV2Timeline(scene).bounds;
   (deps.setScene ?? setBackgroundSceneV2)(scene, root);
   const game = (root as SceneLabAuthoringRoot).__CM?.game;
   game?.reset?.();

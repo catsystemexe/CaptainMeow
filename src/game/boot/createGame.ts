@@ -669,7 +669,6 @@ return {
   reset: resetGame,
   completeLevel: () => completeLevel(session),
   seekGameplayToPlayerX: seekGameplayToPlayerXForAuthoring,
-  sceneLogicRuntime,
 };
 }
 }

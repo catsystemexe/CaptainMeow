@@ -15,7 +15,7 @@ assert.match(ui, /\.cm-v2-zoom-button,\.cm-v2-eye,\.cm-v2-event-add\{[^}]*backgr
 assert.match(ui, /\.cm-v2-zoom-button:disabled,\.cm-v2-eye:disabled\{[^}]*opacity:/, "disabled gutter buttons use opacity rather than native disabled styling");
 assert.match(ui, /\.cm-v2-eye svg\{[^}]*stroke:currentColor/, "gutter icon strokes remain visible against black");
 assert.deepEqual([0, 400, 800, 1200, 1600].map(formatTimelineWorldX), ["0", "400", "800", "1.2k", "1.6k"]);
-assert.match(ui, /timelineViewportRange\(this\.currentScroll\(\)\.x,this\.logicW\)/, "runtime world scroll and logical presentation width are the range authority");
+assert.match(ui, /const timelineBounds=projection\.bounds/, "rendering uses the canonical projected bounds without competing Space expansion");
 assert.match(ui, /createExactTimelineScale\(timelineBounds\.startX,timelineBounds\.endX,baseWidthPx,this\.v2TimelineZoom\)/);
 assert.match(ui, /worldToTimelinePx\(viewportRange\.startX,scale\)[\s\S]*worldToTimelinePx\(projection\.playerX,scale\)/, "viewport and Player X use one exact scale without mutation");
 assert.doesNotMatch(ui, /margin-left:-100px|calc\(100% \+ (?:100px|var\(--cm-v2-gutter-width\))\)/, "gutter uses no cross-column transport");

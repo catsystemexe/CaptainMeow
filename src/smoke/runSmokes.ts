@@ -71,6 +71,7 @@ const SMOKES = [
   "../ui/SceneLabUltraCompact.smoke",
   "../ui/SceneLabLoadSceneMenu.smoke",
   "../ui/SceneLabSceneActivation.smoke",
+  "../ui/SceneLabV2WorldBounds.smoke",
   "../ui/PixelBgrV2TimelineProjection.smoke",
   "../ui/PixelBgrV2SegmentEditing.smoke",
   "../ui/PixelBgrV2SegmentAuthoringUI.smoke",

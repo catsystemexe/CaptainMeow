@@ -383,7 +383,7 @@ export class PixelBgrLabUI {
   private setV2ObjectsEnabled(scene:BackgroundSceneV2,items:readonly {track:BackgroundTrack;object:BackgroundObject}[],enabled:boolean):void {let next=scene;for(const {track,object} of items){const result=updateV2Object(next,track.id,object.id,{enabled});if(!result.ok){this.message=result.error;this.render();return;}next=result.scene;}setBackgroundSceneV2(next,globalThis);}
   private setV2EventsEnabled(scene:BackgroundSceneV2,events:NonNullable<BackgroundSceneV2["events"]>,enabled:boolean):void {let next=scene;for(const event of events){const result=updateV2SceneEvent(next,event.id,{enabled});if(!result.ok){this.message=result.error;this.render();return;}next=result.scene;}setBackgroundSceneV2(next,globalThis);}
   private saveV2():void {const scene=getBackgroundSceneV2(globalThis);if(!scene)return;const result=saveBackgroundSceneV2(localStorage,scene);this.message=result.ok?`saved scene ${scene.id}`:`save failed: ${result.error}`;this.render();}
-  private activateV2SceneForAuthoring(scene:BackgroundSceneV2):void {const bounds=projectBackgroundV2Timeline(scene,{},0).bounds;activateV2SceneForAuthoring(scene,bounds,globalThis);requestBackgroundMarkerRuntimeReset(globalThis);this.render();}
+  private activateV2SceneForAuthoring(scene:BackgroundSceneV2):void {activateV2SceneForAuthoring(scene,globalThis);requestBackgroundMarkerRuntimeReset(globalThis);this.render();}
   private loadV2():void {const result=loadBackgroundSceneV2(localStorage);if(result.ok){this.message=`loaded saved scene ${result.scene.id}`;this.activateV2SceneForAuthoring(result.scene);}else{this.message=`load failed: ${result.error}`;this.render();}}
   private toggleSceneMenu():void {this.sceneMenuOpen?this.closeSceneMenu():this.openSceneMenu();}
   private openSceneMenu():void {if(this.sceneMenuOpen)return;this.sceneMenuOpen=true;document.addEventListener("pointerdown",this.onSceneMenuOutside);document.addEventListener("keydown",this.onSceneMenuKeydown);this.render();}
@@ -400,8 +400,8 @@ export class PixelBgrLabUI {
   private renderV2Timeline(projection: V2TimelineProjection): HTMLElement {
     const panel=el("div","cm-pixel-panel cm-v2-panel");
     const viewportRange=timelineViewportRange(this.currentScroll().x,this.logicW);
-    const logicSpaces=getBackgroundSceneV2(globalThis)?.sceneLogic?.spaces;const spaceXs=[...(logicSpaces?.markers.map(item=>item.position)??[]),...(logicSpaces?.ranges.flatMap(item=>[item.start,item.end])??[]),...(logicSpaces?.zones.flatMap(item=>[item.minX,item.maxX])??[])];
-    const timelineBounds={startX:Math.min(projection.bounds.startX,viewportRange.startX,...spaceXs),endX:Math.max(projection.bounds.endX,viewportRange.endX,...spaceXs)};
+    const logicSpaces=getBackgroundSceneV2(globalThis)?.sceneLogic?.spaces;
+    const timelineBounds=projection.bounds;
     const contentSpan=Math.max(720,timelineBounds.endX-timelineBounds.startX);
     const baseWidthPx=Math.max(this.workspace.viewport.clientWidth,Math.ceil(contentSpan));
     const scale=createExactTimelineScale(timelineBounds.startX,timelineBounds.endX,baseWidthPx,this.v2TimelineZoom);
