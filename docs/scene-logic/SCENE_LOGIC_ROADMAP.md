@@ -250,9 +250,11 @@ Implement distinct Sequence Definitions and Sequence Instances, identity-preserv
 
 **Acceptance gate:** Multiple identity-bearing instances can execute the supported steps deterministically, resolve validated entity/Space references, and complete without definition mutation or wall-clock dependence.
 
-**SL-13 status:** The standalone linear runtime core now implements reusable Definitions, identity-bearing Instances, the `idle | running | completed` lifecycle, referenced Event/Action steps, duration-only Wait steps, pure validation, injected ownership adapters, deterministic same-update zero-wait/immediate traversal, and leftover-dt carry-forward. Definitions remain unchanged and multiple Instances retain independent cursors/wait progress. No EventBus was added. Entity/Space bindings cannot be owned honestly by this standalone layer because the current Event/Action definitions contain no such generic binding contract; those bindings, Scene persistence/composition, `Action.start_sequence` production wiring, and Sequence Lab remain explicitly deferred to SL-14/SL-15.
+**SL-13 status — CLOSED:** The standalone linear runtime core implements reusable Definitions, identity-bearing Instances, the `idle | running | completed` lifecycle, referenced Event/Action steps, duration-only Wait steps, pure validation, injected ownership adapters, deterministic same-update zero-wait/immediate traversal, and leftover-dt carry-forward. Definitions remain unchanged and multiple Instances retain independent cursors/wait progress. No EventBus was added. This standalone foundation was subsequently integrated into production by SL-14. Sequence-level Entity/Space authoring and binding remain deferred to SL-15/prerequisite architecture because the current Event/Action definitions contain no generic binding contract.
 
 ## M10 — Sequence Lab
+
+**SL-15 status: NOT STARTED / FUTURE.** SL-14 closure does not authorize SL-15 implementation.
 
 **Goal:** Provide dedicated reusable Sequence Definition authoring.
 
@@ -324,6 +326,12 @@ legacy removal
 
 SL-01 must receive focused approval before it is marked in progress or implemented.
 
-## SL-14 implementation status
+## SL-14 implementation status — CLOSED
 
-SL-14 is implemented statically: strict Scene Logic V2 persistence owns reusable Sequence Definitions and identity-bearing Scene Instances; `Flow.start_sequence`, the canonical pending Action pipeline, fixed-step Flow updates, semantic Sequence Events, reset/replacement behavior, and V2-preserving ordinary Scene Lab edits are integrated. V1 remains unchanged and receives no automatic migration. Sequence Lab and Sequence-level Space/Entity bindings remain deferred to SL-15/prerequisite architecture; no unused binding fields were introduced.
+SL-14 Sequence Scene integration passed static verification and browser/runtime acceptance and was merged in PR #303 at merge commit `998d8fd9951d8438c0134070881fbf227c40e6d2`.
+
+- Strict Scene Logic V2 persistence owns reusable Sequence Definitions and identity-bearing Scene Sequence Instances. `Flow.start_sequence` executes Wait, Event, and Action Steps deterministically at the fixed-step Flow boundary through the canonical Event/Action path, including canonical `Flow.complete_level` composition.
+- Scene replacement, PLAY AGAIN/restart re-arming, and authoring-seek rebaselining passed lifecycle acceptance. The `Sequence Verification V2` fixture proved marker crossing starts the Sequence once, completion is delayed rather than immediate, completed gameplay freezes while presentation remains responsive, restart permits a second genuine crossing, and Scene replacement does not leak Sequence progress. Browser verification established ordering, not instrumented exact 0.5-second timing; the Wait duration contract is covered independently by smoke verification.
+- Marker, Range, and Zone authoring bounds now share one authority across the visual timeline, GameplaySeek, and Scene activation. Generic terminal-geometry authoring permits a tail beyond a terminal Marker.
+- V1 remains unchanged, no second EventBus was introduced, and the V1 B2 Demo regression passed.
+- Sequence Lab remains deferred to SL-15, which is not started. Sequence-level Entity/Space authoring and binding remain deferred pending the required architecture.
