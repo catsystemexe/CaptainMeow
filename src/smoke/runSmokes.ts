@@ -96,6 +96,8 @@ const SMOKES = [
   "../game/systems/DirectorToSimulationSpawn.integration.smoke",
   "../game/enemies/EnemyGroups.smoke",
   "../game/scene-logic/SequenceRuntime.smoke",
+  "../ui/SceneLogicSequenceEditing.smoke",
+  "../ui/SceneLogicSequenceLab.smoke",
 ];
 
 async function main() {

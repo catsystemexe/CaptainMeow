@@ -254,7 +254,7 @@ Implement distinct Sequence Definitions and Sequence Instances, identity-preserv
 
 ## M10 — Sequence Lab
 
-**SL-15 status: NOT STARTED / FUTURE.** SL-14 closure does not authorize SL-15 implementation.
+**SL-15 status: IN PROGRESS.** SL-15A provides Definition authoring, ordered Event/Action/Wait editing, Scene Instance insertion, `Flow.start_sequence` authoring, and persistence/reopen coverage. Sequence-level Entity/Space binding schema remains deferred.
 
 **Goal:** Provide dedicated reusable Sequence Definition authoring.
 
@@ -334,4 +334,4 @@ SL-14 Sequence Scene integration passed static verification and browser/runtime 
 - Scene replacement, PLAY AGAIN/restart re-arming, and authoring-seek rebaselining passed lifecycle acceptance. The `Sequence Verification V2` fixture proved marker crossing starts the Sequence once, completion is delayed rather than immediate, completed gameplay freezes while presentation remains responsive, restart permits a second genuine crossing, and Scene replacement does not leak Sequence progress. Browser verification established ordering, not instrumented exact 0.5-second timing; the Wait duration contract is covered independently by smoke verification.
 - Marker, Range, and Zone authoring bounds now share one authority across the visual timeline, GameplaySeek, and Scene activation. Generic terminal-geometry authoring permits a tail beyond a terminal Marker.
 - V1 remains unchanged, no second EventBus was introduced, and the V1 B2 Demo regression passed.
-- Sequence Lab remains deferred to SL-15, which is not started. Sequence-level Entity/Space authoring and binding remain deferred pending the required architecture.
+- Sequence Lab is IN PROGRESS through the SL-15A authoring slice. Sequence-level Entity/Space authoring and binding remain deferred pending the required architecture.

@@ -1,4 +1,4 @@
-export const DEV_LAB_MODES = ["scene", "enemy", "hud"] as const;
+export const DEV_LAB_MODES = ["scene", "sequence", "enemy", "hud"] as const;
 export type DevLabMode = typeof DEV_LAB_MODES[number];
 
 export interface UnifiedDevLabHost {
