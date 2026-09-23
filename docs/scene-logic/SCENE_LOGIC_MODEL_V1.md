@@ -141,7 +141,7 @@ Trigger
 
 A **Sequence Definition** is a reusable authored description of ordered steps. A **Sequence Instance** is a particular insertion and execution of that definition within a Scene. Inserting a Sequence into a Scene MUST preserve the instance's identity; it MUST NOT flatten the steps into unrelated copied primitives.
 
-**SL-13 runtime-core status:** The standalone runtime implements stable Definition/Instance identity, `idle → running → completed`, referenced Event and Action steps, and duration-only Wait steps driven only by caller-supplied fixed-step time. Immediate steps and zero-duration waits advance in authored order in the same update; positive waits consume available simulation time and carry leftover time into later steps. Execution uses injected Event/Action adapters, creates no EventBus, and does not mutate authored Definitions. Scene ownership/persistence, entity/Space bindings, `Action.start_sequence` composition, and authoring UI remain deferred to SL-14/SL-15.
+**Implemented Sequence boundary:** The runtime implements stable Definition/Instance identity, `idle → running → completed`, referenced Event and Action steps, and duration-only Wait steps driven only by caller-supplied fixed-step time. Immediate steps and zero-duration waits advance in authored order in the same update; positive waits consume available simulation time and carry leftover time into later steps. Execution uses injected Event/Action adapters, creates no EventBus, and does not mutate authored Definitions. Scene ownership/persistence, `Flow.start_sequence` composition, and dedicated Sequence authoring are implemented. Sequence-level Entity/Space parameter bindings are not part of the V1 contract; they remain a future capability that requires a concrete runtime consumer and, for Entity targeting, a stable authored Entity identity.
 
 ## Conceptual data flow
 
@@ -189,6 +189,8 @@ The following are **OUT OF MVP**:
 - nested Sequences;
 - `wait_until`;
 - a general graph editor;
+- Sequence-level Entity/Space parameter bindings;
+- cross-Scene Sequence Definition libraries;
 - Trigger steps inside a Sequence;
 - opaque composite Actions;
 - a generic Scene Logic state database;
