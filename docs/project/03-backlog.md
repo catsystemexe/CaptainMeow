@@ -115,9 +115,7 @@ SL-12B.1 establishes `1 Level = 1 Scene`, authoritative `ACTIVE | COMPLETED` ses
 
 **SL-14 — CLOSED:** Sequence Scene integration is merged and passed both static verification and browser/runtime acceptance. Strict Scene Logic V2 persistence, identity-bearing Scene Sequence Instances, `Flow.start_sequence`, deterministic fixed-step execution, and canonical Event/Action execution are integrated. The `Sequence Verification V2` lifecycle passed delayed completion, gameplay freeze with responsive presentation, PLAY AGAIN/restart re-arming, repeat genuine crossing, stable completion, fresh ACTIVE Scene replacement, and no Sequence-progress leakage. V1 remains unchanged; legacy `level-end` remains runtime-inert; and B5 remains presentation-specific.
 
-**SL-15 — NOT STARTED / FUTURE:** Sequence Lab remains unimplemented, so the umbrella Scene Logic v1 workstream remains IN PROGRESS. Sequence-level Entity/Space binding authoring remains deferred.
-
-Do not mark IN PROGRESS until an actual focused implementation batch begins.
+**SL-15 — IN PROGRESS — SL-15A authoring slice:** Definition and ordered Event/Action/Wait editing, Scene Instance insertion, `Flow.start_sequence` authoring, and persistence/reopen coverage are implemented. The umbrella Scene Logic v1 workstream remains IN PROGRESS. Sequence-level Entity/Space binding authoring remains deferred.
 
 ## Technical hygiene / maintenance
 
