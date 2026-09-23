@@ -33,7 +33,7 @@ assert(lab.includes('transportBlock.append(this.renderPreview([],projection.boun
 assert.match(lab, /const upperContent=el\("div","cm-v2-upper-content"\);[\s\S]*?this\.root\.append\(upperContent,transportBlock\);\s*this\.syncOverlay\(\);\s*return;/, "all V2 Scene Contents content remains above the transport sibling");
 assert.equal((lab.match(/this\.root\.append\(upperContent,transportBlock\)/g) ?? []).length, 1, "transport is the final Scene Lab child with no trailing content");
 assert(lab.indexOf('className="cm-v2-transport-block"') < lab.indexOf('const zoomControls=el("div","cm-v2-zoom-controls")'), "transport is rendered above the multitrack zoom row");
-assert(lab.includes("Reset to scene start") && lab.includes("toggleGameplayPaused()") && lab.includes("setPaused?.(true);this.setCurrentX(start,true)") && !lab.includes("Stop and return to scene start"), "transport provides reset plus a single play/pause toggle");
+assert(lab.includes("Reset to scene start") && lab.includes("toggleGameplayPaused()") && lab.includes("__CM?.game?.reset?.();this.setCurrentX(start,true)") && !lab.includes("Stop and return to scene start"), "transport provides fresh-run reset plus a single play/pause toggle");
 assert(lab.includes("Drag Player X cursor") && lab.includes("seekGameplayToPlayerX"), "timeline Player X mapping remains authoritative");
 
 type FakeElement = {

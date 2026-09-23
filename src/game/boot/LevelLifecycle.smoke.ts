@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { makeStubCanvas, ensureWindowStub } from "../../smoke/nodeStub";
 import { completeLevel, makeSessionState, resetLevel } from "../data/SessionState";
 import { createGame } from "./createGame";
+import { setBackgroundSceneV2 } from "../../render/BackgroundState";
+import { createBackgroundV2SequenceVerificationScene } from "../../render/bg/v2/BackgroundV2SequenceVerificationScene";
 
 const session = makeSessionState();
 assert.equal(session.levelState, "active", "a new session starts with an ACTIVE level");
@@ -27,6 +29,13 @@ assert.equal(game.session.timeSec, activeTime, "completed levels freeze Director
 assert.equal(game.world.scrollX, activeScroll, "completed levels freeze world simulation");
 assert.equal(game.loop.isPaused(), false, "level completion remains distinct from DEV/user pause");
 assert.equal(game.loop.getTick(), completedLoopTick + 3, "the outer loop remains live for rendering/UI while gameplay callbacks are frozen");
+
+setBackgroundSceneV2(createBackgroundV2SequenceVerificationScene(), globalThis);
+game.loop.stepOneTick();
+assert.equal(game.session.levelState, "completed", "Scene replacement does not restart a completed Level");
+assert.equal(game.sceneLogicRuntime.getSequenceInstance("sequence-verify:a")?.status, "idle", "completed-state replacement activates fresh idle Sequence memory");
+game.sceneLogicRuntime.flushFlowActions();
+assert.equal(game.sceneLogicRuntime.getSequenceInstance("sequence-verify:a")?.status, "idle", "replacement itself queues no Trigger/Event/Action work");
 
 game.reset();
 assert.equal(game.session.levelState, "active", "canonical PLAY AGAIN reset resumes the level");

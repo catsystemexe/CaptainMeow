@@ -569,6 +569,11 @@ export async function createGame(
 
     simulation: {
       update: (ctx, events) => {
+        const scene = getBackgroundSceneV2(globalThis);
+        if (scene !== activeScene) {
+          activeScene = scene;
+          sceneLogicRuntime.activate(scene?.sceneLogic);
+        }
         if (session.gameOver || !isLevelActive(session)) return;
 
         respawn.tick();
@@ -613,11 +618,6 @@ export async function createGame(
         projectileSystem.update(ctx.dt);
         enemySystem.update(ctx);
         particleStore.update(ctx.dt);
-        const scene = getBackgroundSceneV2(globalThis);
-        if (scene !== activeScene) {
-          activeScene = scene;
-          sceneLogicRuntime.activate(scene?.sceneLogic);
-        }
         sceneLogicRuntime.evaluatePlayerWorldX(Number(playerEnt.pos.x));
       },
     },
@@ -668,7 +668,8 @@ return {
   world,
   reset: resetGame,
   completeLevel: () => completeLevel(session),
-    seekGameplayToPlayerX: seekGameplayToPlayerXForAuthoring,
+  seekGameplayToPlayerX: seekGameplayToPlayerXForAuthoring,
+  sceneLogicRuntime,
 };
 }
 }
