@@ -10,7 +10,7 @@ Status: IMPLEMENTED
 
 A Sequence Definition is stored once as `{ id, steps }`. A Scene Sequence Instance stores only `{ id, definitionId }`; status, cursor, wait progress, queues, and tick state are runtime-only. Definition IDs and Instance IDs are unique in their collections, and every Instance resolves one Definition. `Flow.start_sequence` targets an Instance ID. Sequence Action steps may not reference `start_sequence`, so nested Sequence composition remains invalid.
 
-V2 validation is strict: unknown fields and unresolved Event, Action, Definition, Instance, Trigger, Space, or State references invalidate the Scene. Existing Scene Lab edits preserve the document discriminant and Sequence collections, but no Sequence authoring UI is provided yet.
+V2 validation is strict: unknown fields and unresolved Event, Action, Definition, Instance, Trigger, Space, or State references invalidate the Scene. Scene Lab and Sequence Lab preserve the document discriminant and Sequence collections. Sequence authoring is enabled explicitly for a V1/no-Sequence Scene; loading does not silently migrate V1 to V2.
 
 ## Runtime policy
 
@@ -18,6 +18,8 @@ Scene activation creates fresh idle runtime Instances without executing steps. A
 
 Sequence Event steps materialize ordinary Scene Event occurrences with `sourceSequenceInstanceId`, dispatch through the existing Event adapter, and resolve the normal Event-to-Action bindings. Trigger events retain `sourceTriggerId`. Reset and Scene replacement recreate idle Instances; authoring seek only rebaselines Trigger position and preserves Sequence progress.
 
-## Deferred bindings
+## Sequence parameterization boundary
 
-SL-14 adds no Sequence-level Space or Entity binding map. Current steps consume stable Event and Action IDs, so a Space binding has no runtime consumer. The project also has no general authored gameplay Entity identity suitable for reusable Sequence binding. Both contracts remain deferred until a real consumer and stable Entity authority exist.
+The V1/V2 Sequence contract intentionally has no Sequence-level Space or Entity binding map. Current Steps consume stable Event and Action IDs, so a Space binding has no runtime consumer. The project also has no general persistent authored gameplay Entity identity suitable for reusable Sequence targeting; runtime `EntityStore` identity is lifecycle/generation based and is not a Scene-authored persistence contract.
+
+Entity/Space parameter bindings are therefore outside the current Scene Logic V1 acceptance criteria. Revisit them only when a concrete consumer exists, such as an Entity-targeted Scene Logic Action, a Step that accepts Space as a parameter, a cross-Scene Sequence Definition library, or repeated authored duplication caused specifically by target substitution.
