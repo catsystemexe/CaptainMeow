@@ -1,7 +1,7 @@
 # Captain Meow — Backlog
 
 Status: CANONICAL GOVERNANCE / ENGINEERING BACKLOG
-Last updated: 2026-09-06
+Last updated: 2026-09-23
 
 This backlog records current workflow-hardening and engineering maintenance items. Active product work is tracked in narrower subsystem work plans where appropriate.
 
@@ -111,7 +111,11 @@ Implementation roadmap:
 Completed focused discovery:
 `SL-12B — authoritative completion contract audit` (documentation-only; its lifecycle ambiguity was subsequently resolved by the approved SL-12B.1 MVP decision)
 
-SL-12B.1 establishes `1 Level = 1 Scene`, authoritative `ACTIVE | COMPLETED` session lifecycle, `Flow.complete_level`, gameplay freeze with live presentation, and same-Level `PLAY AGAIN`. SL-12C supplies explicit legacy `level-end` migration plus the focused production Marker-cross → Scene Event → Flow completion composition, including restart/Scene-change/authoring-seek reset and rebaseline semantics. SL-13 adds the standalone deterministic linear Sequence runtime core. SL-14 integrates strict Scene Logic V2 persistence, identity-bearing Scene Sequence Instances, `Flow.start_sequence`, fixed-step Flow ownership, and canonical Event/Action execution. V1 remains unchanged and legacy `level-end` remains runtime-inert. Sequence Lab and Sequence-level entity/Space bindings remain deferred; B5 remains presentation-specific.
+SL-12B.1 establishes `1 Level = 1 Scene`, authoritative `ACTIVE | COMPLETED` session lifecycle, `Flow.complete_level`, gameplay freeze with live presentation, and same-Level `PLAY AGAIN`. SL-12C supplies explicit legacy `level-end` migration plus the focused production Marker-cross → Scene Event → Flow completion composition, including restart/Scene-change/authoring-seek reset and rebaseline semantics. SL-13 provides the closed standalone deterministic linear Sequence runtime core.
+
+**SL-14 — CLOSED:** Sequence Scene integration is merged and passed both static verification and browser/runtime acceptance. Strict Scene Logic V2 persistence, identity-bearing Scene Sequence Instances, `Flow.start_sequence`, deterministic fixed-step execution, and canonical Event/Action execution are integrated. The `Sequence Verification V2` lifecycle passed delayed completion, gameplay freeze with responsive presentation, PLAY AGAIN/restart re-arming, repeat genuine crossing, stable completion, fresh ACTIVE Scene replacement, and no Sequence-progress leakage. V1 remains unchanged; legacy `level-end` remains runtime-inert; and B5 remains presentation-specific.
+
+**SL-15 — NOT STARTED / FUTURE:** Sequence Lab remains unimplemented, so the umbrella Scene Logic v1 workstream remains IN PROGRESS. Sequence-level Entity/Space binding authoring remains deferred.
 
 Do not mark IN PROGRESS until an actual focused implementation batch begins.
 
