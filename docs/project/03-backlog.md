@@ -1,7 +1,7 @@
 # Captain Meow — Backlog
 
 Status: CANONICAL GOVERNANCE / ENGINEERING BACKLOG
-Last updated: 2026-09-23
+Last updated: 2026-09-24
 
 This backlog records current workflow-hardening and engineering maintenance items. Active product work is tracked in narrower subsystem work plans where appropriate.
 
@@ -115,7 +115,7 @@ SL-12B.1 establishes `1 Level = 1 Scene`, authoritative `ACTIVE | COMPLETED` ses
 
 **SL-14 — CLOSED:** Sequence Scene integration is merged and passed both static verification and browser/runtime acceptance. Strict Scene Logic V2 persistence, identity-bearing Scene Sequence Instances, `Flow.start_sequence`, deterministic fixed-step execution, and canonical Event/Action execution are integrated. The `Sequence Verification V2` lifecycle passed delayed completion, gameplay freeze with responsive presentation, PLAY AGAIN/restart re-arming, repeat genuine crossing, stable completion, fresh ACTIVE Scene replacement, and no Sequence-progress leakage. V1 remains unchanged; legacy `level-end` remains runtime-inert; and B5 remains presentation-specific.
 
-**SL-15 — IN PROGRESS — SL-15A authoring slice:** Definition and ordered Event/Action/Wait editing, Scene Instance insertion, `Flow.start_sequence` authoring, and persistence/reopen coverage are implemented. The umbrella Scene Logic v1 workstream remains IN PROGRESS. Sequence-level Entity/Space binding authoring remains deferred.
+**SL-15 — IN PROGRESS:** **SL-15A — CLOSED.** The Sequence Lab authoring MVP is merged in PR #305 at merge commit `648efa10bdeaaedf4921127ea9ad63b88180c299` and passed static plus browser runtime/visual acceptance. Verified scope includes Definition and ordered Event/Action/Wait editing, Wait edit/reorder/delete/re-add, identity-bearing Scene Instance insertion, `Flow.start_sequence` authoring and target changes, referenced Instance/Definition deletion guards, normal Scene save/reopen persistence, Lab switching, authoring inertness, SL-14 Sequence regression, and V1 B2 Demo regression. Native `prompt()`-based creation of a brand-new Scene Event is not supported by the VS Agent browser and remains a non-blocking TOOLING limitation; Event/Action Sequence authoring was verified using canonical existing references. The umbrella Scene Logic v1 workstream remains IN PROGRESS. Sequence-level Entity/Space binding architecture and later Sequence expansion remain deferred; no SL-15B batch is implicitly authorized.
 
 ## Technical hygiene / maintenance
 

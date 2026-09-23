@@ -254,7 +254,7 @@ Implement distinct Sequence Definitions and Sequence Instances, identity-preserv
 
 ## M10 — Sequence Lab
 
-**SL-15 status: IN PROGRESS.** SL-15A provides Definition authoring, ordered Event/Action/Wait editing, Scene Instance insertion, `Flow.start_sequence` authoring, and persistence/reopen coverage. Sequence-level Entity/Space binding schema remains deferred.
+**SL-15 status: IN PROGRESS. SL-15A — CLOSED.** SL-15A provides Definition authoring, ordered Event/Action/Wait editing, Scene Instance insertion, `Flow.start_sequence` authoring, and persistence/reopen coverage. It is merged and passed static plus browser runtime/visual acceptance. Sequence-level Entity/Space binding schema remains deferred, and no subsequent SL-15 batch is implicitly authorized.
 
 **Goal:** Provide dedicated reusable Sequence Definition authoring.
 
@@ -334,4 +334,17 @@ SL-14 Sequence Scene integration passed static verification and browser/runtime 
 - Scene replacement, PLAY AGAIN/restart re-arming, and authoring-seek rebaselining passed lifecycle acceptance. The `Sequence Verification V2` fixture proved marker crossing starts the Sequence once, completion is delayed rather than immediate, completed gameplay freezes while presentation remains responsive, restart permits a second genuine crossing, and Scene replacement does not leak Sequence progress. Browser verification established ordering, not instrumented exact 0.5-second timing; the Wait duration contract is covered independently by smoke verification.
 - Marker, Range, and Zone authoring bounds now share one authority across the visual timeline, GameplaySeek, and Scene activation. Generic terminal-geometry authoring permits a tail beyond a terminal Marker.
 - V1 remains unchanged, no second EventBus was introduced, and the V1 B2 Demo regression passed.
-- Sequence Lab is IN PROGRESS through the SL-15A authoring slice. Sequence-level Entity/Space authoring and binding remain deferred pending the required architecture.
+- Sequence Lab moved into the SL-15A authoring slice, which is now CLOSED after static and browser runtime/visual acceptance. Sequence-level Entity/Space authoring and binding remain deferred pending the required architecture.
+
+
+## SL-15 implementation status — IN PROGRESS
+
+### SL-15A — CLOSED
+
+SL-15A Sequence Lab authoring MVP was merged in PR #305 at merge commit `648efa10bdeaaedf4921127ea9ad63b88180c299`.
+
+- Static verification passed for the focused authoring slice, including typecheck/build and targeted Sequence/Scene Logic smokes. The broader smoke runner still reaches the separately tracked pre-existing `BackgroundV2StaticBackdrop.smoke.ts:27` baseline failure.
+- Browser runtime/visual acceptance passed for Definition authoring, ordered Wait/Event/Action Steps, Wait editing and reordering, identity-bearing Scene Sequence Instances, `Flow.start_sequence` authoring and target changes, referenced Instance/Definition deletion guards, normal Scene save/reopen persistence, Lab switching, authoring inertness, the SL-14 Sequence Verification V2 regression, and the V1 B2 Demo regression.
+- VS Agent browser tooling cannot exercise the native `prompt()` used to create a brand-new Scene Event. This is classified as a non-blocking TOOLING limitation; Sequence Lab Event/Action authoring was verified with existing canonical Event/Action references.
+- SL-15A changes authoring only and does not change Sequence runtime semantics, fixed-step ordering, Scene lifecycle, EventBus ownership, or persistence authority.
+- SL-15 remains IN PROGRESS. Sequence-level Entity/Space binding architecture, cross-Scene Definition libraries, and advanced Sequence features remain deferred. No SL-15B implementation is authorized by this closure.
