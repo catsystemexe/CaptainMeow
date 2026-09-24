@@ -204,13 +204,18 @@ assert.equal(integratedCompletions, 3);
 sample(0, 0, 0.33); sample(15, 10, 0.34); integrated.updateFlow();
 assert.equal(integratedCompletions, 4, "repeat Range re-enters while once Triggers remain fired");
 
-// Spatial authoring seek rebaselines Range/Zone only and preserves once memory,
-// Time/State history, pending actions, and Sequence state.
+// Spatial authoring seek clears queued Actions while preserving once memory,
+// Time/State history and Sequence state.
 speed = 10;
 integrated.activate(integratedDocument);
 sample(0, 0, 0);
+sample(15, 10, 0.1);
 integrated.rebaselinePlayerWorldPosition(15, 10);
-assert.deepEqual(sample(15, 10, 0.1), [], "seek directly inside Range does not synthesize enter");
+integrated.updateFlow();
+assert.equal(integratedCompletions, 4, "spatial seek discards an Action queued before the teleport");
+sample(0, 0, 0.15);
+integrated.rebaselinePlayerWorldPosition(15, 10);
+assert.deepEqual(sample(15, 10, 0.16), [], "seek directly inside Range does not synthesize enter");
 sample(0, 0, 0.2);
 assert.deepEqual(sample(15, 10, 0.21).map(item => item.eventId), ["range-event"], "a genuine Range re-entry still occurs");
 integrated.rebaselinePlayerWorldPosition(35, 10);
@@ -225,6 +230,22 @@ assert.deepEqual(sample(0, 0, 0.3).map(item => item.eventId), ["time-event"], "s
 integrated.updateFlow();
 integrated.rebaselinePlayerWorldPosition(0, 0);
 assert.deepEqual(sample(0, 0, 0.31).map(item => item.eventId), ["state-event"], "spatial seek preserves State matched history");
+
+let compatibilitySeekCompletions = 0;
+const compatibilitySeekRuntime = new SceneLogicRuntime({
+  restartLevel: () => {},
+  completeLevel: () => { compatibilitySeekCompletions++; },
+});
+compatibilitySeekRuntime.activate(document);
+compatibilitySeekRuntime.evaluatePlayerWorldX(90);
+compatibilitySeekRuntime.evaluatePlayerWorldX(100);
+compatibilitySeekRuntime.rebaselinePlayerWorldX(100);
+compatibilitySeekRuntime.flushFlowActions();
+assert.equal(compatibilitySeekCompletions, 0, "compatibility Marker rebaseline discards a queued Action");
+compatibilitySeekRuntime.evaluatePlayerWorldX(90);
+compatibilitySeekRuntime.evaluatePlayerWorldX(100);
+compatibilitySeekRuntime.flushFlowActions();
+assert.equal(compatibilitySeekCompletions, 0, "compatibility Marker rebaseline preserves fired once memory");
 
 integrated.reset();
 assert.deepEqual(sample(35, 10, 1), [], "reset re-arms once memory and first sample is a baseline");

@@ -98,6 +98,7 @@ export class SceneLogicRuntime {
   }
 
   rebaselinePlayerWorldPosition(currentX: number, currentY: number): void {
+    this.pendingActions = [];
     const activeMarkerTriggerIds = new Set<string>();
     const activeContainmentTriggerIds = new Set<string>();
     for (const trigger of this.document?.triggers ?? []) {
@@ -121,11 +122,15 @@ export class SceneLogicRuntime {
 
   /** Compatibility wrapper for legacy Marker-only authoring callers. */
   rebaselinePlayerWorldX(currentX: number): void {
+    this.pendingActions = [];
+    const activeMarkerTriggerIds = new Set<string>();
     for (const trigger of this.document?.triggers ?? []) {
       if (trigger.kind !== "space" || trigger.relation !== "cross") continue;
+      activeMarkerTriggerIds.add(trigger.id);
       const existing = this.markerStates.get(trigger.id);
       this.markerStates.set(trigger.id, { previousX: currentX, fired: existing?.fired ?? false });
     }
+    for (const triggerId of this.markerStates.keys()) if (!activeMarkerTriggerIds.has(triggerId)) this.markerStates.delete(triggerId);
   }
 
   evaluatePlayerWorldX(currentX: number): readonly SceneEventOccurrence[] {
