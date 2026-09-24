@@ -2,6 +2,7 @@ import type { BackgroundSceneV2 } from "../render/bg/v2/BackgroundV2Types";
 import { createBackgroundV2DesertTestScene } from "../render/bg/v2/BackgroundV2DesertTestScene";
 import { createBackgroundV2VisualVerificationScene } from "../render/bg/v2/BackgroundV2VisualVerificationScene";
 import { createBackgroundV2SequenceVerificationScene } from "../render/bg/v2/BackgroundV2SequenceVerificationScene";
+import { createBackgroundV2TriggerVerificationScene } from "../render/bg/v2/BackgroundV2TriggerVerificationScene";
 import type { BackgroundScene } from "../render/webgl/bg/layers/BackgroundSceneTypes";
 import { createDemoScene } from "./PixelBgrLabState";
 
@@ -15,4 +16,5 @@ export const SCENE_LAB_SCENE_CATALOG: readonly SceneLabCatalogEntry[] = [
   { id: "visual-verification-v2", label: "Visual Verification V2", version: 2, create: createBackgroundV2VisualVerificationScene },
   { id: "b2-demo", label: "B2 Demo", version: 1, create: createDemoScene },
   { id: "sequence-verification-v2", label: "Sequence Verification V2", version: 2, create: createBackgroundV2SequenceVerificationScene },
+  { id: "trigger-verification-v2", label: "Trigger Verification V2", version: 2, create: createBackgroundV2TriggerVerificationScene },
 ];

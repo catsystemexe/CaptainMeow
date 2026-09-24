@@ -1,0 +1,24 @@
+import assert from "node:assert/strict";
+import { SCENE_LAB_SCENE_CATALOG } from "../../../ui/SceneLabSceneCatalog";
+import { parseBackgroundSceneV2, serializeBackgroundSceneV2 } from "./BackgroundV2Serialization";
+import { createBackgroundV2TriggerVerificationScene } from "./BackgroundV2TriggerVerificationScene";
+import { validateBackgroundSceneV2 } from "./BackgroundV2Validation";
+
+const scene = createBackgroundV2TriggerVerificationScene();
+const repeated = createBackgroundV2TriggerVerificationScene();
+assert.equal(scene.id, "bgr-v2-trigger-verification");
+assert.notEqual(scene, repeated, "factory calls return fresh authored state");
+assert.deepEqual(scene, repeated, "factory output is deterministic");
+assert.equal(validateBackgroundSceneV2(scene).valid, true, "fixture passes normal validation");
+const parsed = parseBackgroundSceneV2(serializeBackgroundSceneV2(scene));
+assert.equal(parsed.ok, true, "fixture survives persistence");
+assert(parsed.ok);
+assert.deepEqual(parsed.scene, scene);
+const logic = scene.sceneLogic!;
+assert.deepEqual(logic.triggers.map(trigger => trigger.kind === "space" ? trigger.relation : trigger.kind), ["time", "enter", "enter", "state"]);
+assert(logic.actions.some(action => action.category === "world" && action.type === "stop_scroll"));
+assert(logic.actions.some(action => action.category === "flow" && action.type === "complete_level"));
+const catalog = SCENE_LAB_SCENE_CATALOG.find(entry => entry.id === "trigger-verification-v2");
+assert.equal(catalog?.label, "Trigger Verification V2");
+assert.deepEqual(catalog?.create(), scene);
+console.log("BackgroundV2TriggerVerificationScene.smoke: PASS");

@@ -14,6 +14,7 @@ import {
   type SceneEventRuntimeAdapter,
 } from "./EventRuntime";
 import type { SceneLogicDocument } from "./SceneLogicDocument";
+import { rangeContains, zoneContains } from "./Space";
 import {
   createSequenceInstance,
   startSequenceInstance,
@@ -21,7 +22,30 @@ import {
   type SequenceInstance,
 } from "./SequenceRuntime";
 import type { StateRegistry } from "./StateRuntime";
-import { createMarkerCrossTriggerRuntimeState, evaluateMarkerCrossTrigger, type MarkerCrossTriggerRuntimeState } from "./TriggerRuntime";
+import { resolveStateReference } from "./StateRuntime";
+import { resolveTriggerState } from "./Trigger";
+import {
+  createContainmentTriggerRuntimeState,
+  createMarkerCrossTriggerRuntimeState,
+  createStateTriggerRuntimeState,
+  createTimeTriggerRuntimeState,
+  evaluateMarkerCrossTrigger,
+  evaluateRangeSpaceTrigger,
+  evaluateStateTrigger,
+  evaluateTimeTrigger,
+  evaluateZoneSpaceTrigger,
+  type ContainmentTriggerRuntimeState,
+  type MarkerCrossTriggerRuntimeState,
+  type StateTriggerRuntimeState,
+  type TimeTriggerRuntimeState,
+  type TriggerOccurrence,
+} from "./TriggerRuntime";
+
+export interface SceneLogicSimulationSample {
+  readonly playerWorldX: number;
+  readonly playerWorldY: number;
+  readonly sceneTimeSec: number;
+}
 
 export interface SceneLogicActionOwners {
   readonly world?: WorldActionRuntimeAdapter;
@@ -32,6 +56,9 @@ export interface SceneLogicActionOwners {
 export class SceneLogicRuntime {
   private document: SceneLogicDocument | undefined;
   private readonly markerStates = new Map<string, MarkerCrossTriggerRuntimeState>();
+  private readonly containmentStates = new Map<string, ContainmentTriggerRuntimeState>();
+  private readonly timeStates = new Map<string, TimeTriggerRuntimeState>();
+  private readonly stateStates = new Map<string, StateTriggerRuntimeState>();
   private readonly sequenceInstances = new Map<string, SequenceInstance>();
   private pendingActions: SceneLogicActionDefinition[] = [];
   private generation = 0;
@@ -45,6 +72,9 @@ export class SceneLogicRuntime {
   activate(document: SceneLogicDocument | undefined): void {
     this.document = document;
     this.markerStates.clear();
+    this.containmentStates.clear();
+    this.timeStates.clear();
+    this.stateStates.clear();
     this.pendingActions = [];
     this.sequenceInstances.clear();
     this.generation += 1;
@@ -67,6 +97,30 @@ export class SceneLogicRuntime {
     startSequenceInstance(instance);
   }
 
+  rebaselinePlayerWorldPosition(currentX: number, currentY: number): void {
+    this.pendingActions = [];
+    const activeMarkerTriggerIds = new Set<string>();
+    const activeContainmentTriggerIds = new Set<string>();
+    for (const trigger of this.document?.triggers ?? []) {
+      if (trigger.kind !== "space") continue;
+      if (trigger.relation === "cross") {
+        activeMarkerTriggerIds.add(trigger.id);
+        const existing = this.markerStates.get(trigger.id);
+        this.markerStates.set(trigger.id, { previousX: currentX, fired: existing?.fired ?? false });
+      } else {
+        activeContainmentTriggerIds.add(trigger.id);
+        const existing = this.containmentStates.get(trigger.id);
+        const inside = "rangeId" in trigger
+          ? this.document?.spaces.ranges.some(range => range.id === trigger.rangeId && rangeContains(range, currentX)) ?? false
+          : this.document?.spaces.zones.some(zone => zone.id === trigger.zoneId && zoneContains(zone, currentX, currentY)) ?? false;
+        this.containmentStates.set(trigger.id, { previousInside: inside, fired: existing?.fired ?? false });
+      }
+    }
+    for (const triggerId of this.markerStates.keys()) if (!activeMarkerTriggerIds.has(triggerId)) this.markerStates.delete(triggerId);
+    for (const triggerId of this.containmentStates.keys()) if (!activeContainmentTriggerIds.has(triggerId)) this.containmentStates.delete(triggerId);
+  }
+
+  /** Compatibility wrapper for legacy Marker-only authoring callers. */
   rebaselinePlayerWorldX(currentX: number): void {
     this.pendingActions = [];
     const activeMarkerTriggerIds = new Set<string>();
@@ -100,6 +154,59 @@ export class SceneLogicRuntime {
       }
     }
     return occurrences;
+  }
+
+  /** Evaluates all authored Trigger families once, in authored order, during Simulation. */
+  evaluateSimulationSample(sample: SceneLogicSimulationSample): readonly SceneEventOccurrence[] {
+    const document = this.document;
+    if (!document) return [];
+    const occurrences: SceneEventOccurrence[] = [];
+    for (const trigger of document.triggers) {
+      let triggerOccurrence: TriggerOccurrence | null = null;
+      if (trigger.kind === "space" && trigger.relation === "cross") {
+        const marker = document.spaces.markers.find(item => item.id === trigger.markerId);
+        if (!marker) continue;
+        let state = this.markerStates.get(trigger.id);
+        if (!state) { state = createMarkerCrossTriggerRuntimeState(); this.markerStates.set(trigger.id, state); }
+        triggerOccurrence = evaluateMarkerCrossTrigger(trigger, marker, state, sample.playerWorldX);
+      } else if (trigger.kind === "space") {
+        let state = this.containmentStates.get(trigger.id);
+        if (!state) { state = createContainmentTriggerRuntimeState(); this.containmentStates.set(trigger.id, state); }
+        if ("rangeId" in trigger) {
+          const range = document.spaces.ranges.find(item => item.id === trigger.rangeId);
+          if (!range) continue;
+          triggerOccurrence = evaluateRangeSpaceTrigger(trigger, range, state, sample.playerWorldX);
+        } else {
+          const zone = document.spaces.zones.find(item => item.id === trigger.zoneId);
+          if (!zone) continue;
+          triggerOccurrence = evaluateZoneSpaceTrigger(trigger, zone, state, sample.playerWorldX, sample.playerWorldY);
+        }
+      } else if (trigger.kind === "time") {
+        let state = this.timeStates.get(trigger.id);
+        if (!state) { state = createTimeTriggerRuntimeState(); this.timeStates.set(trigger.id, state); }
+        triggerOccurrence = evaluateTimeTrigger(trigger, state, sample.sceneTimeSec);
+      } else {
+        if (!this.actionOwners.states) throw new Error("State Trigger requires its runtime owner");
+        let state = this.stateStates.get(trigger.id);
+        if (!state) { state = createStateTriggerRuntimeState(); this.stateStates.set(trigger.id, state); }
+        const reference = resolveStateReference(resolveTriggerState(trigger, document.states), this.actionOwners.states);
+        triggerOccurrence = evaluateStateTrigger(trigger, reference, state);
+      }
+      if (triggerOccurrence) this.dispatchTriggerOccurrence(triggerOccurrence, occurrences);
+    }
+    return occurrences;
+  }
+
+  private dispatchTriggerOccurrence(triggerOccurrence: TriggerOccurrence, occurrences: SceneEventOccurrence[]): void {
+    const document = this.document;
+    if (!document) return;
+    for (const binding of document.triggerEventBindings.filter(item => item.triggerId === triggerOccurrence.triggerId)) {
+      const definition = document.events.find(item => item.id === binding.eventId);
+      if (!definition) continue;
+      const occurrence = materializeSceneEvent(triggerOccurrence, binding, definition);
+      occurrences.push(occurrence);
+      this.dispatchEvent(occurrence);
+    }
   }
 
   private dispatchEvent(occurrence: SceneEventOccurrence): void {
