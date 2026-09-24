@@ -1,27 +1,27 @@
 # Scene Logic Implementation Roadmap
 
-Status: APPROVED / NEXT PRODUCT WORKSTREAM
+Status: COMPLETE / IMPLEMENTED V1
 
 ## Workstream position and execution rule
 
-The current active implementation workstream remains Pixel BGR Dev Workspace v1. Scene Logic v1 is the approved follow-up product workstream. This roadmap does not broaden the current Pixel BGR Workspace Phase 1 scope, and Scene Logic implementation begins only through focused, separately approved batches.
+Scene Logic v1 is implemented and runtime-accepted on the active `pixel_bgr` integration line. This roadmap now records the completed V1 workstream and its accepted boundaries; future Scene Logic expansion still requires focused, separately approved batches.
 
-This document sequences implementation of the architecture approved by D-014. It is a planning contract, not a runtime claim or authorization to execute the entire roadmap. Exact TypeScript interfaces will be established only in the focused batches that verify their runtime owners and boundaries.
+The implementation preserves the architecture approved by D-014: Space owns geometry, Trigger owns activation, Event owns semantic occurrence, Action owns executable consequence, State references authoritative runtime state, and Sequence is deterministic linear orchestration. Current code remains authoritative for exact TypeScript/runtime contracts.
 
 ## Implementation sequence
 
 ```text
 M0  Canonical architecture          COMPLETE
-M1  Space foundation
-M2  Trigger foundation
-M3  Event integration
-M4  Action execution
-M5  State addressing
-M6  Scene Logic composition
-M7  Scene Lab authoring convergence
-M8  Legacy migration
-M9  Linear Sequence runtime          COMPLETE
-M10 Sequence Lab                     COMPLETE
+M1  Space foundation                COMPLETE
+M2  Trigger foundation              COMPLETE
+M3  Event integration               COMPLETE
+M4  Action execution                COMPLETE
+M5  State addressing                COMPLETE
+M6  Scene Logic composition         COMPLETE
+M7  Scene Lab authoring convergence COMPLETE
+M8  Legacy migration                COMPLETE
+M9  Linear Sequence runtime         COMPLETE
+M10 Sequence Lab                    COMPLETE
 ```
 
 ## M0 — Canonical architecture — COMPLETE
@@ -228,7 +228,7 @@ BackgroundSceneEvent.level-end
 
 **Acceptance gate:** Every listed contract has an evidence-backed classification and migration outcome; compatibility tests and required runtime verification pass; and two competing generic Scene Logic authoring systems do not remain.
 
-**SL-12 status:** SL-12C implements explicit unlocked `level-end` migration and the focused production Marker-cross → Scene Event → Flow Action completion slice. The composed runtime reads the active V2 Scene document, evaluates authoritative player world-X after Simulation, and executes `Flow.complete_level` at the existing Flow boundary. Restart and Scene replacement re-arm Trigger runtime state and establish a fresh first-sample baseline; authoring seek preserves once/fired state and records the actual post-seek authoritative player world-X without evaluating logic, emitting an Event, or queuing an Action. Legacy `level-end` remains persisted but runtime-inert; B5 markers/actions/environment diagnostics remain presentation-specific. This does not establish generic Scene Logic or Sequence runtime support.
+**SL-12 status — CLOSED:** SL-12C implements explicit unlocked `level-end` migration and the focused production Marker-cross → Scene Event → Flow Action completion slice. Subsequent closure work integrated all V1 Trigger families into the production fixed-step Simulation sample while retaining the existing Flow boundary. Restart and Scene replacement re-arm Trigger runtime state and establish fresh baselines; authoring seek rebaselines spatial Trigger history without synthesizing occurrences and preserves fired-once, Time/State history, and Sequence progress while discarding pre-seek queued Actions. Legacy `level-end` remains persisted but runtime-inert; B5 markers/actions/environment diagnostics remain presentation-specific.
 
 ## M9 — Linear Sequence runtime
 
@@ -277,24 +277,24 @@ Scene visualization may expose Sequence content while preserving instance member
 
 ## Preferred focused implementation batches
 
-This is a tentative implementation decomposition, not permission to execute all batches automatically. Every batch requires the normal scoped approval, branch, validation, and integration workflow.
+The V1 implementation decomposition below is complete. Any future follow-up remains a separate scoped task and does not reopen these batches automatically.
 
 ```text
-SL-01  Space core types + pure geometry helpers
-SL-02  Marker cross Trigger runtime
-SL-03  Scene Event runtime adapter
-SL-04  first World Action adapter + vertical slice
-SL-05  Range / Zone + enter/inside/exit
-SL-06  Time Trigger
-SL-07  State reference registry + State Trigger
-SL-08  Entity / State / Flow Action adapters
-SL-09  Scene persistence/schema integration
-SL-10  Scene Lab Space authoring
-SL-11  Scene Lab Trigger/Event/Action authoring
-SL-12  legacy compatibility migration
-SL-13  Linear Sequence runtime
-SL-14  Sequence Scene integration
-SL-15  Sequence Lab MVP
+SL-01  Space core types + pure geometry helpers              CLOSED
+SL-02  Marker cross Trigger runtime                           CLOSED
+SL-03  Scene Event runtime adapter                            CLOSED
+SL-04  first World Action adapter + vertical slice            CLOSED
+SL-05  Range / Zone + enter/inside/exit                       CLOSED
+SL-06  Time Trigger                                           CLOSED
+SL-07  State reference registry + State Trigger               CLOSED
+SL-08  bounded State / Flow Action adapters                   CLOSED
+SL-09  Scene persistence/schema integration                   CLOSED
+SL-10  Scene Lab Space authoring                              CLOSED
+SL-11  Scene Lab Trigger/Event/Action authoring               CLOSED
+SL-12  legacy compatibility migration                         CLOSED
+SL-13  Linear Sequence runtime                                CLOSED
+SL-14  Sequence Scene integration                             CLOSED
+SL-15  Sequence Lab MVP                                       CLOSED
 ```
 
 ## Historical first implementation milestone
@@ -324,7 +324,7 @@ serialization migration
 legacy removal
 ```
 
-SL-01 must receive focused approval before it is marked in progress or implemented.
+SL-01 is historical completed scope; this section is retained only to preserve the original first-batch boundary.
 
 ## SL-14 implementation status — CLOSED
 
@@ -360,3 +360,21 @@ The V1 Sequence contract is complete without generic Entity/Space parameter bind
 - Bindings should be reconsidered only when a real product requirement creates a target-substitution problem: Entity-targeted Actions, Space-parameterized Steps, a cross-Scene Definition library, or repeated Sequence duplication caused by differing targets.
 
 This decision re-scopes the older aspirational M9/M10 binding language; it does not remove any implemented runtime or authoring capability.
+
+
+## Scene Logic v1 final closure — COMPLETE
+
+The umbrella workstream `CM-SCENE-LOGIC-001` is complete on merge commit `31c688e56e932226b4bb2df709580e7d2e5cca60`.
+
+Final production closure adds the remaining authored Trigger families to the canonical fixed-step Simulation path:
+
+- Marker `cross`;
+- Range/Zone `enter | inside | exit`;
+- Time `at | after` using authoritative `SessionState.timeSec`;
+- State comparisons using the canonical `StateRegistry`.
+
+Occurrences remain ordered by authored Trigger order and continue through the existing Trigger → Event → pending Action → Flow path. No second EventBus, parallel State store, wall-clock timing, schema expansion, or Sequence binding layer was added.
+
+Static verification passed on PR #309. Browser/runtime acceptance passed for the staged `Trigger Verification V2` flow (Time → Range → Zone → State → `LEVEL COMPLETE`), Flow phasing, PLAY AGAIN/re-arm, Range and Zone authoring-seek safety, Scene replacement, Sequence regression, and V1 B2 Demo regression. No new source/runtime console errors were established; existing WebGL/GFX warnings remain baseline noise.
+
+Scene Logic V1 is therefore CLOSED. Future Entity-targeted Actions, Sequence parameter bindings, cross-Scene Sequence libraries, branching/parallel orchestration, or other advanced capabilities are new work, not incomplete V1 scope.

@@ -6,8 +6,8 @@ State references are a bounded authored-address surface: `scene.scrollSpeed` (nu
 
 Legacy **EVE** remains the independent `BackgroundSceneV2.events[]` compatibility authoring surface. It is neither migrated nor bindable to canonical Events. Canonical logic has no timeline/canvas geometry: only Marker, Range, and Zone remain spatial, and no Event diamonds or fake X coordinates are created.
 
-This batch adds authoring and persistence only. It installs no evaluator, dispatch, Action execution, EventBus integration, or Sequence behavior, so authored logic is runtime-inert.
+Canonical authored Scene Logic is production-active. The fixed-step Simulation path evaluates Marker/Range/Zone, Time, and State Triggers; occurrences materialize semantic Events and queue bound Actions for the existing Flow boundary. V2 Sequence Definitions/Instances and `Flow.start_sequence` are likewise integrated. Legacy `BackgroundSceneV2.events[]` entries remain compatibility data and are runtime-inert until explicitly migrated.
 
 All displayed Scene Lab world-X coordinates use presentation-only whole-number rounding. Formatting does not quantize or mutate persisted geometry; decimal coordinates remain stored unchanged.
 
-**Runtime gate required: YES.** This batch receives static verification in Codex; interactive verification is required after integration.
+**Runtime status: ACCEPTED.** Static verification and browser/runtime acceptance cover canonical Trigger execution, Flow phasing, PLAY AGAIN/re-arm, authoring-seek spatial rebaseline safety, Scene replacement, Sequence regression, and V1 compatibility.
