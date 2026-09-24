@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { completeLevel, makeSessionState, resetLevel } from "../data/SessionState";
 import type { SceneLogicDocumentV1 } from "./SceneLogicDocument";
 import { SceneLogicRuntime } from "./SceneLogicRuntime";
+import type { StateRegistry } from "./StateRuntime";
 
 const document: SceneLogicDocumentV1 = {
   version: 1,
@@ -135,9 +136,104 @@ assert.equal(sequenceRuntime.getSequenceInstance("finish:a")?.status, "idle", "r
 sequenceRuntime.startSequence("finish:a");
 sequenceRuntime.updateFlow(0.04);
 const progress = sequenceRuntime.getSequenceInstance("finish:a")?.waitElapsedSec;
-sequenceRuntime.rebaselinePlayerWorldX(500);
+sequenceRuntime.rebaselinePlayerWorldPosition(500, 100);
 assert.equal(sequenceRuntime.getSequenceInstance("finish:a")?.waitElapsedSec, progress, "authoring seek preserves Sequence progress");
 assert.equal(sequenceEvents.length, 1, "activation and Sequence wait/action steps dispatch no extra Events");
+
+// Unified production sample: all Trigger families share authored-order dispatch
+// and keep their consequences behind the Flow boundary.
+let speed = 10;
+const speedEntry = { valueType: "number" as const, writable: true as const, read: () => speed, write: (value: boolean | number | string) => { speed = Number(value); } };
+const states: StateRegistry = {
+  resolve: address => { if (address !== "scene.scrollSpeed") throw new Error("missing"); return speedEntry; },
+  resolveWritable: address => { if (address !== "scene.scrollSpeed") throw new Error("missing"); return speedEntry; },
+};
+const integratedDocument: SceneLogicDocumentV1 = {
+  version: 1,
+  spaces: {
+    markers: [{ id: "marker", position: 25 }],
+    ranges: [{ id: "range", start: 10, end: 20 }],
+    zones: [{ id: "zone", minX: 30, maxX: 40, minY: 5, maxY: 15 }],
+  },
+  states: [{ id: "speed", address: "scene.scrollSpeed", valueType: "number" }],
+  triggers: [
+    { id: "time", kind: "time", relation: "after", timeSec: 0.25, mode: "once", enabled: true },
+    { id: "range", kind: "space", relation: "enter", rangeId: "range", mode: "repeat", enabled: true },
+    { id: "zone", kind: "space", relation: "enter", zoneId: "zone", mode: "once", enabled: true },
+    { id: "state", kind: "state", stateId: "speed", relation: "==", value: 30, mode: "once", enabled: true },
+  ],
+  events: ["time", "range", "zone", "state"].map(id => ({ id: `${id}-event`, category: "scene" as const, type: id })),
+  actions: [
+    { id: "set-speed", category: "state", type: "set", stateId: "speed", value: 30 },
+    { id: "range-complete", category: "flow", type: "complete_level" },
+    { id: "zone-complete", category: "flow", type: "complete_level" },
+    { id: "state-complete", category: "flow", type: "complete_level" },
+  ],
+  triggerEventBindings: ["time", "range", "zone", "state"].map(id => ({ triggerId: id, eventId: `${id}-event` })),
+  eventActionBindings: [
+    { eventId: "time-event", actionId: "set-speed" },
+    { eventId: "range-event", actionId: "range-complete" },
+    { eventId: "zone-event", actionId: "zone-complete" },
+    { eventId: "state-event", actionId: "state-complete" },
+  ],
+};
+let integratedCompletions = 0;
+const integratedEvents: string[] = [];
+const integrated = new SceneLogicRuntime(
+  { restartLevel: () => {}, completeLevel: () => { integratedCompletions++; } },
+  { dispatch: occurrence => integratedEvents.push(occurrence.eventId) },
+  { states },
+);
+integrated.activate(integratedDocument);
+const sample = (playerWorldX: number, playerWorldY: number, sceneTimeSec: number) =>
+  integrated.evaluateSimulationSample({ playerWorldX, playerWorldY, sceneTimeSec });
+assert.deepEqual(sample(0, 0, 0), [], "first unified sample establishes every baseline");
+assert.deepEqual(sample(15, 10, 0.3).map(item => item.eventId), ["time-event", "range-event"], "same-sample occurrences follow authored order");
+assert.equal(speed, 10, "Time State Action waits for Flow");
+assert.equal(integratedCompletions, 0, "Range Flow Action waits for Flow");
+integrated.updateFlow();
+assert.equal(speed, 30, "supplied simulation time crosses the threshold without a clock owned by Scene Logic");
+assert.equal(integratedCompletions, 1);
+assert.deepEqual(sample(15, 10, 0.31).map(item => item.eventId), ["state-event"], "following Simulation observes the authoritative State write");
+assert.equal(integratedCompletions, 1, "State consequence remains queued until Flow");
+integrated.updateFlow();
+assert.equal(integratedCompletions, 2);
+assert.deepEqual(sample(35, 10, 0.32).map(item => item.eventId), ["zone-event"], "Zone requires X/Y containment");
+integrated.updateFlow();
+assert.equal(integratedCompletions, 3);
+sample(0, 0, 0.33); sample(15, 10, 0.34); integrated.updateFlow();
+assert.equal(integratedCompletions, 4, "repeat Range re-enters while once Triggers remain fired");
+
+// Spatial authoring seek rebaselines Range/Zone only and preserves once memory,
+// Time/State history, pending actions, and Sequence state.
+speed = 10;
+integrated.activate(integratedDocument);
+sample(0, 0, 0);
+integrated.rebaselinePlayerWorldPosition(15, 10);
+assert.deepEqual(sample(15, 10, 0.1), [], "seek directly inside Range does not synthesize enter");
+sample(0, 0, 0.2);
+assert.deepEqual(sample(15, 10, 0.21).map(item => item.eventId), ["range-event"], "a genuine Range re-entry still occurs");
+integrated.rebaselinePlayerWorldPosition(35, 10);
+assert.deepEqual(sample(35, 10, 0.22), [], "seek directly inside Zone does not synthesize enter");
+sample(50, 10, 0.23);
+assert.deepEqual(sample(35, 10, 0.24).map(item => item.eventId), ["zone-event"], "a genuine Zone re-entry still occurs");
+integrated.rebaselinePlayerWorldPosition(50, 10);
+sample(50, 10, 0.245);
+assert.deepEqual(sample(35, 10, 0.246), [], "spatial seek does not re-arm an already-fired once Zone Trigger");
+integrated.rebaselinePlayerWorldPosition(0, 0);
+assert.deepEqual(sample(0, 0, 0.3).map(item => item.eventId), ["time-event"], "spatial seek preserves Time baseline and threshold progression");
+integrated.updateFlow();
+integrated.rebaselinePlayerWorldPosition(0, 0);
+assert.deepEqual(sample(0, 0, 0.31).map(item => item.eventId), ["state-event"], "spatial seek preserves State matched history");
+
+integrated.reset();
+assert.deepEqual(sample(35, 10, 1), [], "reset re-arms once memory and first sample is a baseline");
+integrated.activate(integratedDocument);
+assert.deepEqual(sample(15, 10, 1), [], "replacement cannot synthesize spatial, Time, or State occurrences");
+
+const missingStateOwner = new SceneLogicRuntime({ restartLevel: () => {}, completeLevel: () => {} });
+missingStateOwner.activate(integratedDocument);
+assert.throws(() => missingStateOwner.evaluateSimulationSample({ playerWorldX: 0, playerWorldY: 0, sceneTimeSec: 0 }), /State Trigger requires its runtime owner/);
 
 const eventStepSession = makeSessionState();
 const eventStepOccurrences: unknown[] = [];
