@@ -451,7 +451,7 @@ export async function createGame(
           Number(playerEnt?.pos?.x ?? 100) -
           Number(world?.scrollX ?? 0),
       });
-      sceneLogicRuntime.rebaselinePlayerWorldX(Number(playerEnt.pos.x));
+      sceneLogicRuntime.rebaselinePlayerWorldPosition(Number(playerEnt.pos.x), Number(playerEnt.pos.y));
       return result;
     };
 
@@ -618,7 +618,11 @@ export async function createGame(
         projectileSystem.update(ctx.dt);
         enemySystem.update(ctx);
         particleStore.update(ctx.dt);
-        sceneLogicRuntime.evaluatePlayerWorldX(Number(playerEnt.pos.x));
+        sceneLogicRuntime.evaluateSimulationSample({
+          playerWorldX: Number(playerEnt.pos.x),
+          playerWorldY: Number(playerEnt.pos.y),
+          sceneTimeSec: session.timeSec,
+        });
       },
     },
 
