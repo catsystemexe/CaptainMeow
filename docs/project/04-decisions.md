@@ -1,7 +1,7 @@
 # Captain Meow — Decisions
 
 Status: CANONICAL ACTIVE DECISION REGISTER
-Last updated: 2026-09-13
+Last updated: 2026-09-24
 
 This document records current approved project/workflow decisions that should remain visible after historical audit material becomes non-authoritative.
 
@@ -133,7 +133,7 @@ Active plan:
 - `docs/bgr/PIXEL_BGR_DEV_WORKSPACE_V1_WORK_PLAN.md`.
 
 ## D-014 — Scene Logic uses separated Space / Trigger / Event / Action / State contracts
-Status: ACTIVE / TARGET ARCHITECTURE
+Status: ACTIVE / IMPLEMENTED V1 ARCHITECTURE
 
 Decision:
 - Scene Logic MVP consists of `Space`, `Trigger`, `Event`, `Action`, `State`, and `Sequence`;
@@ -143,17 +143,17 @@ Decision:
 - Action owns executable consequences;
 - State references authoritative runtime state rather than duplicating gameplay truth;
 - MVP Sequence is linear and composes Event, Action, and duration-only Wait steps;
-- existing V2 world-X Event and B5 Marker/Action contracts remain compatibility implementations during incremental migration;
+- existing V2 world-X Event and B5 Marker/Action contracts remain compatibility implementations alongside canonical Scene Logic; explicit migration is used where supported;
 - no second gameplay EventBus or parallel gameplay-state authority may be introduced;
-- Scene Logic is a follow-up architecture workstream and does not retroactively broaden the approved Pixel BGR Workspace Phase 1 implementation scope.
+- Scene Logic V1 is implemented and runtime-accepted; future expansion beyond the V1 contracts remains separately scoped and does not retroactively broaden Pixel BGR Workspace Phase 1.
 
 Canonical target and migration contracts:
 - `docs/scene-logic/SCENE_LOGIC_MODEL_V1.md`;
 - `docs/scene-logic/SCENE_LOGIC_MIGRATION_CONTRACT.md`.
 
 Authority relationship:
-- P1.X.14 in the Pixel BGR Workspace plan describes the current implemented compatibility contract;
-- D-014 and `SCENE_LOGIC_MODEL_V1.md` define the approved future target architecture.
+- P1.X.14 in the Pixel BGR Workspace plan describes the retained compatibility contract;
+- D-014 and `SCENE_LOGIC_MODEL_V1.md` define the implemented Scene Logic V1 architecture.
 
 ## Decision hygiene
 
