@@ -1,10 +1,10 @@
 # Scene Logic Migration Contract
 
-Status: CURRENT → APPROVED TARGET
+Status: CURRENT / IMPLEMENTED V1 MIGRATION CONTRACT
 
 ## Purpose
 
-This document records how verified existing background contracts relate to the target architecture in `SCENE_LOGIC_MODEL_V1.md`. It does not change runtime behavior, schemas, serialization, or UI. Migration is incremental, and compatibility behavior remains supported until equivalent replacement behavior is implemented and verified.
+This document records how verified legacy background contracts coexist with the implemented Scene Logic V1 architecture in `SCENE_LOGIC_MODEL_V1.md`. Migration remains explicit and non-destructive: compatibility data stays supported where retained, and authored conversion occurs only through the implemented migration commands.
 
 ## Legacy B5 markers
 
@@ -28,9 +28,9 @@ Space + implicit Trigger + Actions
 
 `BackgroundMarker` remains a presentation-specific compatibility implementation. It is not the future generic Scene Logic model and MUST NOT be promoted as the target source of domain boundaries.
 
-**TARGET**
+**IMPLEMENTED V1 ARCHITECTURE**
 
-Marker geometry belongs to Space, activation belongs to Trigger, and executable consequences belong to Action.
+Marker geometry belongs to Space, activation belongs to Trigger, semantic meaning belongs to Event, and executable consequences belong to Action.
 
 ## V2 scene events
 
@@ -45,7 +45,7 @@ level-end | signal
 
 The contract combines spatial placement (`worldX`) with semantic occurrence (`level-end` or `signal`). Its behavior and schema remain supported during migration.
 
-**TARGET — approved architecture**
+**IMPLEMENTED V1 ARCHITECTURE**
 
 The corresponding responsibilities decompose as:
 
@@ -60,15 +60,15 @@ Event does not inherently own spatial geometry. This target partially supersedes
 
 ## Runtime EventBus authority
 
-The existing deterministic, phase-owned EventBus/runtime architecture remains authoritative. Scene Logic MUST NOT introduce a second gameplay EventBus. Future runtime integration must use that architecture or explicit adapters that preserve its event ownership, ordering, and routing constraints.
+The existing deterministic, phase-owned EventBus/runtime architecture remains authoritative. Scene Logic MUST NOT introduce a second gameplay EventBus. Scene Logic runtime integration uses that architecture and explicit adapters that preserve event ownership, ordering, and routing constraints.
 
 ## Runtime State authority
 
-Scene Logic MUST NOT introduce a parallel generic State database. Future State references and State Actions must access authoritative Scene, world, or entity state through explicit contracts or adapters.
+Scene Logic MUST NOT introduce a parallel generic State database. State references, State Triggers, and implemented State Actions access authoritative runtime values through the bounded `StateRegistry`; no parallel generic State store exists.
 
 ## Scene Lab surfaces
 
-**CURRENT — transitional UI structure**
+**CURRENT — implemented compatibility/canonical UI structure**
 
 The current Scene Lab exposes three distinct V2 surfaces: `EVE` authors the independent legacy `BackgroundSceneV2.events[]` compatibility contract, `SPACE` authors canonical geometry in `sceneLogic.spaces`, and `LOGIC` authors canonical Trigger/Event/Action/State-reference definitions and bindings. The legacy B5 Marker editor remains a separate V1 background presentation surface. These labels and surfaces do not override the Space / Trigger / Event / Action separation in the target model.
 
@@ -80,18 +80,20 @@ SL-12C applies the same explicit-only, atomic pattern to one unlocked `level-end
 
 ## Sequence migration classification
 
-**NEW / DEFERRED**
+**NEW / IMPLEMENTED V1**
 
-Sequence has no compatibility model in these verified B5 marker or V2 event contracts. Sequence implementation is deferred until the Space, Trigger, Event, Action, and State primitives are stable. Its eventual MVP must distinguish reusable Sequence Definitions from identity-preserving Sequence Instances.
+Sequence has no legacy compatibility model in the verified B5 marker or V2 event contracts, so it is not a migration target. Scene Logic V2 persistence implements reusable Sequence Definitions and identity-bearing Sequence Instances directly. `Flow.start_sequence` targets an Instance, and linear Event/Action/Wait Steps execute through the canonical fixed-step runtime.
+
+Generic Entity/Space Sequence parameter bindings, cross-Scene Sequence libraries, branching, parallel execution, loops, nested composition, and `wait_until` remain outside V1.
 
 ## Authority summary
 
 ```text
 P1.X.14
-= CURRENT implemented V2 compatibility contract
+= retained V2 compatibility contract
 
 D-014 + SCENE_LOGIC_MODEL_V1.md
-= APPROVED future target architecture
+= implemented Scene Logic V1 architecture
 ```
 
-This migration contract does not broaden Pixel BGR Workspace Phase 1. Apart from the bounded SL-12A authoring/persistence command above, it authorizes no runtime, schema, load-time adapter, or additional migration UI work.
+The V1 migration workstream is closed. No automatic/load-time reinterpretation was introduced: legacy `signal` and `level-end` conversion remains explicit, B5 remains presentation-specific, and future migration/removal work requires a separate approved task.
