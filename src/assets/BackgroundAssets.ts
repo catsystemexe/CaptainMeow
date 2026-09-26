@@ -49,7 +49,7 @@ export const BACKGROUND_ASSET_DECLARATIONS: readonly BackgroundAssetDeclaration[
   backgroundImage("desert_mid_mesas_b", "/assets/bg/test/desert/desert_mid_mesas_b.png", { width: 1672, height: 941 }, ["segment"]),
   backgroundImage("desert_near_band", "/assets/bg/test/desert/desert_near_band.png", { width: 1672, height: 941 }, ["segment", "object"]),
   backgroundImage("desert_sun", "/assets/bg/test/desert/desert_sun.png", { width: 1672, height: 941 }, ["object"]),
-  backgroundImage("castle_bgr_1", "/assets/bg/test/castle/castle_bgr_1.png", { width: 4480, height: 504 }, ["segment"]),
+  backgroundImage("castle_bgr_1", "/assets/bg/test/castle/castle_bgr_1.png", { width: 4480, height: 900 }, ["segment"]),
   backgroundImage("bgr-test-solid", "/assets/debug/bgr/bgr-test-solid.svg", { width: 64, height: 64 }, ["object"]),
   backgroundImage("bgr-test-backdrop", "/assets/debug/bgr/bgr-test-backdrop.svg", { width: 64, height: 64 }, ["object"]),
   backgroundImage("bgr-test-stripes", "/assets/debug/bgr/bgr-test-stripes.svg", { width: 256, height: 96 }, ["segment"]),
